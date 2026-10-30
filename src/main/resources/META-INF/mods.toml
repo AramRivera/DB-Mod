@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[0,)"
+license="MIT"
+
+[[mods]]
+modId="dragonblock"
+version="1.0.0"
+displayName="Dragon Block"
+authors="aramriv"
+description='''Dragon Block mod for Minecraft 1.21.1 inspired by the classic Dragon Block C. Features Ki energy, charging, stats, races, transformations (Kaioken, Super Saiyan), Ki Blasts, Senzu Beans, Dragon Balls and more!'''
+
+[[dependencies.dragonblock]]
+    modId="forge"
+    mandatory=true
+    versionRange="[52.0.0,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.dragonblock]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.21.1,1.22)"
+    ordering="NONE"
+    side="BOTH"

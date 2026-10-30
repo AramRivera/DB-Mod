@@ -1,0 +1,22 @@
+{
+  "itemGroup.dragonblock": "Dragon Block",
+  "item.dragonblock.senzu_bean": "Senzu Bean",
+  "item.dragonblock.scouter": "Scouter",
+  "item.dragonblock.dragon_radar": "Dragon Radar",
+  "item.dragonblock.training_weights": "Training Weights",
+  "item.dragonblock.ki_blast": "Ki Blast Technique",
+  "item.dragonblock.dragon_ball_1": "Dragon Ball (1 Star)",
+  "item.dragonblock.dragon_ball_2": "Dragon Ball (2 Stars)",
+  "item.dragonblock.dragon_ball_3": "Dragon Ball (3 Stars)",
+  "item.dragonblock.dragon_ball_4": "Dragon Ball (4 Stars)",
+  "item.dragonblock.dragon_ball_5": "Dragon Ball (5 Stars)",
+  "item.dragonblock.dragon_ball_6": "Dragon Ball (6 Stars)",
+  "item.dragonblock.dragon_ball_7": "Dragon Ball (7 Stars)",
+  "entity.dragonblock.ki_blast": "Ki Blast",
+  "key.categories.dragonblock": "Dragon Block",
+  "key.dragonblock.charge_ki": "Charge Ki",
+  "key.dragonblock.transform": "Transform / Revert",
+  "key.dragonblock.character_sheet": "Character Sheet (Stats)",
+  "key.dragonblock.fly": "Fly (Bukujutsu)",
+  "key.dragonblock.ki_blast": "Fire Ki Blast"
+}

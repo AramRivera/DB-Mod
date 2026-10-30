@@ -1,0 +1,22 @@
+{
+  "itemGroup.dragonblock": "Dragon Block",
+  "item.dragonblock.senzu_bean": "Semilla del Ermitaño",
+  "item.dragonblock.scouter": "Scouter (Rastreador)",
+  "item.dragonblock.dragon_radar": "Radar del Dragón",
+  "item.dragonblock.training_weights": "Pesas de Entrenamiento",
+  "item.dragonblock.ki_blast": "Ráfaga de Ki",
+  "item.dragonblock.dragon_ball_1": "Esfera del Dragón (1 Estrella)",
+  "item.dragonblock.dragon_ball_2": "Esfera del Dragón (2 Estrellas)",
+  "item.dragonblock.dragon_ball_3": "Esfera del Dragón (3 Estrellas)",
+  "item.dragonblock.dragon_ball_4": "Esfera del Dragón (4 Estrellas)",
+  "item.dragonblock.dragon_ball_5": "Esfera del Dragón (5 Estrellas)",
+  "item.dragonblock.dragon_ball_6": "Esfera del Dragón (6 Estrellas)",
+  "item.dragonblock.dragon_ball_7": "Esfera del Dragón (7 Estrellas)",
+  "entity.dragonblock.ki_blast": "Ráfaga de Ki",
+  "key.categories.dragonblock": "Dragon Block",
+  "key.dragonblock.charge_ki": "Cargar Ki",
+  "key.dragonblock.transform": "Transformarse / Revertir",
+  "key.dragonblock.character_sheet": "Ficha de Personaje (Stats)",
+  "key.dragonblock.fly": "Volar (Bukujutsu)",
+  "key.dragonblock.ki_blast": "Disparar Ráfaga de Ki"
+}
