@@ -1,13 +1,13 @@
 """Writes the hairstyle JSON files (original designs). Units: model pixels and degrees.
 
-Design rule: hair is built in rows from the hairline to the nape, like layered flames. Each row
-leans further back and the rows get longer toward the back, so the silhouette sweeps back instead of
-fanning out from the center. Sideburns frame the face and bangs fall over the forehead.
+Design rules (voxel anime style): strands are wide flat plates, not sticks (w much larger than d);
+the hair hugs the skull and spills out to the sides; wide bangs cover the top of the forehead;
+longer strands toward the back. Every style is our own layout, not any existing character's.
 
 Spike fields: p = root (x, y, z; y negative is up, z negative is the face side), back = sweep toward
 the back (0 up, 90 back, 180 down; negative leans forward), side = tilt outward, w/d = root width and
 depth (tapers in 4 steps), len = length, bend = extra sweep of the outer half, mirror = also place it
-mirrored. Each style may also have "mass" [x, y, z, w, h, d], a block of volume the spikes grow from.
+mirrored. "mass" [x, y, z, w, h, d] is a block of volume the strands grow from.
 Preview with tools/preview_hair.py after editing.
 """
 import json, os, sys
@@ -16,92 +16,103 @@ out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 
 
-def s(x, y, z, back, side, w, length, bend=0, d=None, mirror=False):
-    e = {"p": [x, y, z], "back": back, "side": side, "w": w, "len": length, "bend": bend}
-    if d is not None:
-        e["d"] = d
+def s(x, y, z, back, side, w, length, bend=0, d=2.4, mirror=False):
+    e = {"p": [x, y, z], "back": back, "side": side, "w": w, "len": length, "bend": bend, "d": d}
     if mirror:
         e["mirror"] = True
     return e
 
 
-def row(z, y, back, lengths, width, depth, spread, bend, side_tilt):
-    """One row of spikes across the head at depth z; lengths go center -> outside, mirrored."""
-    spikes = [s(0, y, z, back, 0, width, lengths[0], bend, depth)]
-    for i, length in enumerate(lengths[1:], start=1):
-        x = spread * i
-        spikes.append(s(x, y + 0.3 * i, z, back + 4 * i, side_tilt * i, width * (1 - 0.08 * i), length, bend, depth * 0.92, mirror=True))
-    return spikes
+def fringe(widths_x, length, lean=-150, w=4.2):
+    """Wide plates falling over the forehead, angled a little outward."""
+    return [s(x, -8.0, -3.2, lean, x * 6, w, length - abs(x) * 0.4, bend=-18, d=1.8) for x in widths_x]
 
 
-def sideburns(length, back=170, w=2.8):
-    return [s(4.1, -5.6, -2.2, back, 6, w, length, bend=-8, d=1.8, mirror=True)]
+def temples(length, back=165, side=18, w=3.6):
+    """Strands over the ears framing the face."""
+    return [s(4.2, -6.4, -1.8, back, side, w, length, bend=-10, d=1.8, mirror=True)]
 
 
-def bangs(xs, length, w=3.2, lean=-160):
-    return [s(x, -7.8, -3.4, lean, x * 5, w, length - abs(x) * 0.35, bend=-14, d=2.0) for x in xs]
-
-
-MASS_UP = [-4.7, -10.2, -3.8, 9.4, 2.6, 8.6]
-MASS_LOW = [-4.7, -9.4, -3.8, 9.4, 1.4, 9.0]
+SKULL = [-4.8, -9.6, -4.2, 9.6, 2.2, 9.2]      # volume hugging the skull
+TALL = [-4.9, -10.4, -4.0, 9.8, 3.0, 9.0]
 
 styles = {
-    # Golden tier: three rows sweeping up and back, flame-like
-    "flare": {"mass": MASS_UP, "spikes":
-        row(-2.4, -9.8, 10, [9, 8, 6.5], 5.6, 4.0, 2.6, 14, 14)
-        + row(0.6, -9.8, 34, [12, 11, 9], 5.8, 4.2, 2.6, 16, 16)
-        + row(3.2, -8.8, 62, [11, 10, 8], 5.6, 4.0, 2.7, 18, 18)
-        + [s(0, -6.0, 4.0, 128, 0, 5.4, 8, 12, 3.4), s(2.6, -5.8, 3.8, 132, 18, 4.8, 7, 12, 3.2, mirror=True)]
-        + sideburns(4.5) + bangs([-2.1, 0.1, 2.0], 5.2)},
-    # Heavier and denser for the muscled grades
-    "heavy": {"mass": [-4.9, -10.6, -4.0, 9.8, 3.0, 9.0], "spikes":
-        row(-2.4, -10.2, 8, [10, 9, 7], 6.8, 5.0, 2.8, 12, 16)
-        + row(0.6, -10.2, 32, [13, 12, 10], 7.0, 5.2, 2.8, 14, 18)
-        + row(3.2, -9.2, 60, [12, 11, 9], 6.6, 4.8, 2.9, 16, 20)
-        + [s(0, -6.0, 4.0, 126, 0, 6.2, 9, 12, 3.8), s(2.7, -5.8, 3.8, 130, 20, 5.6, 8, 12, 3.6, mirror=True)]
-        + sideburns(4.5, w=3.4) + bangs([-2.1, 0.1, 2.0], 4.8, w=3.6)},
-    # Sharp, nearly vertical rows and a single long strand over the brow
-    "ridge": {"mass": MASS_UP, "spikes":
-        row(-2.2, -9.8, 4, [13, 11, 8.5], 5.2, 3.8, 2.6, 10, 10)
-        + row(0.8, -9.8, 22, [15, 13, 10.5], 5.4, 4.0, 2.6, 12, 12)
-        + row(3.3, -8.8, 48, [13, 11.5, 9], 5.2, 3.8, 2.7, 14, 14)
-        + [s(0, -6.0, 4.0, 124, 0, 5.0, 8.5, 10, 3.2), s(2.6, -5.8, 3.8, 128, 18, 4.4, 7.5, 10, 3.0, mirror=True)]
-        + sideburns(5)
-        + [s(-1.3, -8.0, -3.5, -172, -6, 2.8, 9.5, bend=14, d=1.6)]},
-    # Long mane falling to the waist; short crown, heavy brow fringe
-    "mane": {"mass": MASS_LOW, "spikes":
-        row(-1.8, -9.0, 22, [7, 6, 5], 5.4, 4.0, 2.6, 12, 18)
-        + [s(0, -8.0, 3.6, 172, 0, 6.4, 31, 5, 3.4),
-           s(2.2, -7.2, 3.9, 174, 5, 6.0, 32, 4, 3.2, mirror=True),
-           s(4.0, -6.2, 2.8, 172, 11, 5.2, 28, 4, 3.0, mirror=True),
-           s(4.4, -5.4, 0.4, 175, 12, 4.2, 20, 3, 2.4, mirror=True)]
-        + bangs([-2.2, 0.0, 2.1], 5.8, w=3.4)},
-    # Untamed: rows tilted outward plus a long back to the shoulder blades
-    "wild": {"mass": MASS_UP, "spikes":
-        row(-2.2, -9.8, 16, [8.5, 8, 7], 5.2, 4.0, 2.7, 18, 26)
-        + row(0.8, -9.6, 40, [10, 9.5, 8], 5.4, 4.2, 2.7, 20, 28)
-        + [s(0, -6.6, 3.9, 150, 0, 6.0, 16, 8, 3.6),
-           s(2.4, -6.4, 3.8, 144, 16, 5.4, 15, 8, 3.4, mirror=True),
-           s(4.0, -5.6, 2.8, 138, 30, 4.6, 12, 8, 3.0, mirror=True)]
-        + sideburns(5, w=3.2) + bangs([-2.3, 0.0, 2.2], 5.0)},
-    # Slicked back: flat rows hugging the skull
-    "sleek": {"mass": MASS_LOW, "spikes":
-        row(-2.8, -9.2, 74, [9, 8.5, 7], 5.4, 2.6, 2.5, 12, 10)
-        + row(0.8, -8.6, 86, [8.5, 8, 6.5], 5.4, 2.6, 2.5, 14, 12)
-        + sideburns(4) + bangs([-1.7, 1.6], 3.8)},
-    # Central blade standing tall over shorter rows
-    "spire": {"mass": MASS_UP, "spikes":
-        [s(0, -10.0, -0.6, 2, 0, 6.2, 19, 6, 4.4)]
-        + row(-2.2, -9.6, 12, [0.1, 9, 7], 5.0, 3.8, 2.5, 12, 14)[1:]
-        + row(1.6, -9.4, 36, [0.1, 11, 9], 5.2, 3.8, 2.6, 14, 16)[1:]
-        + [s(0, -6.0, 4.0, 128, 0, 5.0, 8, 12, 3.2)]
-        + sideburns(4.5) + bangs([0.3], 5.6)},
-    # Calm silver crest: neat, upright, few strands
-    "crest": {"mass": MASS_UP, "spikes":
-        row(-2.2, -9.8, 8, [9, 8, 6], 5.4, 4.0, 2.6, 10, 12)
-        + row(0.8, -9.8, 28, [10.5, 9.5, 7.5], 5.6, 4.2, 2.6, 12, 14)
-        + [s(0, -6.0, 4.0, 126, 0, 5.0, 7, 10, 3.2)]
-        + sideburns(4) + bangs([-1.8, 1.7], 4.2)},
+    # Golden tier: wide plates blown up and back, flaring out at the sides
+    "flare": {"mass": TALL, "spikes": [
+        s(0, -10.0, -2.6, 16, 0, 7.0, 10, 16, 2.6),
+        s(0, -10.0, 0.4, 36, 0, 7.4, 12, 18, 2.8),
+        s(0, -9.4, 3.0, 64, 0, 7.0, 11, 20, 2.6),
+        s(2.8, -9.8, -1.6, 22, 30, 6.0, 9.5, 16, 2.4, mirror=True),
+        s(3.2, -9.4, 1.6, 44, 34, 6.2, 10.5, 18, 2.4, mirror=True),
+        s(4.4, -7.6, -0.2, 40, 62, 5.4, 8, 14, 2.2, mirror=True),
+        s(4.0, -6.2, 3.0, 110, 46, 5.0, 7, 12, 2.2, mirror=True),
+        s(0, -5.6, 4.2, 140, 0, 6.4, 8, 12, 2.4),
+    ] + temples(5.5) + fringe([-2.4, 0.0, 2.4], 5.5)},
+    # Massive version for the muscled forms: thicker and wider
+    "heavy": {"mass": [-5.1, -10.8, -4.2, 10.2, 3.4, 9.4], "spikes": [
+        s(0, -10.4, -2.6, 14, 0, 8.4, 11, 14, 3.0),
+        s(0, -10.4, 0.4, 34, 0, 8.8, 13, 16, 3.2),
+        s(0, -9.8, 3.0, 62, 0, 8.4, 12, 18, 3.0),
+        s(3.0, -10.2, -1.6, 20, 32, 7.2, 10.5, 14, 2.8, mirror=True),
+        s(3.4, -9.8, 1.6, 42, 36, 7.4, 11.5, 16, 2.8, mirror=True),
+        s(4.6, -7.8, -0.2, 38, 64, 6.4, 9, 12, 2.6, mirror=True),
+        s(4.2, -6.2, 3.0, 108, 48, 6.0, 8, 12, 2.6, mirror=True),
+        s(0, -5.6, 4.4, 138, 0, 7.6, 9, 12, 2.8),
+    ] + temples(6, w=4.2) + fringe([-2.4, 0.0, 2.4], 5.2, w=4.8)},
+    # Sharp upright blades, one long loose strand over the brow
+    "ridge": {"mass": TALL, "spikes": [
+        s(0, -10.0, -2.2, 6, 0, 6.4, 13.5, 10, 2.4),
+        s(0, -10.0, 0.6, 22, 0, 6.8, 14.5, 12, 2.6),
+        s(0, -9.4, 3.2, 50, 0, 6.4, 12.5, 14, 2.4),
+        s(2.7, -9.8, -1.2, 8, 22, 5.6, 12, 10, 2.2, mirror=True),
+        s(3.1, -9.4, 1.8, 28, 26, 5.8, 12.5, 12, 2.2, mirror=True),
+        s(4.4, -7.6, 0.0, 26, 50, 5.0, 9, 10, 2.0, mirror=True),
+        s(0, -5.6, 4.2, 136, 0, 6.0, 8, 10, 2.2),
+        s(-1.6, -8.2, -3.4, -168, -4, 3.2, 10, 16, 1.6),
+    ] + temples(6)},
+    # Mane falling to the waist, low crown, heavy fringe
+    "mane": {"mass": SKULL, "spikes": [
+        s(0, -9.2, -2.0, 24, 0, 7.0, 7.5, 14, 2.4),
+        s(2.8, -9.0, -1.2, 28, 30, 6.0, 7, 12, 2.2, mirror=True),
+        s(0, -8.2, 3.6, 172, 0, 8.0, 32, 5, 2.6),
+        s(2.6, -7.4, 3.8, 174, 6, 7.4, 33, 4, 2.4, mirror=True),
+        s(4.4, -6.4, 2.4, 172, 12, 6.0, 29, 4, 2.2, mirror=True),
+        s(4.6, -5.6, 0.0, 176, 14, 4.6, 21, 3, 2.0, mirror=True),
+    ] + fringe([-2.6, 0.0, 2.6], 6.5, w=4.6)},
+    # Untamed dark style: ragged plates and a long back to the shoulder blades
+    "wild": {"mass": TALL, "spikes": [
+        s(-1.8, -10.0, -2.2, 18, -30, 6.2, 9.5, 20, 2.6),
+        s(1.8, -10.0, -2.0, 22, 32, 6.2, 9, 20, 2.6),
+        s(0, -9.8, 0.6, 40, 0, 7.0, 11, 22, 2.8),
+        s(4.4, -7.6, 0.4, 46, 68, 5.6, 8.5, 18, 2.4, mirror=True),
+        s(0, -6.6, 4.2, 152, 0, 7.6, 17, 8, 2.6),
+        s(2.8, -6.4, 4.0, 146, 18, 6.8, 16, 8, 2.4, mirror=True),
+        s(4.4, -5.6, 2.8, 140, 34, 5.6, 13, 8, 2.2, mirror=True),
+    ] + temples(6.5, w=4.0) + fringe([-2.6, 0.0, 2.6], 6.0, w=4.4)},
+    # Slicked back: flat plates lying along the skull
+    "sleek": {"mass": SKULL, "spikes": [
+        s(0, -9.4, -3.0, 76, 0, 7.4, 9.5, 12, 2.0),
+        s(2.8, -9.2, -2.6, 74, 16, 6.2, 9, 12, 1.8, mirror=True),
+        s(0, -8.8, 0.6, 88, 0, 7.4, 9, 14, 2.0),
+        s(2.9, -8.6, 0.8, 86, 18, 6.2, 8.5, 14, 1.8, mirror=True),
+        s(4.4, -6.8, 0.2, 70, 36, 5.0, 6.5, 10, 1.8, mirror=True),
+    ] + temples(4.5, w=3.2) + fringe([-2.0, 2.0], 4.0, lean=-160, w=3.6)},
+    # Tall central blade over swept sides
+    "spire": {"mass": TALL, "spikes": [
+        s(0, -10.2, -0.8, 2, 0, 7.6, 19, 6, 2.8),
+        s(2.6, -9.8, -1.2, 10, 22, 5.8, 13, 10, 2.4, mirror=True),
+        s(3.0, -9.4, 2.0, 34, 28, 5.8, 11, 14, 2.4, mirror=True),
+        s(4.4, -7.6, 0.2, 26, 54, 5.0, 8.5, 12, 2.2, mirror=True),
+        s(0, -5.6, 4.2, 138, 0, 6.0, 8, 12, 2.2),
+    ] + temples(5.5) + fringe([0.2], 6.5, w=4.6)},
+    # Calm silver crest: neat, upright, few plates
+    "crest": {"mass": TALL, "spikes": [
+        s(0, -10.0, -2.2, 10, 0, 6.8, 9.5, 10, 2.4),
+        s(0, -10.0, 0.6, 28, 0, 7.0, 10.5, 12, 2.6),
+        s(2.8, -9.8, -1.2, 12, 24, 5.8, 8.5, 10, 2.2, mirror=True),
+        s(3.1, -9.4, 1.8, 32, 26, 5.8, 9, 12, 2.2, mirror=True),
+        s(0, -5.6, 4.2, 136, 0, 6.0, 7, 10, 2.2),
+    ] + temples(5) + fringe([-2.2, 2.2], 4.5, w=4.0)},
 }
 
 for name, style in styles.items():

@@ -73,7 +73,7 @@ public class DevCommand {
                 .then(Commands.literal("form")
                         .then(Commands.argument("form", StringArgumentType.word())
                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(
-                                        java.util.Arrays.stream(Transformation.values()).map(f -> f.name().toLowerCase()), b))
+                                        java.util.Arrays.stream(Transformation.values()).map(Transformation::id), b))
                                 .executes(ctx -> setForm(ctx.getSource(), StringArgumentType.getString(ctx, "form")))))
 
                 // /dev mastery <0-100> (all forms)
@@ -217,9 +217,11 @@ public class DevCommand {
 
         Transformation target;
         try {
-            target = Transformation.valueOf(formStr.toUpperCase());
+            String key = formStr.toUpperCase();
+            Transformation legacy = Transformation.fromLegacy(key);
+            target = legacy != null ? legacy : key.equals("SSJ") ? Transformation.SSJ1 : Transformation.valueOf(key);
         } catch (IllegalArgumentException e) {
-            source.sendFailure(Component.literal("Forma no válida. Usa el nombre interno, p. ej. SUPER_SAIYAN_2, KAIOKEN_X10."));
+            source.sendFailure(Component.literal("Forma no válida. Usa Tab para ver las opciones: ssj1, ssj2, ssj3, ssj4, ssj_god, ssj_blue..."));
             return 0;
         }
 

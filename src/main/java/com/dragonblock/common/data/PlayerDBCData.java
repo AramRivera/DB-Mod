@@ -159,7 +159,7 @@ public class PlayerDBCData {
         CompoundTag masteryTag = tag.getCompound("Mastery");
         for (String key : masteryTag.getAllKeys()) {
             Transformation form = parseEnum(Transformation.class, key, null);
-            if (form != null) mastery.put(form, Math.min(100f, Math.max(0f, masteryTag.getFloat(key))));
+            if (form != null) mastery.merge(form, Math.min(100f, Math.max(0f, masteryTag.getFloat(key))), Math::max);
         }
     }
 
@@ -167,6 +167,10 @@ public class PlayerDBCData {
         try {
             return name == null || name.isEmpty() ? fallback : Enum.valueOf(type, name);
         } catch (IllegalArgumentException e) {
+            if (type == Transformation.class) {
+                Transformation legacy = Transformation.fromLegacy(name);
+                if (legacy != null) return type.cast(legacy);
+            }
             return fallback;
         }
     }
@@ -278,7 +282,8 @@ public class PlayerDBCData {
 
     /** Seconds of holding the transform key, by form size and mastery. */
     public float getTransformTimeSeconds(Transformation target) {
-        return target.getBaseTransformSeconds() * (1f - 0.75f * getMastery(target) / 100f);
+        // Mastery shortens the power-up but never below 1.5s, so the sequence always plays out
+        return Math.max(1.5f, target.getBaseTransformSeconds() * (1f - 0.4f * getMastery(target) / 100f));
     }
 
     // ---------------------------------------------------------------- getters / setters

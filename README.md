@@ -10,7 +10,7 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 * **Ki**: máximo según Voluntad (WIL) y raza. Se carga manteniendo `C` y se regenera solo.
 * **Vida (cuerpo)**: reserva propia que crece con la Constitución (CON) efectiva, así que transformarte te hace más resistente. Se muestra en una **barra roja** en lugar de los corazones; los corazones vanilla solo reflejan el porcentaje, por eso nunca se apilan. La comida, pociones y regeneración siguen funcionando.
 * **Aura**: tres capas de llamas, más **ancha y alta** que el cuerpo, con lenguas que suben, chispas que se desprenden y un anillo de presión en el suelo. Al empezar a cargar **se hincha** y late; al soltar se apaga poco a poco. **Crece con el poder de pelea y el multiplicador de la forma.** Se puede ocultar con `J`.
-* **Vuelo (`F`)**: velocidad cercana a la de creativo; corriendo en el aire vas más rápido y gastas más Ki. El cuerpo se inclina hacia delante según la velocidad.
+* **Vuelo (`F`)**: velocidad cercana a la de creativo. En el aire el aura se apaga; al **acelerar** (correr volando) aparece un aura ceñida al cuerpo y una **estela de energía** detrás que ven todos. El cuerpo se inclina según la velocidad.
 * **Velocidad**: la Destreza da hasta +35% al caminar, **sin el efecto de "poción de velocidad"** en el campo de visión.
 
 ---
@@ -56,18 +56,32 @@ Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para t
 * **Ozaru**: si eres Saiyajin con la cola suelta y **miras la luna llena** de noche, te transformas solo. También puedes elegirlo y mantener `G` cualquier noche a cielo abierto. Al salir el sol (o al enrollar la cola) vuelves a la normalidad. `/dev form oozaru` lo fuerza de día para pruebas.
 * **Peinados**: 8 diseños propios por nivel (no copias del pelo de personajes concretos), hechos con mechones triangulares escalonados que salen de un volumen de pelo: *Flare*, *Heavy* (grados musculosos), *Ridge* (cresta afilada con un mechón suelto), *Mane* (melena hasta la cintura), *Wild* (oscuro y salvaje), *Sleek* (hacia atrás), *Spire* (cresta central) y *Crest* (plateado y sereno). Se definen en `assets/dragonblock/hair/*.json`.
 
+#### Nombres e IDs
+Una sola forma de cada cosa, con IDs coherentes para los comandos:
+
+| ID | Forma | | ID | Forma |
+| :--- | :--- | :--- | :--- | :--- |
+| `ssj1` | Super Saiyajin 1 | | `ssj_god` | Super Saiyajin Dios |
+| `ssj2` | Super Saiyajin 2 | | `ssj_blue` | Super Saiyajin Blue |
+| `ssj3` | Super Saiyajin 3 | | `ssj_blue_evolved` | Blue Evolución |
+| `ssj4` | Super Saiyajin 4 | | `ultra_ego`, `beast` | Ultra Ego, Bestia |
+| `oozaru`, `golden_oozaru` | Ozaru | | `ui_sign`, `ui_mastered` | Instinto Superior |
+| `kaioken`, `kaioken_x10`, `kaioken_x20` | Kaio-ken | | `potential` | Potencial Liberado |
+
+Las partidas antiguas se migran solas (los antiguos "Grado 2/3" y "SSJ Pleno" pasan a SSJ1).
+
+**Tamaño y músculo**: las formas más poderosas te hacen más alto y musculoso: Blue Evolución (x1,1 de altura, +20% de músculo), Namekiano Naranja, Forma Final 100%, SSJ4, Ultra Ego, Bestia.
+
 #### La esencia de cada forma
 Cada forma tiene su secuencia de transformación (más larga y violenta cuanto más poderosa), partículas, ojos y una mecánica propia:
 
 | Forma | Cómo se ve | Qué hace distinto |
 | :--- | :--- | :--- |
-| Super Saiyajin | Pelo dorado *Flare*, ojos verde azulado, destello dorado | Base dorada equilibrada |
-| Grado 2 / Grado 3 | Pelo *Heavy*, más músculo, polvo | G2: -10% daño recibido. G3: +25% golpe, -25% daño recibido, 25% más lento |
-| SSJ Pleno | Aura serena | Sin consumo, regenera Ki, técnicas más baratas |
+| Super Saiyajin 1 | Pelo dorado *Flare*, ojos verde azulado, destello dorado | Base dorada equilibrada |
 | Super Saiyajin 2 | Cresta afilada con mechón, **rayos constantes**, chispas | +15% daño de Ki |
 | Super Saiyajin 3 | **El pelo crece** hasta la cintura mientras cargas, terremoto, rayos | +15% golpe, consumo alto |
 | Dios | Pelo *Sleek* rojizo, brasas, columna de luz | Cura el cuerpo poco a poco, técnicas más baratas |
-| Blue / Blue Evolución | Pelo y aura cian, destellos | Control perfecto: técnicas 30% más baratas |
+| Blue / Blue Evolución | Pelo y aura cian, destellos; Evolución con pelo *Heavy*, **más alto (x1,1) y musculoso** | Control perfecto: técnicas 30% más baratas |
 | Ultra Ego | Aura violeta, brasas | Se hace más fuerte cuanto más daño recibe |
 | Instinto Superior | Aura plateada fina, destellos, columna de luz | **Esquiva sola** (30% / 55%) desplazándose |
 | Bestia | Cresta alta plateada, ojos rojos, rayos rojos | 20% de golpes críticos x1,6 |
@@ -86,7 +100,7 @@ Mantén `G` y vive la transformación por fases:
 4. **Implosión**: justo antes del final el aura se contrae un instante.
 5. **Estallido**: explosión de energía, los escombros salen despedidos, onda en el suelo, destello en pantalla y el **nombre de la forma** aparece en grande.
 
-Cada forma tiene su estilo: *Destello* (el pelo parpadea), *Oleada* (rayos), *Cataclismo* (larga, terremoto, el pelo crece), *Divina* (serena, columna de luz), *Gigante* (creces poco a poco), *Tensión* (llamarada roja). Con más maestría la carga es más corta.
+La carga dura al menos 1,5 s y más en las formas poderosas (SSJ1 unos 3 s, SSJ3 unos 6 s, Blue unos 8 s); la maestría la acorta como mucho un 40%. Cada forma tiene su estilo: *Destello* (el pelo parpadea), *Oleada* (rayos), *Cataclismo* (larga, terremoto, el pelo crece), *Divina* (serena, columna de luz), *Gigante* (creces poco a poco), *Tensión* (llamarada roja). Con más maestría la carga es más corta.
 
 
 ---
@@ -96,7 +110,7 @@ Cada forma tiene su estilo: *Destello* (el pelo parpadea), *Oleada* (rayos), *Ca
 | :--- | :--- |
 | Universal | Kaio-ken (x1, x10, x20, drenan vida), Instinto Superior (Presagio / Dominado) |
 | Humano / Namekiano / Híbrido | Potencial Liberado |
-| Saiyajin / Híbrido | SSJ, Grado 2, Grado 3, SSJ Pleno, SSJ2, SSJ3, Dios, Blue, Blue Evolución |
+| Saiyajin / Híbrido | Super Saiyajin 1, 2, 3, Dios, Blue, Blue Evolución |
 | Saiyajin (con cola) | Ozaru (luna llena), Ozaru Dorado, SSJ4, Ultra Ego |
 | Híbrido | Bestia |
 | Arcosiano | Segunda, Tercera, Final, Final 100%, Dorada, Negra |
@@ -172,7 +186,7 @@ Para facilitar el testeo y depuración de mecánicas, se incluye un conjunto de 
 | `/dev ki <cantidad>` | Establece tu Ki actual a un valor exacto. | `/dev ki 500` |
 | `/dev stat <atributo> <valor>` | Fija un atributo (`STR`, `DEX`, `CON`, `WIL`, `MND` o `ALL`). | `/dev stat str 50` o `/dev stat all 100` |
 | `/dev race <raza>` | Cambia tu raza de inmediato (`HUMAN`, `SAIYAN`, etc.). | `/dev race saiyan` |
-| `/dev form <forma>` | Fuerza una transformación (autocompleta todas). | `/dev form super_saiyan_2` |
+| `/dev form <id>` | Fuerza una transformación (Tab autocompleta). | `/dev form ssj2` |
 | `/dev max` | Atributos a 100, 50,000 TP y Ki al 100% para pruebas rápidas. | `/dev max` |
 | `/dev reset` | Restaura todos los atributos y datos a los valores iniciales. | `/dev reset` |
 | `/dev help` | Muestra la lista de comandos disponibles en el chat. | `/dev help` |

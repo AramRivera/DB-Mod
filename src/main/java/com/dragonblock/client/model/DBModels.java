@@ -69,7 +69,7 @@ public final class DBModels {
     // ------------------------------------------------------------------ hair
 
     /** Four tapering steps (fraction of length, fraction of width); the outer two follow the bend. */
-    private static final float[][] TIERS = {{0.34f, 1.0f}, {0.26f, 0.76f}, {0.22f, 0.52f}, {0.18f, 0.28f}};
+    private static final float[][] TIERS = {{0.38f, 1.0f}, {0.28f, 0.8f}, {0.2f, 0.58f}, {0.14f, 0.34f}};
 
     /**
      * Hair is data-driven: assets/dragonblock/hair/<style>.json holds a volume block ("mass") and spikes.

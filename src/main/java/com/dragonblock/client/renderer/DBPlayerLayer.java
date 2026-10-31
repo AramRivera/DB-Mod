@@ -103,7 +103,7 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         fur.setAllVisible(true);
         fur.hat.visible = false;
         ResourceLocation texture = FUR_TEX;
-        if (form == Transformation.SUPER_SAIYAN_4) {
+        if (form == Transformation.SSJ4) {
             // Fur vest: arms, back and flanks only; the face and legs stay the player's own
             fur.head.visible = fur.leftLeg.visible = fur.rightLeg.visible = false;
             texture = VEST_TEX;
@@ -196,7 +196,7 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         float z = -4.02f, y = -4f;
         faceRect(vc, pose, -2.6f, y, -1.4f, y + 1f, z, 0xFF000000 | eye);
         faceRect(vc, pose, 1.4f, y, 2.6f, y + 1f, z, 0xFF000000 | eye);
-        if (form == Transformation.SUPER_SAIYAN_4) {
+        if (form == Transformation.SSJ4) {
             faceRect(vc, pose, -3.2f, y - 0.5f, -0.8f, y - 0.15f, z - 0.01f, 0xFFC02028);
             faceRect(vc, pose, 0.8f, y - 0.5f, 3.2f, y - 0.15f, z - 0.01f, 0xFFC02028);
         }
@@ -255,8 +255,14 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
                     shown.getAuraWidth(), shown.getAuraHeight(), charging && player.onGround());
         }
 
+        // Boosting through the air: a tight, streamlined aura hugs the (tilted) body
+        if (com.dragonblock.client.fx.SpeedTrail.isBoosting(player) && visible) {
+            float speed = (float) Math.min(1.0, (AnimState.horizontalSpeed(player) - 0.4) * 2.0);
+            EnergyRender.aura(pose, buffers, time * 2f, form.getAuraColor(), 0.6f + 0.4f * speed, 0.75f, 0.55f, 1.0f, false);
+        }
+
         // Lightning: storm forms always crackle; any power-up crackles past the halfway mark
-        int bolts = form.getLightningColor() != 0 ? (form == Transformation.SUPER_SAIYAN_3 ? 3 : 2) : 0;
+        int bolts = form.getLightningColor() != 0 ? (form == Transformation.SSJ3 ? 3 : 2) : 0;
         int boltColor = form.getLightningColor();
         if (data.isTransformHeld() && data.getTransformCharge() > 0.5f) {
             bolts = Math.max(bolts, 2 + (int) (data.getTransformCharge() * 2));

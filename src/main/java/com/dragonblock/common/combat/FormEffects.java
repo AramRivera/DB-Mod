@@ -21,9 +21,9 @@ public final class FormEffects {
         if (player.tickCount % 20 != 0) return;
         switch (form) {
             // Divine forms: calm ki control, the body slowly mends
-            case SUPER_SAIYAN_GOD -> data.setBody(data.getBody() + data.getMaxBody() * 0.01f);
-            case SUPER_SAIYAN_4, MAJIN_PURE -> data.setBody(data.getBody() + data.getMaxBody() * 0.015f);
-            case SSJ_FULL_POWER, ARCOSIAN_FINAL -> data.setCurrentKi(data.getCurrentKi() + data.getMaxKi() * 0.01f);
+            case SSJ_GOD -> data.setBody(data.getBody() + data.getMaxBody() * 0.01f);
+            case SSJ4, MAJIN_PURE -> data.setBody(data.getBody() + data.getMaxBody() * 0.015f);
+            case ARCOSIAN_FINAL -> data.setCurrentKi(data.getCurrentKi() + data.getMaxKi() * 0.01f);
             default -> {}
         }
         data.rage = Math.max(0f, data.rage - 0.03f);
@@ -32,8 +32,7 @@ public final class FormEffects {
     /** Multiplier for melee damage dealt. */
     public static float meleeMultiplier(ServerPlayer player, PlayerDBCData data) {
         return switch (data.getTransformation()) {
-            case SSJ_GRADE_3 -> 1.25f;
-            case SUPER_SAIYAN_3 -> 1.15f;
+            case SSJ3 -> 1.15f;
             case OOZARU, GOLDEN_OOZARU, NAMEKIAN_GIANT -> 1.5f;
             case ULTRA_EGO -> 1f + 0.6f * data.rage;
             case BEAST -> {
@@ -50,7 +49,7 @@ public final class FormEffects {
     /** Multiplier for ki technique damage. */
     public static float kiMultiplier(PlayerDBCData data) {
         return switch (data.getTransformation()) {
-            case SUPER_SAIYAN_2, SSJ_BLUE_EVOLVED -> 1.15f;
+            case SSJ2, SSJ_BLUE_EVOLVED -> 1.15f;
             case OOZARU, GOLDEN_OOZARU -> 1.6f;
             case ULTRA_EGO -> 1f + 0.4f * data.rage;
             default -> 1f;
@@ -60,8 +59,8 @@ public final class FormEffects {
     /** Multiplier for ki technique cost. Blue is perfect ki control. */
     public static float kiCostMultiplier(PlayerDBCData data) {
         return switch (data.getTransformation()) {
-            case SUPER_SAIYAN_BLUE, SSJ_BLUE_EVOLVED -> 0.7f;
-            case SSJ_FULL_POWER, SUPER_SAIYAN_GOD -> 0.85f;
+            case SSJ_BLUE, SSJ_BLUE_EVOLVED -> 0.7f;
+            case SSJ_GOD -> 0.85f;
             default -> 1f;
         };
     }
@@ -69,8 +68,7 @@ public final class FormEffects {
     /** Multiplier for damage taken (after DEX). */
     public static float incomingMultiplier(PlayerDBCData data) {
         return switch (data.getTransformation()) {
-            case SSJ_GRADE_2 -> 0.9f;
-            case SSJ_GRADE_3, NAMEKIAN_ORANGE -> 0.75f;
+            case NAMEKIAN_ORANGE -> 0.75f;
             case OOZARU, GOLDEN_OOZARU, NAMEKIAN_GIANT -> 0.8f;
             default -> 1f;
         };
@@ -79,7 +77,6 @@ public final class FormEffects {
     /** Movement speed multiplier on top of DEX (Grade 3 muscle is heavy, giants are slow). */
     public static float speedMultiplier(PlayerDBCData data) {
         return switch (data.getTransformation()) {
-            case SSJ_GRADE_3 -> 0.75f;
             case OOZARU, GOLDEN_OOZARU, NAMEKIAN_GIANT -> 0.85f;
             default -> 1f;
         };
@@ -91,8 +88,8 @@ public final class FormEffects {
      */
     public static boolean tryDodge(ServerPlayer player, PlayerDBCData data, Vec3 from) {
         float chance = switch (data.getTransformation()) {
-            case ULTRA_INSTINCT_SIGN -> 0.3f;
-            case ULTRA_INSTINCT -> 0.55f;
+            case UI_SIGN -> 0.3f;
+            case UI_MASTERED -> 0.55f;
             default -> 0f;
         };
         chance *= 0.6f + 0.4f * data.getMastery(data.getTransformation()) / 100f;

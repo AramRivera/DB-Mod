@@ -31,7 +31,7 @@ public final class EnergyRender {
     public static void aura(PoseStack pose, MultiBufferSource buffers, float time, int rgb, float intensity,
                             float size, float width, float height, boolean groundRing) {
         float scroll = (time * 0.05f) % 1f;
-        VertexConsumer vc = buffers.getBuffer(RenderType.energySwirl(AURA_TEX, time * 0.006f % 1f, -scroll));
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.energy(AURA_TEX, time * 0.006f % 1f, -scroll));
         PoseStack.Pose p = pose.last();
         float w = size * width, h = size * height;
         shell(p, vc, time, scaleColor(rgb, intensity * 0.32f), 1.5f * w, h * 1.08f, 0.0f, 0.65f);
@@ -174,10 +174,10 @@ public final class EnergyRender {
         float fade = 1f - t;
         pose.pushPose();
         pose.translate(0, 0.6f, 0);
-        VertexConsumer vc = buffers.getBuffer(RenderType.eyes(KI_TEX));
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.glow(KI_TEX));
         uvSphere(pose.last(), vc, (0.6f + t * 4.5f) * size, scaleColor(mix(rgb, 0xFFFFFF, 0.5f), fade * fade));
         pose.popPose();
-        groundRing(pose.last(), buffers.getBuffer(RenderType.energySwirl(AURA_TEX, 0, 0)), t * 20f, rgb, fade, size * (1f + t * 3f));
+        groundRing(pose.last(), buffers.getBuffer(DBRenderTypes.energy(AURA_TEX, 0, 0)), t * 20f, rgb, fade, size * (1f + t * 3f));
     }
 
     /** Divine forms: a column of light reaching into the sky, t = 0..1. */
@@ -191,7 +191,7 @@ public final class EnergyRender {
 
     /** Glowing ball: white core inside a colored halo. */
     public static void sphere(PoseStack pose, MultiBufferSource buffers, float radius, int rgb, float time) {
-        VertexConsumer vc = buffers.getBuffer(RenderType.eyes(KI_TEX));
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.glow(KI_TEX));
         float pulse = 1f + 0.07f * Mth.sin(time * 0.9f);
         uvSphere(pose.last(), vc, radius * 0.55f * pulse, scaleColor(mix(rgb, 0xFFFFFF, 0.75f), 1f));
         uvSphere(pose.last(), vc, radius * pulse, scaleColor(rgb, 0.9f));
@@ -223,7 +223,7 @@ public final class EnergyRender {
         Vec3 u = dir.cross(side).normalize();
         Vec3 v = dir.cross(u).normalize();
 
-        VertexConsumer vc = buffers.getBuffer(RenderType.energySwirl(AURA_TEX, 0f, time * 0.08f % 1f));
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.energy(AURA_TEX, 0f, time * 0.08f % 1f));
         PoseStack.Pose p = pose.last();
         cylinder(vc, p, u, v, to, radius, scaleColor(rgb, 0.9f), (float) len);
         cylinder(vc, p, u, v, to, radius * 0.45f, scaleColor(mix(rgb, 0xFFFFFF, 0.8f), 1f), (float) len);

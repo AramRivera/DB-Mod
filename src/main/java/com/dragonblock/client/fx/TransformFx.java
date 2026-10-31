@@ -45,8 +45,9 @@ public final class TransformFx {
         return a == null ? 0f : Mth.lerp(partialTick, a[1], a[0]);
     }
 
-    /** Target aura power from the synced state. */
-    private static float targetPower(PlayerDBCData data) {
+    /** Target aura power from the synced state. In flight the aura drops unless you are powering up. */
+    private static float targetPower(Player player, PlayerDBCData data) {
+        if (AnimState.isFlying(player, data) && !data.isTransformHeld() && !data.isChargingKi() && !data.isWaveHeld()) return 0f;
         Transformation form = data.getTransformation();
         if (data.isTransformHeld()) {
             float c = data.getTransformCharge();
@@ -68,12 +69,18 @@ public final class TransformFx {
         }
         shake *= 0.85f;
         Debris.tick();
+        SpeedTrail.tick();
 
         for (Player player : mc.level.players()) {
             PlayerDBCData data = PlayerDBCData.get(player);
+            // The server syncs the charge a few times a second; advance it locally in between so it is smooth
+            if (data.isTransformHeld() && data.getTransformCharge() < 0.98f) {
+                data.setTransformCharge(data.getTransformCharge()
+                        + 1f / (20f * data.getTransformTimeSeconds(data.getSelectedForm())));
+            }
             float[] a = AURA.computeIfAbsent(player.getId(), id -> new float[2]);
             a[1] = a[0];
-            float target = targetPower(data);
+            float target = targetPower(player, data);
             // Swell in fast, fade out slower
             a[0] += (target - a[0]) * (target > a[0] ? 0.25f : 0.12f);
 
