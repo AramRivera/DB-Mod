@@ -2,6 +2,7 @@ package com.dragonblock.common.registry;
 
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.common.entity.KiBlastEntity;
+import com.dragonblock.common.entity.ShenlongEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.registries.DeferredRegister;
@@ -19,5 +20,14 @@ public class ModEntities {
                             .clientTrackingRange(4)
                             .updateInterval(2)
                             .build("ki_blast")
+            );
+
+    public static final RegistryObject<EntityType<ShenlongEntity>> SHENLONG =
+            ENTITY_TYPES.register("shenlong", () ->
+                    EntityType.Builder.<ShenlongEntity>of(ShenlongEntity::new, MobCategory.MISC)
+                            .sized(2.5f, 5.0f)
+                            .clientTrackingRange(16)
+                            .updateInterval(1)
+                            .build("shenlong")
             );
 }

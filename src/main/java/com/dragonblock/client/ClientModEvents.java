@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import java.lang.reflect.Field;
 import com.dragonblock.client.renderer.DBPlayerLayer;
 import com.dragonblock.client.renderer.KiBlastRenderer;
+import com.dragonblock.client.renderer.ShenlongRenderer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.resources.PlayerSkin;
 import com.dragonblock.common.registry.ModEntities;
@@ -28,6 +29,7 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.KI_BLAST.get(), KiBlastRenderer::new);
+        event.registerEntityRenderer(ModEntities.SHENLONG.get(), ShenlongRenderer::new);
     }
 
     @SubscribeEvent

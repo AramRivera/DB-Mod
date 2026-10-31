@@ -1,17 +1,13 @@
 package com.dragonblock;
 
 import com.dragonblock.client.ClientConfig;
-import net.minecraftforge.fml.config.ModConfig;
-
 import com.dragonblock.common.network.ModMessages;
-import com.dragonblock.common.registry.ModCreativeTabs;
-import com.dragonblock.common.registry.ModEntities;
-import com.dragonblock.common.registry.ModItems;
-import com.dragonblock.common.registry.ModSounds;
+import com.dragonblock.common.registry.*;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
@@ -25,6 +21,7 @@ public class DragonBlockMod {
         IEventBus modEventBus = context.getModEventBus();
 
         // Register deferred registers
+        ModBlocks.BLOCKS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);
