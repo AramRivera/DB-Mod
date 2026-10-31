@@ -88,6 +88,12 @@ public class PlayerDBCData {
         CLIENT_CACHE.clear();
     }
 
+    /** Held-key state is live input, never carried over a relog. */
+    public void clearInput() {
+        isChargingKi = transformHeld = waveHeld = guarding = false;
+        transformCharge = waveCharge = 0f;
+    }
+
     public static void removePlayer(UUID uuid) {
         SERVER_CACHE.remove(uuid);
         CLIENT_CACHE.remove(uuid);
@@ -120,6 +126,9 @@ public class PlayerDBCData {
         tag.putBoolean("IsFlying", isFlying);
         tag.putBoolean("TailOut", tailOut);
         tag.putBoolean("Guarding", guarding);
+        // Held keys must reach other clients, or nobody sees the power-up or wave charge happen
+        tag.putBoolean("TransformHeld", transformHeld);
+        tag.putBoolean("WaveHeld", waveHeld);
         tag.putFloat("TransformCharge", transformCharge);
         tag.putFloat("WaveCharge", waveCharge);
 
@@ -152,6 +161,8 @@ public class PlayerDBCData {
         this.isFlying = tag.getBoolean("IsFlying");
         this.tailOut = !tag.contains("TailOut") || tag.getBoolean("TailOut");
         this.guarding = tag.getBoolean("Guarding");
+        this.transformHeld = tag.getBoolean("TransformHeld");
+        this.waveHeld = tag.getBoolean("WaveHeld");
         this.transformCharge = tag.getFloat("TransformCharge");
         this.waveCharge = tag.getFloat("WaveCharge");
 

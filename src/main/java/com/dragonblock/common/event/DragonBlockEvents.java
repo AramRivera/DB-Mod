@@ -53,6 +53,7 @@ public class DragonBlockEvents {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
+            data.clearInput();
             data.saveToPlayer(player);
             ModMessages.syncToTracking(player);
         }

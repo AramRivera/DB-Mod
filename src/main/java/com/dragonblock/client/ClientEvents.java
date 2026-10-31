@@ -67,6 +67,13 @@ public class ClientEvents {
         }
         if (mc.screen != null && (lastInputFlags & C2SInputStatePacket.WAVE) != 0) flags |= C2SInputStatePacket.SUPPRESS;
         if ((flags & ~C2SInputStatePacket.SUPPRESS) != (lastInputFlags & ~C2SInputStatePacket.SUPPRESS)) {
+            // Predict locally so the stance, aura and HUD react the same frame; the server sync confirms
+            PlayerDBCData local = PlayerDBCData.get(mc.player);
+            local.setChargingKi((flags & C2SInputStatePacket.CHARGE) != 0);
+            local.setTransformHeld((flags & C2SInputStatePacket.TRANSFORM) != 0);
+            local.setGuarding((flags & C2SInputStatePacket.GUARD) != 0);
+            local.setWaveHeld((flags & C2SInputStatePacket.WAVE) != 0);
+            if (!local.isTransformHeld()) local.setTransformCharge(0f);
             lastInputFlags = flags;
             ModMessages.sendToServer(new C2SInputStatePacket(flags));
         }
