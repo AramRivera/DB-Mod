@@ -78,6 +78,25 @@ El jugador puede seleccionar su raza en cualquier momento desde la interfaz:
 
 ---
 
+## 🛠️ Comandos de Modo Desarrollador (`/dev` o `/dbc`)
+
+Para facilitar el testeo y depuración de mecánicas, se incluye un conjunto de comandos accesibles tanto en un jugador como con permisos de operador:
+
+| Comando | Descripción | Ejemplo |
+| :--- | :--- | :--- |
+| `/dev tp <cantidad>` | Añade Puntos de Entrenamiento (TP) directamente. | `/dev tp 5000` |
+| `/dev tp set <cantidad>` | Establece tus TP a una cantidad fija. | `/dev tp set 10000` |
+| `/dev ki full` | Llena la barra de Ki al 100% al instante. | `/dev ki full` |
+| `/dev ki <cantidad>` | Establece tu Ki actual a un valor exacto. | `/dev ki 500` |
+| `/dev stat <atributo> <valor>` | Fija un atributo (`STR`, `DEX`, `CON`, `WIL`, `MND` o `ALL`). | `/dev stat str 50` o `/dev stat all 100` |
+| `/dev race <raza>` | Cambia tu raza de inmediato (`HUMAN`, `SAIYAN`, etc.). | `/dev race saiyan` |
+| `/dev form <forma>` | Fuerza una transformación (`BASE`, `KAIOKEN`, `SSJ`). | `/dev form ssj` |
+| `/dev max` | Atributos a 100, 50,000 TP y Ki al 100% para pruebas rápidas. | `/dev max` |
+| `/dev reset` | Restaura todos los atributos y datos a los valores iniciales. | `/dev reset` |
+| `/dev help` | Muestra la lista de comandos disponibles en el chat. | `/dev help` |
+
+---
+
 ## 📦 Estructura del Código
 
 ```text

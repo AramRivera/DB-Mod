@@ -10,7 +10,6 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.gui.overlay.ForgeLayeredDraw;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -33,8 +32,7 @@ public class ClientModEvents {
 
     @SubscribeEvent
     public static void onAddGuiLayers(AddGuiOverlayLayersEvent event) {
-        event.getLayeredDraw().addAbove(
-                ForgeLayeredDraw.HOTBAR,
+        event.getLayeredDraw().add(
                 ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "ki_overlay"),
                 DBCKiOverlay.INSTANCE
         );

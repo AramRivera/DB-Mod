@@ -8,12 +8,13 @@ import com.dragonblock.common.network.packet.C2SUpgradeStatPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public class DBCCharacterScreen extends Screen {
-    private static final int PANEL_WIDTH = 250;
-    private static final int PANEL_HEIGHT = 210;
+    private static final int PANEL_WIDTH = 260;
+    private static final int PANEL_HEIGHT = 220;
 
     public DBCCharacterScreen() {
         super(Component.literal("Dragon Block - Ficha de Personaje"));
@@ -45,11 +46,13 @@ public class DBCCharacterScreen extends Screen {
                     ModMessages.sendToServer(new C2SSelectRacePacket(newRace.name()));
                     refreshButtons();
                 }
-        ).bounds(left + PANEL_WIDTH - 65, top + 34, 55, 16).build());
+        ).bounds(left + PANEL_WIDTH - 72, top + 34, 60, 16)
+         .tooltip(Tooltip.create(Component.literal("Cambiar a la siguiente raza")))
+         .build());
 
-        // Stat upgrade buttons
+        // Stat upgrade buttons [+]
         String[] stats = {"STR", "DEX", "CON", "WIL", "MND"};
-        int startY = top + 94;
+        int startY = top + 102;
 
         for (int i = 0; i < stats.length; i++) {
             final String stat = stats[i];
@@ -64,24 +67,24 @@ public class DBCCharacterScreen extends Screen {
                             refreshButtons();
                         }
                     }
-            ).bounds(left + PANEL_WIDTH - 30, startY + (i * 18), 18, 16)
-                    .tooltip(net.minecraft.client.gui.components.Tooltip.create(
-                            Component.literal("Mejorar " + stat + " (Costo: " + cost + " TP)")
-                    ))
-                    .build());
+            ).bounds(left + PANEL_WIDTH - 32, startY + (i * 18), 20, 16)
+             .tooltip(Tooltip.create(
+                     Component.literal("Mejorar " + stat + " | Costo: " + cost + " TP (" + (canAfford ? "Disponible" : "Insuficiente") + ")")
+             ))
+             .build());
         }
 
         // Close button
         this.addRenderableWidget(Button.builder(
                 Component.literal("Cerrar"),
                 btn -> this.onClose()
-        ).bounds(left + (PANEL_WIDTH - 60) / 2, top + PANEL_HEIGHT - 22, 60, 18).build());
+        ).bounds(left + (PANEL_WIDTH - 70) / 2, top + PANEL_HEIGHT - 22, 70, 18).build());
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Darkened background
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        // Clear non-blurred background tint
+        guiGraphics.fill(0, 0, this.width, this.height, 0x88000000);
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
@@ -90,32 +93,35 @@ public class DBCCharacterScreen extends Screen {
         int top = (this.height - PANEL_HEIGHT) / 2;
         PlayerDBCData data = PlayerDBCData.get(mc.player);
 
-        // Main Panel Box
-        guiGraphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xEE141419);
-        // Golden Border
+        // Solid crisp panel background (no transparency blur leak)
+        guiGraphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xFF14161D);
+        // Outer Golden Border
         guiGraphics.renderOutline(left, top, PANEL_WIDTH, PANEL_HEIGHT, 0xFFE0A020);
+        // Header separator
+        guiGraphics.fill(left + 8, top + 24, left + PANEL_WIDTH - 8, top + 25, 0xFF353C4E);
 
         // Header Title
         guiGraphics.drawCenteredString(this.font, "§6§lDRAGON BLOCK §e§lESTADÍSTICAS", left + PANEL_WIDTH / 2, top + 8, 0xFFFFFF);
 
-        // Character Info
-        guiGraphics.drawString(this.font, "§7Luchador: §f" + mc.player.getGameProfile().getName(), left + 12, top + 24, 0xFFFFFF, false);
-        guiGraphics.drawString(this.font, "§7Raza: §b" + data.getRace().getDisplayName(), left + 12, top + 38, 0xFFFFFF, false);
-        guiGraphics.drawString(this.font, "§7Estado: §a" + data.getTransformation().getDisplayName(), left + 12, top + 52, 0xFFFFFF, false);
-        guiGraphics.drawString(this.font, "§7Poder de Pelea (BP): §e" + String.format("%,d", data.getBattlePower()), left + 12, top + 66, 0xFFFFFF, false);
-        guiGraphics.drawString(this.font, "§7Puntos de Entrenamiento (TP): §a" + String.format("%,d", data.getTrainingPoints()), left + 12, top + 79, 0xFFFFFF, false);
+        // Player Info Section
+        guiGraphics.drawString(this.font, "§7Guerrero: §f" + mc.player.getGameProfile().getName(), left + 12, top + 30, 0xFFFFFF, true);
+        guiGraphics.drawString(this.font, "§7Raza: §b" + data.getRace().getDisplayName(), left + 12, top + 44, 0xFFFFFF, true);
+        guiGraphics.drawString(this.font, "§7Estado: §a" + data.getTransformation().getDisplayName(), left + 12, top + 58, 0xFFFFFF, true);
+        guiGraphics.drawString(this.font, "§7Poder de Pelea (BP): §e" + String.format("%,d", data.getBattlePower()), left + 12, top + 72, 0xFFFFFF, true);
+        guiGraphics.drawString(this.font, "§7Puntos de Entrenamiento (TP): §a" + String.format("%,d", data.getTrainingPoints()), left + 12, top + 86, 0xFFFFFF, true);
 
-        // Divider
-        guiGraphics.fill(left + 10, top + 90, left + PANEL_WIDTH - 10, top + 91, 0xFF555555);
+        // Stats Divider
+        guiGraphics.fill(left + 8, top + 98, left + PANEL_WIDTH - 8, top + 99, 0xFF353C4E);
 
-        // Stats Labels & Values
-        int startY = top + 98;
+        // Stats List
+        int startY = top + 106;
         renderStatLine(guiGraphics, "Fuerza (STR):", data.getStr(), data.getEffectiveStr(), data.getUpgradeCost("STR"), left + 12, startY);
         renderStatLine(guiGraphics, "Destreza (DEX):", data.getDex(), data.getEffectiveDex(), data.getUpgradeCost("DEX"), left + 12, startY + 18);
         renderStatLine(guiGraphics, "Constitución (CON):", data.getCon(), data.getEffectiveCon(), data.getUpgradeCost("CON"), left + 12, startY + 36);
         renderStatLine(guiGraphics, "Voluntad (WIL):", data.getWil(), data.getEffectiveWil(), data.getUpgradeCost("WIL"), left + 12, startY + 54);
         renderStatLine(guiGraphics, "Mente (MND):", data.getMnd(), data.getMnd(), data.getUpgradeCost("MND"), left + 12, startY + 72);
 
+        // Render widgets/buttons and tooltips
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
@@ -124,8 +130,8 @@ public class DBCCharacterScreen extends Screen {
         if (effective != base) {
             text += " §7(§a" + effective + "§7)";
         }
-        text += " §8[Costo: §6" + cost + " TP§8]";
-        guiGraphics.drawString(this.font, text, x, y, 0xFFFFFF, false);
+        text += " §8[§6" + cost + " TP§8]";
+        guiGraphics.drawString(this.font, text, x, y, 0xFFFFFF, true);
     }
 
     @Override

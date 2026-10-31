@@ -22,37 +22,48 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
 
         int x = 10;
         int y = 10;
-        int barWidth = 110;
-        int barHeight = 9;
+        int barWidth = 115;
+        int barHeight = 11;
 
-        // Background box
-        guiGraphics.fill(x - 2, y - 2, x + barWidth + 2, y + barHeight + 2, 0xAA000000);
-        guiGraphics.fill(x, y, x + barWidth, y + barHeight, 0xFF1A1A1A);
+        // Outer Dark Container
+        guiGraphics.fill(x - 3, y - 3, x + barWidth + 3, y + barHeight + 25, 0xCC101015);
+        // Subtle Border
+        guiGraphics.renderOutline(x - 3, y - 3, barWidth + 6, barHeight + 28, 0xFF4080B0);
 
-        // Ki Bar
-        int fillWidth = (int) (barWidth * ratio);
-        int kiColor = data.isChargingKi() ? 0xFF00E5FF : 0xFF0088FF;
+        // Ki Bar Background (Dark track)
+        guiGraphics.fill(x, y, x + barWidth, y + barHeight, 0xFF1C1C24);
+
+        // Dynamic Ki Bar Color
+        int kiColor = data.isChargingKi() ? 0xFF00FFFF : 0xFF0099FF;
         if (data.getTransformation() == Transformation.SUPER_SAIYAN) {
-            kiColor = 0xFFFFCC00;
+            kiColor = 0xFFFFD700; // Gold
         } else if (data.getTransformation() == Transformation.KAIOKEN) {
-            kiColor = 0xFFFF2222;
+            kiColor = 0xFFFF2233; // Red
         }
 
-        guiGraphics.fill(x, y, x + fillWidth, y + barHeight, kiColor);
+        int fillWidth = (int) (barWidth * ratio);
+        if (fillWidth > 0) {
+            guiGraphics.fill(x, y, x + fillWidth, y + barHeight, kiColor);
+        }
 
-        // Text: Ki: 100 / 100
-        String kiText = String.format("Ki: %.0f / %.0f (%.0f%%)", currentKi, maxKi, ratio * 100.0f);
-        guiGraphics.drawString(mc.font, kiText, x + 3, y + 1, 0xFFFFFF, true);
+        // Ki Text inside or over the bar
+        String kiText = String.format("Ki: %.0f/%.0f (%.0f%%)", currentKi, maxKi, ratio * 100.0f);
+        guiGraphics.drawString(mc.font, kiText, x + 3, y + 2, 0xFFFFFF, true);
 
-        // Text: Battle Power / Form below bar
+        // Battle Power (BP)
         String bpText = String.format("BP: %,d", data.getBattlePower());
         if (data.getTransformation() != Transformation.BASE) {
             bpText += " [" + data.getTransformation().getDisplayName() + "]";
         }
         guiGraphics.drawString(mc.font, bpText, x, y + barHeight + 4, 0xFFE040, true);
 
-        // Race tag
-        String raceText = "Raza: " + data.getRace().getDisplayName();
-        guiGraphics.drawString(mc.font, raceText, x, y + barHeight + 14, 0xAAAAAA, true);
+        // Race & Status
+        String raceText = "Raza: §b" + data.getRace().getDisplayName();
+        if (data.isChargingKi()) {
+            raceText += " §a[Cargando]";
+        } else if (data.isFlying()) {
+            raceText += " §e[Volando]";
+        }
+        guiGraphics.drawString(mc.font, raceText, x, y + barHeight + 15, 0xDDDDDD, true);
     }
 }

@@ -1,6 +1,7 @@
 package com.dragonblock.common.event;
 
 import com.dragonblock.DragonBlockMod;
+import com.dragonblock.common.command.DevCommand;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Race;
 import com.dragonblock.common.data.Transformation;
@@ -19,6 +20,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -31,6 +33,11 @@ public class DragonBlockEvents {
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "con_health_bonus");
     private static final ResourceLocation DEX_SPEED_MODIFIER =
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "dex_speed_bonus");
+
+    @SubscribeEvent
+    public static void onRegisterCommands(RegisterCommandsEvent event) {
+        DevCommand.register(event.getDispatcher());
+    }
 
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
