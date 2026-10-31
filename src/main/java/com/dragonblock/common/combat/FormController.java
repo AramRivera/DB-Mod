@@ -77,7 +77,7 @@ public final class FormController {
         data.setTransformHeld(false);
         data.saveToPlayer(player);
         ModMessages.syncToTracking(player);
-        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.TRANSFORM);
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.TRANSFORM, target.ordinal());
 
         float pitch = switch (target.getSequence()) {
             case GIANT -> 0.5f;

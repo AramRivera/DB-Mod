@@ -20,7 +20,7 @@ import net.minecraft.world.level.Level;
 import java.util.List;
 
 public class KiAttackItem extends Item {
-    public static final float KI_COST = KiAttacks.BLAST_COST;
+    public static final float KI_COST = com.dragonblock.common.data.Technique.KI_BLAST.getKiCost();
 
     public KiAttackItem() {
         super(new Item.Properties().stacksTo(1));

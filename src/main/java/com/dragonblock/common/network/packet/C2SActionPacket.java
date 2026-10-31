@@ -3,6 +3,7 @@ package com.dragonblock.common.network.packet;
 import com.dragonblock.common.combat.FormController;
 import com.dragonblock.common.combat.KiAttacks;
 import com.dragonblock.common.data.PlayerDBCData;
+import com.dragonblock.common.data.Technique;
 import com.dragonblock.common.data.Transformation;
 import com.dragonblock.common.network.ModMessages;
 import net.minecraft.network.FriendlyByteBuf;
@@ -10,9 +11,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 
-/** One-shot actions. {@code arg} is only used by SELECT_FORM (form ordinal). */
+/** One-shot actions. {@code arg}: form ordinal, technique ordinal or bar slot, depending on the action. */
 public class C2SActionPacket {
-    public enum Action { REVERT, DASH, SELECT_FORM, TOGGLE_TAIL }
+    public enum Action { REVERT, DASH, SELECT_FORM, TOGGLE_TAIL, SELECT_TECHNIQUE, LEARN_TECHNIQUE, TOGGLE_EQUIP }
 
     private final Action action;
     private final int arg;
@@ -57,10 +58,36 @@ public class C2SActionPacket {
                     player.displayClientMessage(Component.literal(
                             data.isTailOut() ? "Cola suelta." : "Cola enrollada en la cintura."), true);
                 }
+                case SELECT_TECHNIQUE -> {
+                    // Switching drops whatever was being charged
+                    data.setTechCharge(0f);
+                    data.setSelectedSlot(arg);
+                }
+                case LEARN_TECHNIQUE -> {
+                    Technique t = technique(arg);
+                    if (t == null || data.hasLearned(t)) return;
+                    if (data.getLevel() < t.getMinLevel()) return;
+                    if (data.getTrainingPoints() < t.getTpCost()) return;
+                    data.addTrainingPoints(-t.getTpCost());
+                    data.learn(t);
+                    if (data.getEquipped().size() < Technique.MAX_EQUIPPED) data.toggleEquipped(t);
+                    player.displayClientMessage(Component.literal("Técnica aprendida: " + t.getDisplayName()), true);
+                }
+                case TOGGLE_EQUIP -> {
+                    Technique t = technique(arg);
+                    if (t == null || !data.hasLearned(t)) return;
+                    data.setTechCharge(0f);
+                    data.toggleEquipped(t);
+                }
             }
             data.saveToPlayer(player);
             ModMessages.syncToTracking(player);
         });
         context.setPacketHandled(true);
+    }
+
+    private static Technique technique(int ordinal) {
+        Technique[] all = Technique.values();
+        return ordinal >= 0 && ordinal < all.length ? all[ordinal] : null;
     }
 }

@@ -113,6 +113,56 @@ styles = {
         s(3.1, -9.4, 1.8, 32, 26, 5.8, 9, 12, 2.2, mirror=True),
         s(0, -5.6, 4.2, 136, 0, 6.0, 7, 10, 2.2),
     ] + temples(5) + fringe([-2.2, 2.2], 4.5, w=4.0)},
+    # ---- Everyday styles from the character creator (dyed with the chosen hair color)
+    # Guerrero (Saiyan default): untamed spikes in every direction, bangs falling over the brow
+    "warrior": {"mass": TALL, "spikes": [
+        s(0, -10.0, -0.6, 20, 0, 7.0, 10, 14, 2.6),
+        s(2.4, -9.8, -1.6, 14, 38, 6.0, 9.5, 18, 2.4, mirror=True),
+        s(4.4, -7.8, -0.6, 55, 90, 5.6, 9, 22, 2.4, mirror=True),
+        s(4.2, -6.2, 2.4, 115, 70, 5.4, 8, 18, 2.2, mirror=True),
+        s(0, -9.2, 2.6, 60, 0, 7.0, 10, 20, 2.6),
+        s(2.4, -8.6, 3.2, 90, 32, 6.0, 9, 18, 2.4, mirror=True),
+        s(0, -5.8, 4.2, 150, 0, 6.4, 7, 10, 2.4),
+        # Three separate bangs that stop above the eyes
+        s(-2.6, -8.8, -3.6, -165, -22, 3.4, 4.6, -10, 1.6),
+        s(0.3, -9.0, -3.6, -170, 4, 3.6, 5.2, -8, 1.6),
+        s(2.8, -8.8, -3.6, -162, 26, 3.2, 4.2, -10, 1.6),
+    ] + temples(5.5)},
+    # Llama: every spike straight up like a flame, a sharp peak at the hairline
+    "flame": {"mass": TALL, "spikes": [
+        s(0, -10.2, -1.4, 4, 0, 7.4, 13, 8, 2.8),
+        s(2.4, -10.0, -1.6, 8, 16, 6.4, 12, 8, 2.6, mirror=True),
+        s(3.6, -9.4, 0.6, 14, 26, 6.0, 11, 10, 2.4, mirror=True),
+        s(0, -9.8, 1.8, 18, 0, 7.4, 12, 10, 2.8),
+        s(2.6, -9.4, 2.6, 24, 18, 6.0, 10, 10, 2.4, mirror=True),
+        s(4.4, -7.4, -0.4, 10, 40, 4.6, 7, 8, 2.0, mirror=True),
+        s(0, -8.6, -3.6, 10, 0, 3.0, 4, 0, 1.6),
+    ] + temples(4.0)},
+    # Rebelde: medium spikes pointing every which way
+    "scruffy": {"mass": TALL, "spikes": [
+        s(-1.6, -9.8, -1.6, 28, -26, 6.0, 7.5, 24, 2.4),
+        s(1.8, -9.8, -1.2, 34, 30, 6.0, 7, 26, 2.4),
+        s(0, -9.6, 1.2, 52, 6, 6.6, 8, 24, 2.6),
+        s(4.4, -7.4, 0.6, 70, 80, 5.0, 6.5, 20, 2.2, mirror=True),
+        s(3.0, -8.0, 3.0, 110, 36, 5.4, 7, 16, 2.2, mirror=True),
+        s(0, -6.2, 4.2, 145, 0, 6.0, 6.5, 10, 2.4),
+    ] + temples(5) + fringe([-2.6, -0.2, 2.4], 4.2)},
+    # Corto: neat and close to the skull with a small quiff
+    "short": {"mass": SKULL, "spikes": [
+        s(0, -9.4, -2.4, 60, 0, 7.6, 5.0, 10, 2.2),
+        s(2.8, -9.2, -1.2, 70, 24, 6.0, 4.6, 10, 2.0, mirror=True),
+        s(0, -9.0, 1.4, 100, 0, 7.6, 5, 10, 2.0),
+        s(3.6, -7.6, 1.6, 110, 40, 5.0, 4, 8, 1.8, mirror=True),
+    ] + temples(3.5, w=3.0)},
+    # Melena: falls to the shoulders, heavy fringe
+    "long": {"mass": SKULL, "spikes": [
+        s(0, -9.2, -2.0, 24, 0, 7.0, 6.5, 14, 2.4),
+        s(2.8, -9.0, -1.2, 28, 30, 6.0, 6, 12, 2.2, mirror=True),
+        s(0, -8.2, 3.6, 172, 0, 8.0, 15, 5, 2.6),
+        s(2.6, -7.4, 3.8, 174, 6, 7.4, 15, 5, 2.4, mirror=True),
+        s(4.4, -6.4, 2.0, 172, 12, 6.0, 13, 6, 2.2, mirror=True),
+        s(4.6, -5.6, -0.6, 176, 14, 4.6, 10, 4, 2.0, mirror=True),
+    ] + fringe([-2.4, 0.0, 2.4], 6.0, w=4.4)},
 }
 
 for name, style in styles.items():

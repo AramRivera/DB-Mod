@@ -6,30 +6,35 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 import net.minecraftforge.fml.DistExecutor;
 
-/** One-shot animation (blast, wave release, dash) broadcast to everyone tracking the player. */
+/** One-shot animation (technique release, dash, transformation) broadcast to everyone tracking the player. */
 public class S2CAnimPacket {
-    public enum Anim { BLAST, WAVE_RELEASE, DASH, TRANSFORM }
+    /** TECHNIQUE carries the technique ordinal in {@code arg}. */
+    public enum Anim { TECHNIQUE, DASH, TRANSFORM }
 
     private final int entityId;
     private final Anim anim;
+    private final int arg;
 
-    public S2CAnimPacket(int entityId, Anim anim) {
+    public S2CAnimPacket(int entityId, Anim anim, int arg) {
         this.entityId = entityId;
         this.anim = anim;
+        this.arg = arg;
     }
 
     public S2CAnimPacket(FriendlyByteBuf buf) {
         this.entityId = buf.readVarInt();
         this.anim = buf.readEnum(Anim.class);
+        this.arg = buf.readVarInt();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
         buf.writeVarInt(entityId);
         buf.writeEnum(anim);
+        buf.writeVarInt(arg);
     }
 
     public void handle(CustomPayloadEvent.Context context) {
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> AnimState.play(entityId, anim)));
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> AnimState.play(entityId, anim, arg)));
         context.setPacketHandled(true);
     }
 }

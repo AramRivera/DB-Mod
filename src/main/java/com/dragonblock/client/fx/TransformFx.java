@@ -47,16 +47,21 @@ public final class TransformFx {
 
     /** Target aura power from the synced state. In flight the aura drops unless you are powering up. */
     private static float targetPower(Player player, PlayerDBCData data) {
-        if (AnimState.isFlying(player, data) && !data.isTransformHeld() && !data.isChargingKi() && !data.isWaveHeld()) return 0f;
+        boolean chargingTech = chargingTechnique(data);
+        if (AnimState.isFlying(player, data) && !data.isTransformHeld() && !data.isChargingKi() && !chargingTech) return 0f;
         Transformation form = data.getTransformation();
         if (data.isTransformHeld()) {
             float c = data.getTransformCharge();
             // The aura folds in for an instant right before the transformation bursts out
             return c > 0.9f ? 0.45f : 1.0f + 0.35f * c;
         }
-        if (data.isChargingKi() || data.isWaveHeld()) return 1.0f;
+        if (data.isChargingKi() || chargingTech) return 1.0f;
         if (form != Transformation.BASE && form.getAuraStyle() != Transformation.AuraStyle.CALM) return 0.6f;
         return 0f;
+    }
+
+    private static boolean chargingTechnique(PlayerDBCData data) {
+        return data.isTechHeld() && data.getSelectedTechnique() != null && !data.getSelectedTechnique().isInstant();
     }
 
     @SubscribeEvent
@@ -70,6 +75,8 @@ public final class TransformFx {
         shake *= 0.85f;
         Debris.tick();
         SpeedTrail.tick();
+        LightningStrikes.tick();
+        com.dragonblock.client.renderer.RaceSkins.tick();
 
         for (Player player : mc.level.players()) {
             PlayerDBCData data = PlayerDBCData.get(player);
@@ -77,6 +84,9 @@ public final class TransformFx {
             if (data.isTransformHeld() && data.getTransformCharge() < 0.98f) {
                 data.setTransformCharge(data.getTransformCharge()
                         + 1f / (20f * data.getTransformTimeSeconds(data.getSelectedForm())));
+            }
+            if (chargingTechnique(data) && data.getTechCharge() < 1f) {
+                data.setTechCharge(data.getTechCharge() + 1f / data.getSelectedTechnique().getChargeTicks());
             }
             float[] a = AURA.computeIfAbsent(player.getId(), id -> new float[2]);
             a[1] = a[0];
@@ -98,6 +108,12 @@ public final class TransformFx {
                     Debris.spawn(player, 1 + (int) (power * c), 2.0f + power, 1.2f + 1.6f * c * power);
                 }
                 if (dist < 32) shake = Math.max(shake, (0.08f + 0.35f * power) * c * (float) (1 - dist / 32));
+                LightningStrikes.charging(player, goal, c);
+            } else if (data.isChargingKi() && dist < 16) {
+                // Plain ki charging rattles the view a little, more the stronger the fighter
+                float power = Mth.clamp((float) Math.log10(Math.max(10, data.getBattlePower())) / 7f, 0.1f, 1f)
+                        * Mth.clamp(data.getTransformation().getStatMultiplier() / 4f, 0.5f, 2f);
+                shake = Math.max(shake, (0.03f + 0.14f * power) * (float) (1 - dist / 16));
             }
             float burst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, BURST_TICKS, 0);
             if (burst >= 0 && burst < 0.4f && dist < 32) {

@@ -16,8 +16,10 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 ---
 
 ### Interfaz
-* **Ficha (`V`)**: se abre con animación y muestra una **vista 3D de tu personaje** que sigue el ratón (con pelo, aura y cola). Pestañas con subrayado animado, barras de atributos que crecen al mejorar y tarjetas de formas con color, maestría y una descripción al pasar el ratón.
-* **HUD**: barras que se mueven con suavidad, "fantasma" de daño en la vida, barra de Ki que brilla al cargar, anillo de carga en la mira, título al transformarte y TP ganados flotando.
+Estilo Dragon Ball sobrio: paneles azul noche, naranja de gi como acento, dorado de esfera del dragón para lo importante y la esfera de cuatro estrellas en los encabezados.
+* **Ficha (`V`)**: se abre con animación y muestra una **vista 3D de tu personaje** que sigue el ratón (con pelo, aura y cola). Pestañas **Atributos, Formas, Técnicas y Apariencia** con subrayado animado, barras que crecen al mejorar y tarjetas con descripción al pasar el ratón.
+* **Creación de personaje**: la primera vez que entras eliges raza y personalizas piel, ojos, peinado, color de pelo y ropa, viéndolo en 3D al momento. La apariencia se puede cambiar después en la pestaña *Apariencia*; la raza es permanente.
+* **HUD**: barras que se mueven con suavidad, "fantasma" de daño en la vida, barra de Ki que brilla al cargar, anillo de carga en la mira, título al transformarte, TP ganados flotando y la **barra de técnicas** a la derecha.
 
 ### 2. Ficha de Personaje y Atributos (Tecla `V`)
 Al presionar la tecla `V` se accede a la interfaz de estadísticas del personaje estilo Dragon Block:
@@ -34,7 +36,16 @@ Al presionar la tecla `V` se accede a la interfaz de estadísticas del personaje
 ---
 
 ### 3. Razas Disponibles
-El jugador puede seleccionar su raza en cualquier momento desde la interfaz:
+Cada raza tiene **su propio cuerpo**; la skin de Minecraft no se usa. Las texturas se generan con `tools/gen_race_skins.py` como capas que el mod tiñe con los colores elegidos en el creador:
+
+| Raza | Cuerpo |
+| :--- | :--- |
+| **Saiyajin** | Guerrero con el torso al aire, **shorts** (negros por defecto) y descalzo; cola y peinado *Guerrero* por defecto. |
+| **Humano / Híbrido** | Gi de artes marciales con camiseta interior, faja, muñequeras y botas. El color del gi se elige. |
+| **Namekiano** | Piel verde con **manchas musculares** en los brazos, gi morado sin mangas, faja azul, antenas y **orejas puntiagudas**. |
+| **Arcosiano** | Cuerpo acorazado liso con **gemas** brillantes en cabeza, hombros, pecho y rodillas, cola gruesa y cuernos. |
+| **Majin** | Cuerpo rosado, pantalón holgado, cinturón y puños dorados, botas y apéndice en la cabeza. |
+
 
 | Raza | Ventajas & Características |
 | :--- | :--- |
@@ -48,13 +59,15 @@ El jugador puede seleccionar su raza en cualquier momento desde la interfaz:
 ---
 
 ### 4. Transformaciones (mantener `G`, volver con `H`)
-Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para transformarte. El tiempo de carga baja de 3 s a 0,5 s con la maestría.
+Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para transformarte. **Estando transformado la `G` no hace nada**: primero vuelve a la forma base con `H`.
 
 * **Requisitos**: nivel (suma de atributos) y, para formas avanzadas, **25% de maestría** en la forma anterior.
 * **Maestría (0-100%)**: sube estando transformado y combatiendo. Reduce hasta un 60% el consumo de Ki.
 * **Agotamiento**: sin Ki vuelves a la forma base.
 * **Ozaru**: si eres Saiyajin con la cola suelta y **miras la luna llena** de noche, te transformas solo. También puedes elegirlo y mantener `G` cualquier noche a cielo abierto. Al salir el sol (o al enrollar la cola) vuelves a la normalidad. `/dev form oozaru` lo fuerza de día para pruebas.
-* **Peinados**: 8 diseños propios por nivel (no copias del pelo de personajes concretos), hechos con mechones triangulares escalonados que salen de un volumen de pelo: *Flare*, *Heavy* (grados musculosos), *Ridge* (cresta afilada con un mechón suelto), *Mane* (melena hasta la cintura), *Wild* (oscuro y salvaje), *Sleek* (hacia atrás), *Spire* (cresta central) y *Crest* (plateado y sereno). Se definen en `assets/dragonblock/hair/*.json`.
+* **Peinados base** (creador de personaje): *Guerrero* (picos salvajes en todas direcciones, el de Saiyan por defecto), *Llama* (todo hacia arriba), *Rebelde*, *Corto*, *Melena* o sin pelo, en el color que elijas. Son diseños propios, no copias de personajes.
+* **Cambio de color**: al cargar una transformación el pelo late con el color nuevo, cada vez más rápido, hasta quedarse; al volver a la base se apaga suavemente al color original.
+* **Peinados de forma**: 8 diseños propios por nivel (no copias del pelo de personajes concretos), hechos con mechones triangulares escalonados que salen de un volumen de pelo: *Flare*, *Heavy* (grados musculosos), *Ridge* (cresta afilada con un mechón suelto), *Mane* (melena hasta la cintura), *Wild* (oscuro y salvaje), *Sleek* (hacia atrás), *Spire* (cresta central) y *Crest* (plateado y sereno). Se definen en `assets/dragonblock/hair/*.json`.
 
 #### Nombres e IDs
 Una sola forma de cada cosa, con IDs coherentes para los comandos:
@@ -96,7 +109,8 @@ Cada forma tiene su secuencia de transformación (más larga y violenta cuanto m
 Mantén `G` y vive la transformación por fases:
 1. **Postura**: plantas los pies (casi no te mueves) y tensas los brazos; en primera persona ves tus puños temblar.
 2. **Carga**: el aura crece, un anillo alrededor de la mira se va llenando y la pantalla tiembla más cuanto más poderosa es la forma (para ti y para los que estén cerca).
-3. **Escombros**: trozos reales del suelo se arrancan y **flotan girando** a tu alrededor.
+3. **Escombros**: **rocas redondeadas** con la textura del suelo se arrancan con polvo y **flotan girando** a tu alrededor (se ven desde cualquier ángulo).
+   En las formas más poderosas (**Super Saiyajin 3 en adelante**) además **caen rayos** del cielo a tu alrededor: pocos en SSJ3, una tormenta en Ultra Ego o la Forma Negra; las formas divinas (Dios, Instinto Superior) no tienen tormenta.
 4. **Implosión**: justo antes del final el aura se contrae un instante.
 5. **Estallido**: explosión de energía, los escombros salen despedidos, onda en el suelo, destello en pantalla y el **nombre de la forma** aparece en grande.
 
@@ -122,8 +136,24 @@ Las formas tienen modelos propios: peinados procedurales que brillan, pelaje (Oz
 ---
 
 ### 5. Combate y técnicas de Ki
-* **Ráfaga (`X`)**: proyectil rápido, 15 Ki, enfriamiento corto.
-* **Onda (mantener `Z`)**: carga hasta 2,5 s y suelta un rayo; tamaño y daño escalan con la carga.
+Las técnicas se aprenden con TP en la pestaña **Técnicas** de la ficha y se equipan (hasta 8) en la **barra de la derecha**. Con **`Ctrl` + rueda** eliges cuál usar (mientras mantienes `Ctrl` se ven todos los nombres) y con **`X`** la usas: las de carga se cargan manteniendo y se disparan al soltar (una marca blanca indica la carga mínima). Cada una tiene su postura de carga, su forma de salir y su recarga, y todo se ve igual en primera y tercera persona y para los demás jugadores.
+
+| Técnica | Carga | Cómo se ve y qué hace |
+| :--- | :--- | :--- |
+| Ráfaga de Ki | instantánea | Esfera rápida; manteniendo `X` disparas en ráfaga. |
+| Kamehameha | 2,5 s | Manos ahuecadas en la cadera con la esfera azul creciendo; la onda sale pegada a las palmas. |
+| Galick Ho | 2 s | Torso girado, palmas al lado, chispas violetas; onda violeta. |
+| Masenko | 1,5 s | Manos sobre la frente; destello amarillo rápido. |
+| Final Flash | 4 s | Brazos abiertos de par en par con una esfera en cada mano; el rayo más grueso. |
+| Makankosappo | 3 s | Dos dedos en la frente; rayo fino con espiral violeta que **atraviesa** enemigos. |
+| Rayo Mortal | instantánea | Un dedo; rayo fino y muy rápido que atraviesa. |
+| Kienzan | 1,5 s | Disco giratorio sobre la mano; corta a través de los enemigos. |
+| Genkidama | 7 s | Ambos brazos al cielo; una esfera colosal crece sobre tu cabeza y cae lenta con una explosión enorme. |
+| Big Bang Attack | 1,2 s | Una palma extendida; esfera grande y explosiva. |
+| Kiai | 0,8 s | Grito que empuja y daña a todos alrededor, con onda expansiva. |
+| Taiyoken | 0,5 s | Destello que ciega a quien te mire (pantalla blanca para jugadores, ceguera para mobs, que pierden tu rastro). |
+| Teletransportación | 0,75 s | Dos dedos en la frente; apareces detrás de quien miras o donde apuntes (hasta 64 bloques). |
+
 * **Impulso (`R`)**: dash con 6 ticks de invulnerabilidad.
 * **Guardia (mantener `B`)**: bloquea el 65% del daño pagando Ki.
 * **Vuelo (`F`)**: corre en el aire para ir más rápido a cambio de más Ki.
@@ -132,15 +162,13 @@ Las formas tienen modelos propios: peinados procedurales que brillan, pelaje (Oz
 ---
 
 ### Animaciones
-Funcionan en primera y tercera persona y las ven todos los jugadores. En primera persona los brazos salen del mismo modelo animado que ven los demás, colocados delante de la cámara para que se vean (cargar: puños al frente; onda: manos juntas con la esfera entre ellas; guardia: antebrazos cruzados):
+Funcionan en primera y tercera persona y las ven todos los jugadores. En primera persona los brazos salen del mismo modelo animado que ven los demás, colocados delante de la cámara para que se vean. Las poses **nunca saltan**: cada jugador mezcla suavemente de una pose a otra y de vuelta a caminar.
 
 | Acción | Pose |
 | :--- | :--- |
-| Cargar Ki | Puños apretados a los lados, piernas abiertas |
+| Cargar Ki | Puños apretados a los lados, piernas abiertas, respiración; la pantalla tiembla un poco más cuanto más fuerte eres |
 | Transformarse | Brazos tensos hacia abajo, cabeza hacia atrás, temblor |
-| Ráfaga | Brazo derecho lanzado hacia delante |
-| Cargar onda | Manos juntas en la cadera con la esfera creciendo (visible en primera persona) |
-| Soltar onda | Ambas palmas al frente |
+| Técnicas | Postura de carga propia de cada técnica (ver la tabla de técnicas) y golpe al soltar: palmas al frente, dedos que apuntan, lanzamiento por encima de la cabeza, brazos que se abren con el grito |
 | Guardia | Antebrazos cruzados delante de la cara |
 | Volar | Cuerpo inclinado según la velocidad, brazos pegados; en el sitio, piernas flotando |
 
@@ -160,12 +188,12 @@ Funcionan en primera y tercera persona y las ven todos los jugadores. En primera
 | Tecla | Acción |
 | :---: | :--- |
 | `C` *(mantener)* | Cargar Ki |
-| `G` *(mantener)* | Transformarse en la forma seleccionada |
+| `G` *(mantener)* | Transformarse en la forma seleccionada (solo desde la forma base) |
 | `H` | Volver a la forma base |
-| `V` | Ficha de personaje (atributos, formas, raza) |
+| `V` | Ficha de personaje (atributos, formas, técnicas, apariencia) |
 | `F` | Volar |
-| `X` | Ráfaga de Ki |
-| `Z` *(mantener)* | Cargar y soltar onda de Ki |
+| `X` *(mantener)* | Usar la técnica elegida (cargar y soltar) |
+| `Ctrl` + rueda | Elegir técnica en la barra de la derecha |
 | `R` | Impulso |
 | `B` *(mantener)* | Guardia |
 | `J` | Mostrar/ocultar auras (todas, ocultar la mía, ocultar todas). Solo estético, se guarda en tu config. |
@@ -204,7 +232,7 @@ src/main/java/com/dragonblock/
 │   ├── gui/
 │   │   └── DBCCharacterScreen.java  # GUI de la ficha de personaje y asignación de TP
 │   ├── keybind/
-│   │   └── ModKeyBindings.java      # Definición de KeyMappings (C, G, V, F, X)
+│   │   └── ModKeyBindings.java      # Definición de KeyMappings (C, G, H, V, F, X, R, B, J)
 │   ├── overlay/
 │   │   └── DBCKiOverlay.java        # Renderizado de la barra de Ki y HUD en pantalla
 │   └── renderer/

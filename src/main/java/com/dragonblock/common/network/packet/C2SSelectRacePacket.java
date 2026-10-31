@@ -1,5 +1,6 @@
 package com.dragonblock.common.network.packet;
 
+import com.dragonblock.common.data.Appearance;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Race;
 import com.dragonblock.common.data.Transformation;
@@ -12,19 +13,48 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 
+/**
+ * Character creator: the race (only once) and the look (any time). Colors must come from the race's
+ * palettes and the hair style from its list, anything else is rejected.
+ */
 public class C2SSelectRacePacket {
     private final String raceName;
+    private final int skin, eyes, hair, accent;
+    private final String hairStyle;
 
-    public C2SSelectRacePacket(String raceName) {
+    public C2SSelectRacePacket(String raceName, int skin, int eyes, int hair, int accent, String hairStyle) {
         this.raceName = raceName;
+        this.skin = skin;
+        this.eyes = eyes;
+        this.hair = hair;
+        this.accent = accent;
+        this.hairStyle = hairStyle;
     }
 
     public C2SSelectRacePacket(FriendlyByteBuf buf) {
         this.raceName = buf.readUtf(32);
+        this.skin = buf.readInt();
+        this.eyes = buf.readInt();
+        this.hair = buf.readInt();
+        this.accent = buf.readInt();
+        this.hairStyle = buf.readUtf(32);
     }
 
     public void toBytes(FriendlyByteBuf buf) {
         buf.writeUtf(raceName, 32);
+        buf.writeInt(skin);
+        buf.writeInt(eyes);
+        buf.writeInt(hair);
+        buf.writeInt(accent);
+        buf.writeUtf(hairStyle, 32);
+    }
+
+    private boolean validLook(Race race, Transformation.HairStyle style) {
+        return Appearance.inPalette(Appearance.skinPalette(race), skin)
+                && Appearance.inPalette(Appearance.accentPalette(race), accent)
+                && Appearance.inPalette(Appearance.EYES, eyes)
+                && Appearance.inPalette(Appearance.HAIR, hair)
+                && Appearance.hairStyles(race).contains(style);
     }
 
     public void handle(CustomPayloadEvent.Context context) {
@@ -33,10 +63,16 @@ public class C2SSelectRacePacket {
             if (player == null) return;
 
             PlayerDBCData data = PlayerDBCData.get(player);
-            if (data.isRaceChosen()) return; // race is permanent, /dev race to change it
-
             try {
-                Race newRace = Race.valueOf(raceName);
+                Race newRace = data.isRaceChosen() ? data.getRace() : Race.valueOf(raceName); // race is permanent
+                Transformation.HairStyle style = Transformation.HairStyle.valueOf(hairStyle);
+                if (!validLook(newRace, style)) return;
+                data.setLook(skin, eyes, hair, accent, style);
+                if (data.isRaceChosen()) {
+                    data.saveToPlayer(player);
+                    ModMessages.syncToTracking(player);
+                    return;
+                }
                 data.setRace(newRace);
                 data.setRaceChosen(true);
                 data.setTransformation(Transformation.BASE);

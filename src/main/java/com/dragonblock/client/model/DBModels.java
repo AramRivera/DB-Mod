@@ -184,6 +184,11 @@ public final class DBModels {
                             .texOffs(4, 0).addBox(-0.45f, -3.5f, -0.45f, 0.9f, 3.5f, 0.9f)
                             .texOffs(8, 0).addBox(-0.8f, -4.6f, -0.8f, 1.6f, 1.4f, 1.6f),
                     PartPose.offsetAndRotation(0f, -4f, 0f, 0.9f, 0f, 0f));
+            // Pointed ears sweeping up and back from the sides of the head
+            root.addOrReplaceChild("ear" + (side < 0 ? "L" : "R"), CubeListBuilder.create()
+                            .texOffs(0, 8).addBox(-0.4f, -3.2f, -0.6f, 0.8f, 3.4f, 1.6f)
+                            .texOffs(6, 8).addBox(-0.3f, -4.6f, -0.2f, 0.6f, 1.6f, 0.8f),
+                    PartPose.offsetAndRotation(side * 4.3f, -3.2f, 0.4f, -0.35f, 0f, side * 0.55f));
         }
         return LayerDefinition.create(mesh, 32, 32);
     }

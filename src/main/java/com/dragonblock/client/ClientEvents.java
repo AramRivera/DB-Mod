@@ -3,13 +3,15 @@ package com.dragonblock.client;
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.gui.DBCCharacterScreen;
 import com.dragonblock.client.keybind.ModKeyBindings;
+import com.dragonblock.client.overlay.TechniqueBar;
 import com.dragonblock.common.data.PlayerDBCData;
+import com.dragonblock.common.data.Transformation;
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.network.packet.C2SActionPacket;
 import com.dragonblock.common.network.packet.C2SFlyPacket;
 import com.dragonblock.common.network.packet.C2SInputStatePacket;
-import com.dragonblock.common.network.packet.C2SKiBlastPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.event.TickEvent;
@@ -28,7 +30,6 @@ public class ClientEvents {
 
         if (ModKeyBindings.CHARACTER_SHEET_KEY.consumeClick()) mc.setScreen(new DBCCharacterScreen());
         if (ModKeyBindings.FLY_KEY.consumeClick()) ModMessages.sendToServer(new C2SFlyPacket());
-        if (ModKeyBindings.KI_BLAST_KEY.consumeClick()) ModMessages.sendToServer(new C2SKiBlastPacket());
         if (ModKeyBindings.REVERT_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.REVERT, 0));
         if (ModKeyBindings.TOGGLE_AURA_KEY.consumeClick()) {
             String label = switch (ClientConfig.cycleAura()) {
@@ -41,6 +42,20 @@ public class ClientEvents {
         if (ModKeyBindings.DASH_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.DASH, 0));
     }
 
+    /** Ctrl + mouse wheel scrolls the technique bar instead of the hotbar. */
+    @SubscribeEvent
+    public static void onScroll(InputEvent.MouseScrollingEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.screen != null || !Screen.hasControlDown() || event.getDeltaY() == 0) return;
+        PlayerDBCData data = PlayerDBCData.get(mc.player);
+        if (data.getEquipped().isEmpty()) return;
+        event.setCanceled(true);
+        int slot = data.getSelectedSlot() - (int) Math.signum(event.getDeltaY());
+        data.setSelectedSlot(slot); // instant feedback, the server confirms on sync
+        TechniqueBar.onScrolled();
+        ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.SELECT_TECHNIQUE, data.getSelectedSlot()));
+    }
+
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
@@ -51,29 +66,33 @@ public class ClientEvents {
             promptedRace = false;
             return;
         }
+        PlayerDBCData local = PlayerDBCData.get(mc.player);
 
-        // First join: open the sheet so the player picks a race (wait for the server sync)
+        // First join: open the sheet so the player creates their character (wait for the server sync)
         if (!promptedRace && mc.screen == null && mc.player.tickCount > 40) {
             promptedRace = true;
-            if (!PlayerDBCData.get(mc.player).isRaceChosen()) mc.setScreen(new DBCCharacterScreen());
+            if (!local.isRaceChosen()) mc.setScreen(new DBCCharacterScreen());
         }
 
         int flags = 0;
         if (mc.screen == null) {
             if (ModKeyBindings.CHARGE_KI_KEY.isDown()) flags |= C2SInputStatePacket.CHARGE;
-            if (ModKeyBindings.TRANSFORM_KEY.isDown()) flags |= C2SInputStatePacket.TRANSFORM;
+            // Already transformed: the transform key does nothing until you revert
+            if (ModKeyBindings.TRANSFORM_KEY.isDown() && local.getTransformation() == Transformation.BASE) {
+                flags |= C2SInputStatePacket.TRANSFORM;
+            }
             if (ModKeyBindings.GUARD_KEY.isDown()) flags |= C2SInputStatePacket.GUARD;
-            if (ModKeyBindings.KI_WAVE_KEY.isDown()) flags |= C2SInputStatePacket.WAVE;
+            if (ModKeyBindings.TECHNIQUE_KEY.isDown()) flags |= C2SInputStatePacket.TECH;
         }
-        if (mc.screen != null && (lastInputFlags & C2SInputStatePacket.WAVE) != 0) flags |= C2SInputStatePacket.SUPPRESS;
+        if (mc.screen != null && (lastInputFlags & C2SInputStatePacket.TECH) != 0) flags |= C2SInputStatePacket.SUPPRESS;
         if ((flags & ~C2SInputStatePacket.SUPPRESS) != (lastInputFlags & ~C2SInputStatePacket.SUPPRESS)) {
             // Predict locally so the stance, aura and HUD react the same frame; the server sync confirms
-            PlayerDBCData local = PlayerDBCData.get(mc.player);
             local.setChargingKi((flags & C2SInputStatePacket.CHARGE) != 0);
             local.setTransformHeld((flags & C2SInputStatePacket.TRANSFORM) != 0);
             local.setGuarding((flags & C2SInputStatePacket.GUARD) != 0);
-            local.setWaveHeld((flags & C2SInputStatePacket.WAVE) != 0);
+            local.setTechHeld((flags & C2SInputStatePacket.TECH) != 0);
             if (!local.isTransformHeld()) local.setTransformCharge(0f);
+            if (!local.isTechHeld()) local.setTechCharge(0f);
             lastInputFlags = flags;
             ModMessages.sendToServer(new C2SInputStatePacket(flags));
         }

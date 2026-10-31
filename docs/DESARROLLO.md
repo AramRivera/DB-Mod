@@ -40,7 +40,7 @@ Todo lo que distingue a una forma vive en `Transformation` (visual) y `FormEffec
 
 ## Lógica de servidor — `common/combat`
 - `FormController`: mantener `G` carga la forma seleccionada, consumo de Ki con maestría, drenaje de vida del Kaio-ken, Ozaru con luna llena / reversión de día.
-- `KiAttacks`: ráfaga, onda cargada, impulso. Cada técnica envía su `S2CAnimPacket`.
+- `KiAttacks`: técnicas (carga mientras se mantiene `X`, disparo al soltar o en ráfaga si es instantánea, recargas por técnica) e impulso. Cada disparo envía `S2CAnimPacket.TECHNIQUE` con el ordinal de la técnica para que todos vean la pose de soltar.
 - `common/event/DragonBlockEvents`: tick del jugador, daño, Zenkai, vuelo, atributos (escala, velocidad).
 
 ## Render — `client`
@@ -49,17 +49,28 @@ Todo lo que distingue a una forma vive en `Transformation` (visual) y `FormEffec
 | `model/DBModels` | Geometría en código: 6 peinados, colas, antenas, cuernos, tentáculo, pelaje. |
 | `renderer/DBPlayerLayer` | Dibuja rasgos de raza, pelo, pelaje y aura sobre cada jugador. |
 | `renderer/EnergyRender` | Geometría aditiva: aura (capas, lenguas, chispas, anillo), rayos, esferas, haces. `auraSize()` define cómo crece con el poder. |
-| `renderer/KiBlastRenderer` | Esfera y haz de los proyectiles. |
+| `renderer/KiBlastRenderer` | Dibuja cada proyectil según su técnica: esfera, onda unida a las manos (`KiBlastEntity.origin`), espiral, disco, esfera colosal. |
+| `renderer/RaceSkins` | Compone la textura del cuerpo de raza (capas de `textures/skin` teñidas con la apariencia) y la pone en la entrada de la lista de jugadores (`PlayerInfo`), así todos los renders la usan. |
+| `fx/TechniqueFx` | Energía de carga en las manos según la postura y efectos de soltar que no son proyectiles (Kiai, Taiyoken). Lo usan la tercera y la primera persona. |
+| `fx/LightningStrikes` | Rayos que caen del cielo al transformarse en las formas altas (`tier()` decide cuántos). |
+| `overlay/TechniqueBar` | Barra de técnicas de la derecha (Ctrl + rueda), carga y recarga. |
 | `anim/AnimState` | Decide la pose de cada jugador a partir de los datos sincronizados y de los `S2CAnimPacket`. |
 | `anim/DBPlayerModel` | Modelo de jugador que aplica las poses después de la animación vanilla. Se instala en todos los `PlayerRenderer` al arrancar (`ClientModEvents.swapModel`). |
 | `ClientRenderEvents` | Inclinación del cuerpo al volar, corrección del FOV, brazos en primera persona. |
 | `overlay/DBCKiOverlay` | HUD superior y barra de vida sobre los corazones. |
-| `gui/DBCCharacterScreen` | Ficha: selección de raza, atributos, formas. |
+| `gui/DBCCharacterScreen` | Creador de personaje y ficha: atributos, formas, técnicas, apariencia. |
+| `gui/UiTheme` | Paleta (azul noche, naranja, dorado) y encabezado con la esfera de 4 estrellas. |
 
 ### Añadir una animación
 1. Si es de un golpe: añade un valor a `S2CAnimPacket.Anim` y llama a `ModMessages.broadcastAnim()` desde el servidor.
 2. Añade la pose en `AnimState.Pose` y su prioridad en `AnimState.pose()`.
-3. Tercera persona: un `case` en `DBPlayerModel.setupAnim`. Primera persona: un `case` en `ClientRenderEvents.onRenderHand`.
+3. Tercera y primera persona: un `case` en `DBPlayerModel.applyPose` (con `firstPerson` para la variante de primera persona). Las poses se mezclan solas: `setupAnim` guarda los ángulos suavizados de cada jugador y un peso que entra y sale sobre la animación vanilla, así que no hay que interpolar a mano.
+
+### Añadir una técnica
+1. Un valor en `common/data/Technique` (tipo, postura, color, carga, coste, daño, TP, nivel, recarga, duración de la pose de soltar).
+2. Si el tipo es nuevo, su efecto en `KiAttacks.fire` y su dibujo en `KiBlastRenderer` (o en `TechniqueFx.renderRelease` si no viaja).
+3. Si la postura es nueva, su pose de carga en `DBPlayerModel.charge`, la de soltar en `release`, y dónde se reúne la energía en `TechniqueFx.renderCharge`.
+4. Su icono en `tools/gen_technique_icons.py` (mismo orden que el enum) y regenera `textures/gui/techniques.png`.
 
 ## Pelo (JSON + vista previa en Blender)
 Los peinados están en `src/main/resources/assets/dragonblock/hair/<estilo>.json` y los genera `tools/gen_hair_json.py` (los campos están explicados ahí). `DBModels` los lee al arrancar. Para verlos sin abrir el juego:
@@ -77,7 +88,9 @@ blender -b --factory-startup --python tools/preview_ape.py -- src/main/resources
 ```
 
 ## Escombros de transformación — `client/fx/Debris`
-Trozos del bloque del suelo que flotan alrededor de quien se transforma y salen despedidos al completar (`Debris.blast`, llamado al recibir el `S2CAnimPacket.TRANSFORM`). Son solo visuales: cada cliente los genera a partir del estado sincronizado. Se dibujan en `RenderLevelStageEvent.AFTER_ENTITIES`.
+Rocas redondeadas (octaedro subdividido con radios aleatorios, textura del bloque del suelo) que flotan alrededor de quien se transforma y salen despedidos al completar (`Debris.blast`, llamado al recibir el `S2CAnimPacket.TRANSFORM`). Son solo visuales: cada cliente los genera a partir del estado sincronizado. Se dibujan en `AFTER_PARTICLES` con un `PoseStack` vacío.
+
+> **Ojo con `RenderLevelStageEvent`**: la rotación de la cámara ya está en la pila model-view de `RenderSystem`. En `AFTER_ENTITIES` Forge además pasa esa misma rotación en `getPoseStack()`; aplicarla otra vez gira todo dos veces y lo dibujado solo se ve mirando hacia un lado (era el bug de los escombros). Dibuja en coordenadas relativas a la cámara con un `PoseStack` nuevo.
 
 ## Brazos en primera persona
 Forge no tiene un evento para cambiar la animación de los brazos, así que `ClientRenderEvents.onRenderHand` cancela las manos vanilla y dibuja los brazos de nuestro `DBPlayerModel` con `firstPerson = true`. Como un brazo de Minecraft no tiene codo, desde el hombro real nunca entraría en la vista: los hombros se colocan delante de la cámara (`FP_SHOULDER_*`, como la mano vanilla). Las poses de primera persona se ajustaron con `tools/preview_poses.py`, que renderiza la vista desde los ojos con FOV 70.
@@ -87,6 +100,11 @@ Potencia de aura suavizada (se hincha al cargar, se apaga al soltar), partícula
 
 ## Texturas
 Las texturas de `textures/entity` son en escala de grises y se tiñen en el juego (pelo, pelaje, rasgos, aura, ki). Para cambiar el color de una forma edita `Transformation`, no la textura.
+
+## Cuerpos de raza
+`tools/gen_race_skins.py` pinta, por raza, capas de 64x64 con el formato de skin de Minecraft: `base` (piel, gris que se multiplica por el tono), `accent` (shorts, gi, manchas, gemas), `detail` (colores fijos), `brows` y `scalp` (color de pelo) y `eyes.png` (iris). `RaceSkins` las compone con los colores de `PlayerDBCData` (paletas en `common/data/Appearance`) igual que la vista previa del script. Para verlas en 3D en Blender: `tools/preview_skin_blender.py` (define `SKIN` con la ruta de un PNG compuesto, por ejemplo los `sample_*.png` que genera el script con un segundo argumento).
+
+Los peinados base (*warrior*, *flame*, *scruffy*, *short*, *long*) están en `gen_hair_json.py` junto a los de forma. Los ojos de forma de `DBPlayerLayer.renderEyes` están alineados a los iris de esas caras (fila 5, columnas 2 y 5).
 
 ## Probar
 ```

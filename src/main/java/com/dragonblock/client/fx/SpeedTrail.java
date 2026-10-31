@@ -63,7 +63,6 @@ public final class SpeedTrail {
         Vec3 cam = event.getCamera().getPosition();
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         PoseStack ps = new PoseStack();
-        ps.mulPose(event.getPoseStack());
         float time = mc.level.getGameTime() + event.getPartialTick();
         VertexConsumer vc = buffers.getBuffer(DBRenderTypes.energy(EnergyRender.AURA_TEX, 0f, -time * 0.1f % 1f));
         PoseStack.Pose p = ps.last();

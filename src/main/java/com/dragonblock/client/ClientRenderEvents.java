@@ -3,7 +3,8 @@ package com.dragonblock.client;
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.anim.AnimState;
 import com.dragonblock.client.anim.DBPlayerModel;
-import com.dragonblock.client.renderer.EnergyRender;
+import com.dragonblock.client.fx.TechniqueFx;
+import com.dragonblock.common.data.Technique;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.event.DragonBlockEvents;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -12,7 +13,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -151,16 +151,14 @@ public class ClientRenderEvents {
         model.leftSleeve.copyFrom(model.leftArm);
         model.rightArm.render(ps, skin, light, overlay);
         model.rightSleeve.render(ps, skin, light, overlay);
-        if (pose != AnimState.Pose.BLAST) { // a single-arm move: keep the idle arm out of view
-            model.leftArm.render(ps, skin, light, overlay);
+        Technique tech = pose == AnimState.Pose.TECH_FIRE ? AnimState.firedTechnique(player)
+                : pose == AnimState.Pose.TECH_CHARGE ? data.getSelectedTechnique() : null;
+        if (tech == null || !DBPlayerModel.oneArmed(tech.getStance(), pose == AnimState.Pose.TECH_FIRE)) {
+            model.leftArm.render(ps, skin, light, overlay); // single-arm moves keep the idle arm out of view
             model.leftSleeve.render(ps, skin, light, overlay);
         }
 
-        if (pose == AnimState.Pose.WAVE_CHARGE && data.getWaveCharge() > 0f) {
-            Vec3 hands = model.handsMidpoint();
-            ps.translate(hands.x, hands.y, hands.z - 0.08f);
-            EnergyRender.sphere(ps, buffers, 0.06f + 0.16f * data.getWaveCharge(), data.getTransformation().getAuraColor(), age);
-        }
+        if (pose == AnimState.Pose.TECH_CHARGE) TechniqueFx.renderCharge(ps, buffers, model, data, age, true);
         ps.popPose();
         model.rightArm.setPos(rx, ry, rz);
         model.leftArm.setPos(lx, ly, lz);

@@ -3,7 +3,10 @@ package com.dragonblock.common.data;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +21,15 @@ public class PlayerDBCData {
     private Transformation transformation = Transformation.BASE;
     private Transformation selectedForm = Transformation.BASE;
     private final EnumMap<Transformation, Float> mastery = new EnumMap<>(Transformation.class);
+
+    // Techniques: learned with TP, a few equipped into the HUD bar, one selected
+    private final EnumSet<Technique> learned = EnumSet.of(Technique.KI_BLAST);
+    private final List<Technique> equipped = new ArrayList<>(List.of(Technique.KI_BLAST));
+    private int selectedSlot = 0;
+
+    // Appearance from the character creator (the race decides the body, these personalize it)
+    private int skinColor = -1, eyeColor = -1, hairColor = -1, accentColor = -1;
+    private Transformation.HairStyle hairStyle = null;
 
     private int str = 5;
     private int dex = 5;
@@ -38,9 +50,9 @@ public class PlayerDBCData {
     // Live input state (synced so other players see auras / guard, never persisted)
     private boolean guarding = false;
     private boolean transformHeld = false;
-    private boolean waveHeld = false;
+    private boolean techHeld = false;
     private float transformCharge = 0f;
-    private float waveCharge = 0f;
+    private float techCharge = 0f;
 
     // Server-only state
     /** Set by /dev form so sky checks (Ozaru) don't revert a forced form. */
@@ -55,7 +67,7 @@ public class PlayerDBCData {
     public boolean guardApplied = false;
     public boolean rootApplied = false;
 
-    public int blastCooldown = 0;
+    public final EnumMap<Technique, Integer> cooldowns = new EnumMap<>(Technique.class);
     public int dashCooldown = 0;
     public int dashIframes = 0;
 
@@ -79,6 +91,11 @@ public class PlayerDBCData {
         });
     }
 
+    /** Client data of a player by UUID, or null before their first sync. */
+    public static PlayerDBCData getClient(UUID uuid) {
+        return CLIENT_CACHE.get(uuid);
+    }
+
     public static void setClientData(UUID uuid, PlayerDBCData data) {
         CLIENT_CACHE.put(uuid, data);
     }
@@ -90,8 +107,8 @@ public class PlayerDBCData {
 
     /** Held-key state is live input, never carried over a relog. */
     public void clearInput() {
-        isChargingKi = transformHeld = waveHeld = guarding = false;
-        transformCharge = waveCharge = 0f;
+        isChargingKi = transformHeld = techHeld = guarding = false;
+        transformCharge = techCharge = 0f;
     }
 
     public static void removePlayer(UUID uuid) {
@@ -126,15 +143,27 @@ public class PlayerDBCData {
         tag.putBoolean("IsFlying", isFlying);
         tag.putBoolean("TailOut", tailOut);
         tag.putBoolean("Guarding", guarding);
-        // Held keys must reach other clients, or nobody sees the power-up or wave charge happen
+        // Held keys must reach other clients, or nobody sees the power-up or technique charge happen
         tag.putBoolean("TransformHeld", transformHeld);
-        tag.putBoolean("WaveHeld", waveHeld);
+        tag.putBoolean("TechHeld", techHeld);
         tag.putFloat("TransformCharge", transformCharge);
-        tag.putFloat("WaveCharge", waveCharge);
+        tag.putFloat("TechCharge", techCharge);
 
         CompoundTag masteryTag = new CompoundTag();
         mastery.forEach((form, value) -> masteryTag.putFloat(form.name(), value));
         tag.put("Mastery", masteryTag);
+
+        tag.putString("Learned", String.join(",", learned.stream().map(Enum::name).toList()));
+        tag.putString("Equipped", String.join(",", equipped.stream().map(Enum::name).toList()));
+        tag.putInt("SelectedSlot", selectedSlot);
+
+        CompoundTag look = new CompoundTag();
+        look.putInt("Skin", getSkinColor());
+        look.putInt("Eyes", getEyeColor());
+        look.putInt("Hair", getHairColor());
+        look.putInt("Accent", getAccentColor());
+        look.putString("HairStyle", getHairStyle().name());
+        tag.put("Look", look);
     }
 
     public void loadFromNBT(CompoundTag tag) {
@@ -162,9 +191,9 @@ public class PlayerDBCData {
         this.tailOut = !tag.contains("TailOut") || tag.getBoolean("TailOut");
         this.guarding = tag.getBoolean("Guarding");
         this.transformHeld = tag.getBoolean("TransformHeld");
-        this.waveHeld = tag.getBoolean("WaveHeld");
+        this.techHeld = tag.getBoolean("TechHeld");
         this.transformCharge = tag.getFloat("TransformCharge");
-        this.waveCharge = tag.getFloat("WaveCharge");
+        this.techCharge = tag.getFloat("TechCharge");
 
         mastery.clear();
         CompoundTag masteryTag = tag.getCompound("Mastery");
@@ -172,6 +201,28 @@ public class PlayerDBCData {
             Transformation form = parseEnum(Transformation.class, key, null);
             if (form != null) mastery.merge(form, Math.min(100f, Math.max(0f, masteryTag.getFloat(key))), Math::max);
         }
+
+        if (tag.contains("Learned")) {
+            learned.clear();
+            learned.add(Technique.KI_BLAST);
+            for (String n : tag.getString("Learned").split(",")) {
+                Technique t = parseEnum(Technique.class, n, null);
+                if (t != null) learned.add(t);
+            }
+            equipped.clear();
+            for (String n : tag.getString("Equipped").split(",")) {
+                Technique t = parseEnum(Technique.class, n, null);
+                if (t != null && learned.contains(t) && !equipped.contains(t) && equipped.size() < Technique.MAX_EQUIPPED) equipped.add(t);
+            }
+            selectedSlot = tag.getInt("SelectedSlot");
+        }
+
+        CompoundTag look = tag.getCompound("Look");
+        skinColor = look.contains("Skin") ? look.getInt("Skin") : -1;
+        eyeColor = look.contains("Eyes") ? look.getInt("Eyes") : -1;
+        hairColor = look.contains("Hair") ? look.getInt("Hair") : -1;
+        accentColor = look.contains("Accent") ? look.getInt("Accent") : -1;
+        hairStyle = look.contains("HairStyle") ? parseEnum(Transformation.HairStyle.class, look.getString("HairStyle"), null) : null;
     }
 
     private static <E extends Enum<E>> E parseEnum(Class<E> type, String name, E fallback) {
@@ -297,6 +348,45 @@ public class PlayerDBCData {
         return Math.max(1.5f, target.getBaseTransformSeconds() * (1f - 0.4f * getMastery(target) / 100f));
     }
 
+    // ---------------------------------------------------------------- techniques
+
+    public boolean hasLearned(Technique t) { return learned.contains(t); }
+    public void learn(Technique t) { learned.add(t); }
+    public List<Technique> getEquipped() { return equipped; }
+
+    /** Adds or removes a learned technique from the HUD bar. */
+    public void toggleEquipped(Technique t) {
+        if (equipped.remove(t)) {
+            selectedSlot = Math.min(selectedSlot, Math.max(0, equipped.size() - 1));
+        } else if (learned.contains(t) && equipped.size() < Technique.MAX_EQUIPPED) {
+            equipped.add(t);
+        }
+    }
+
+    public int getSelectedSlot() { return equipped.isEmpty() ? 0 : Math.floorMod(selectedSlot, equipped.size()); }
+    public void setSelectedSlot(int slot) { this.selectedSlot = equipped.isEmpty() ? 0 : Math.floorMod(slot, equipped.size()); }
+    /** The technique the key fires, or null with nothing equipped. */
+    public Technique getSelectedTechnique() { return equipped.isEmpty() ? null : equipped.get(getSelectedSlot()); }
+
+    // ---------------------------------------------------------------- appearance
+
+    public int getSkinColor() { return skinColor >= 0 ? skinColor : Appearance.defaultSkin(race); }
+    public int getEyeColor() { return eyeColor >= 0 ? eyeColor : Appearance.defaultEyes(race); }
+    public int getHairColor() { return hairColor >= 0 ? hairColor : Appearance.defaultHair(race); }
+    public int getAccentColor() { return accentColor >= 0 ? accentColor : Appearance.defaultAccent(race); }
+    public Transformation.HairStyle getHairStyle() {
+        return hairStyle != null && Appearance.hairStyles(race).contains(hairStyle) ? hairStyle : Appearance.defaultHairStyle(race);
+    }
+
+    /** Sets the whole look at once (character creator); colors are clamped to 24-bit RGB. */
+    public void setLook(int skin, int eyes, int hair, int accent, Transformation.HairStyle style) {
+        this.skinColor = skin & 0xFFFFFF;
+        this.eyeColor = eyes & 0xFFFFFF;
+        this.hairColor = hair & 0xFFFFFF;
+        this.accentColor = accent & 0xFFFFFF;
+        this.hairStyle = style;
+    }
+
     // ---------------------------------------------------------------- getters / setters
 
     public Race getRace() { return race; }
@@ -346,10 +436,10 @@ public class PlayerDBCData {
     public void setGuarding(boolean guarding) { this.guarding = guarding; }
     public boolean isTransformHeld() { return transformHeld; }
     public void setTransformHeld(boolean held) { this.transformHeld = held; }
-    public boolean isWaveHeld() { return waveHeld; }
-    public void setWaveHeld(boolean held) { this.waveHeld = held; }
+    public boolean isTechHeld() { return techHeld; }
+    public void setTechHeld(boolean held) { this.techHeld = held; }
     public float getTransformCharge() { return transformCharge; }
     public void setTransformCharge(float charge) { this.transformCharge = Math.min(1f, Math.max(0f, charge)); }
-    public float getWaveCharge() { return waveCharge; }
-    public void setWaveCharge(float charge) { this.waveCharge = Math.min(1f, Math.max(0f, charge)); }
+    public float getTechCharge() { return techCharge; }
+    public void setTechCharge(float charge) { this.techCharge = Math.min(1f, Math.max(0f, charge)); }
 }

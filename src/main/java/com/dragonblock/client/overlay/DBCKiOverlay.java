@@ -32,6 +32,12 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
     private Transformation lastForm = Transformation.BASE;
     private long titleAt = 0;
     private final List<long[]> tpPopups = new ArrayList<>(); // {amount, startMillis}
+    private static long whiteOutAt = 0;
+
+    /** Someone's Taiyoken caught your eyes. */
+    public static void whiteOut() {
+        whiteOutAt = Util.getMillis();
+    }
 
     @Override
     public void render(GuiGraphics g, DeltaTracker deltaTracker) {
@@ -43,6 +49,7 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         Font font = mc.font;
         trackChanges(data, now);
         renderTransformFlash(g, mc, data, deltaTracker);
+        renderWhiteOut(g, now);
         if (mc.gameMode != null && mc.gameMode.canHurtPlayer()) renderHealthBar(g, mc, data, now);
         renderPanel(g, font, data, now);
         renderChargeRing(g, font, data, now);
@@ -73,10 +80,12 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         int x = 8, y = 8;
         int h = panelHeight(data);
 
-        g.fill(x - 4, y - 4, x + BAR_W + 4, y + h, 0x90000000);
+        g.fill(x - 4, y - 4, x + BAR_W + 4, y + h, 0xA00A0F1E);
         g.fill(x - 4, y - 4, x - 2, y + h, accent);
+        g.fill(x - 2, y + h - 1, x + BAR_W + 4, y + h, 0x60000000 | UiTheme.ORANGE);
+        g.blit(UiTheme.EMBLEM, x, y - 1, 0, 0, 9, 9, 9, 9);
 
-        g.drawString(font, form.getDisplayName().toUpperCase(), x, y, form.getAuraColor(), false);
+        g.drawString(font, form.getDisplayName().toUpperCase(), x + 12, y, form == Transformation.BASE ? UiTheme.GOLD : form.getAuraColor(), false);
         String power = String.format("%,d", data.getBattlePower());
         g.drawString(font, power, x + BAR_W - font.width(power), y, UiTheme.TEXT_HEADER, false);
         y += 11;
@@ -105,13 +114,11 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         g.drawString(font, state, x + BAR_W - font.width(state), y, UiTheme.TEXT, false);
         y += 11;
 
-        if (data.isWaveHeld()) y = chargeBar(g, font, x, y, "Onda de ki", data.getWaveCharge(), accent);
-        if (form != Transformation.BASE) chargeBar(g, font, x, y, "Maestría", data.getMastery(form) / 100f, 0xFF8090A0);
+        if (form != Transformation.BASE) chargeBar(g, font, x, y, "Maestría", data.getMastery(form) / 100f, 0xFF000000 | UiTheme.GOLD);
     }
 
     private static int panelHeight(PlayerDBCData data) {
         int h = 32;
-        if (data.isWaveHeld()) h += 14;
         if (data.getTransformation() != Transformation.BASE) h += 14;
         return h;
     }
@@ -219,6 +226,13 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
             g.drawString(font, "+" + p[0] + " TP", x, y - (int) (t * 12), alpha << 24 | UiTheme.GOOD, true);
             y += 10;
         }
+    }
+
+    private static void renderWhiteOut(GuiGraphics g, long now) {
+        float t = (now - whiteOutAt) / 2500f;
+        if (whiteOutAt == 0 || t > 1f) return;
+        int alpha = (int) (255 * (t < 0.3f ? 1f : 1f - (t - 0.3f) / 0.7f));
+        g.fill(0, 0, g.guiWidth(), g.guiHeight(), alpha << 24 | 0xFFFFF4);
     }
 
     /** Full-screen flash right after your own transformation completes, strongest for cataclysm forms. */

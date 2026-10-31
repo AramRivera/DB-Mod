@@ -18,9 +18,8 @@
   "key.dragonblock.transform": "Transform (hold)",
   "key.dragonblock.character_sheet": "Character Sheet",
   "key.dragonblock.fly": "Fly",
-  "key.dragonblock.ki_blast": "Ki Blast",
+  "key.dragonblock.technique": "Use technique (hold to charge)",
   "key.dragonblock.revert": "Revert to base form",
-  "key.dragonblock.ki_wave": "Ki Wave (hold)",
   "key.dragonblock.dash": "Dash",
   "key.dragonblock.guard": "Guard (hold)",
   "key.dragonblock.toggle_aura": "Toggle aura visibility"

@@ -229,7 +229,7 @@ public class DragonBlockEvents {
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                         ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
             }
-        } else if (!data.isWaveHeld()) {
+        } else if (!data.isTechHeld()) {
             data.setCurrentKi(data.getCurrentKi() + 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f));
         }
 
@@ -249,7 +249,7 @@ public class DragonBlockEvents {
         if (data.isGuarding() != data.guardApplied || data.isTransformHeld() != data.rootApplied) applyStanceSlow(player, data);
         tickScale(player, data);
 
-        boolean active = data.isChargingKi() || data.isTransformHeld() || data.isWaveHeld();
+        boolean active = data.isChargingKi() || data.isTransformHeld() || data.isTechHeld();
         if (player.tickCount % (active ? 4 : 20) == 0) ModMessages.syncToTracking(sp);
     }
 

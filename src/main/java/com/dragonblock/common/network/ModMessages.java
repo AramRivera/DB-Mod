@@ -13,7 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
 public class ModMessages {
-    private static final int PROTOCOL_VERSION = 3;
+    private static final int PROTOCOL_VERSION = 4;
     public static final SimpleChannel INSTANCE = ChannelBuilder.named(
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "messages"))
             .networkProtocolVersion(PROTOCOL_VERSION)
@@ -40,12 +40,6 @@ public class ModMessages {
                 .encoder(C2SFlyPacket::toBytes)
                 .decoder(C2SFlyPacket::new)
                 .consumerMainThread(C2SFlyPacket::handle)
-                .add();
-
-        INSTANCE.messageBuilder(C2SKiBlastPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(C2SKiBlastPacket::toBytes)
-                .decoder(C2SKiBlastPacket::new)
-                .consumerMainThread(C2SKiBlastPacket::handle)
                 .add();
 
         INSTANCE.messageBuilder(C2SUpgradeStatPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
@@ -90,8 +84,8 @@ public class ModMessages {
         INSTANCE.send(createSync(player), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
     }
 
-    public static void broadcastAnim(ServerPlayer player, S2CAnimPacket.Anim anim) {
-        INSTANCE.send(new S2CAnimPacket(player.getId(), anim), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+    public static void broadcastAnim(ServerPlayer player, S2CAnimPacket.Anim anim, int arg) {
+        INSTANCE.send(new S2CAnimPacket(player.getId(), anim, arg), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
     }
 
     public static S2CSyncDBCDataPacket createSync(ServerPlayer player) {

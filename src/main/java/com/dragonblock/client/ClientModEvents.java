@@ -76,5 +76,9 @@ public class ClientModEvents {
                 ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "ki_overlay"),
                 DBCKiOverlay.INSTANCE
         );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "technique_bar"),
+                com.dragonblock.client.overlay.TechniqueBar.INSTANCE
+        );
     }
 }

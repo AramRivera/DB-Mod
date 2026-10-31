@@ -147,6 +147,39 @@ public final class EnergyRender {
         }
     }
 
+    /**
+     * Sky-to-ground bolt between two points (camera-relative world space): a jagged main channel that
+     * wanders around the straight line, a thick glow, and a couple of short forks.
+     */
+    public static void strike(PoseStack pose, MultiBufferSource buffers, int seed, Vec3 from, Vec3 to, int rgb, float width) {
+        VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
+        PoseStack.Pose p = pose.last();
+        Random rnd = new Random(seed);
+        int steps = 14;
+        Vec3 prev = from;
+        for (int i = 1; i <= steps; i++) {
+            float t = (float) i / steps;
+            Vec3 next = i == steps ? to : from.lerp(to, t).add(
+                    (rnd.nextFloat() - 0.5f) * 1.6f, (rnd.nextFloat() - 0.5f) * 0.6f, (rnd.nextFloat() - 0.5f) * 1.6f);
+            segment(vc, p, prev, next, 0.07f * width, 0xFFFFFF, 255);
+            segment(vc, p, prev, next, 0.28f * width, rgb, 120);
+            if (i > 3 && i < steps - 2 && rnd.nextFloat() < 0.25f) {
+                Vec3 fork = next;
+                for (int k = 0; k < 4; k++) {
+                    Vec3 f = fork.add((rnd.nextFloat() - 0.5f) * 2.2f, -0.8f - rnd.nextFloat() * 1.2f, (rnd.nextFloat() - 0.5f) * 2.2f);
+                    segment(vc, p, fork, f, 0.04f * width, 0xFFFFFF, 200);
+                    segment(vc, p, fork, f, 0.16f * width, rgb, 90);
+                    fork = f;
+                }
+            }
+            prev = next;
+        }
+    }
+
+    private static void segment(VertexConsumer vc, PoseStack.Pose p, Vec3 a, Vec3 b, float w, int rgb, int alpha) {
+        boltSegment(vc, p, (float) a.x, (float) a.y, (float) a.z, (float) b.x, (float) b.y, (float) b.z, w, rgb, alpha);
+    }
+
     private static void boltSegment(VertexConsumer vc, PoseStack.Pose p, float x0, float y0, float z0,
                                     float x1, float y1, float z1, float w, int rgb, int alpha) {
         int r = rgb >> 16 & 255, g = rgb >> 8 & 255, b = rgb & 255;
@@ -196,6 +229,49 @@ public final class EnergyRender {
         uvSphere(pose.last(), vc, radius * 0.55f * pulse, scaleColor(mix(rgb, 0xFFFFFF, 0.75f), 1f));
         uvSphere(pose.last(), vc, radius * pulse, scaleColor(rgb, 0.9f));
         uvSphere(pose.last(), vc, radius * 1.45f * pulse, scaleColor(rgb, 0.35f));
+    }
+
+    /** Flat spinning disc with a bright core and a serrated cutting edge, in the pose's XZ plane. */
+    public static void disc(PoseStack pose, MultiBufferSource buffers, float radius, int rgb, float time) {
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.glow(KI_TEX));
+        pose.pushPose();
+        pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(time * 40f));
+        PoseStack.Pose p = pose.last();
+        final int sides = 28;
+        int core = scaleColor(mix(rgb, 0xFFFFFF, 0.7f), 1f), edge = scaleColor(rgb, 0.9f);
+        for (int s = 0; s < sides; s++) {
+            float a0 = Mth.TWO_PI * s / sides, a1 = Mth.TWO_PI * (s + 1) / sides;
+            float tooth = s % 2 == 0 ? 1.12f : 1f;
+            Vec3 i0 = new Vec3(Mth.cos(a0) * radius * 0.35f, 0, Mth.sin(a0) * radius * 0.35f);
+            Vec3 i1 = new Vec3(Mth.cos(a1) * radius * 0.35f, 0, Mth.sin(a1) * radius * 0.35f);
+            Vec3 o0 = new Vec3(Mth.cos(a0) * radius * tooth, 0, Mth.sin(a0) * radius * tooth);
+            Vec3 o1 = new Vec3(Mth.cos(a1) * radius, 0, Mth.sin(a1) * radius);
+            quad(vc, p, Vec3.ZERO, Vec3.ZERO, i1, i0, 0f, 1f, 0f, 1f, core, core);
+            quad(vc, p, i0, i1, o1, o0, 0f, 1f, 0f, 1f, core, edge);
+        }
+        pose.popPose();
+    }
+
+    /** Ribbon winding around a beam from the pose origin to {@code to} (the Makankosappo spiral). */
+    public static void spiral(PoseStack pose, MultiBufferSource buffers, Vec3 to, float radius, int rgb, float time) {
+        double len = to.length();
+        if (len < 0.05) return;
+        Vec3 dir = to.scale(1 / len);
+        Vec3 side = Math.abs(dir.y) > 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 u = dir.cross(side).normalize(), v = dir.cross(u).normalize();
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.glow(KI_TEX));
+        PoseStack.Pose p = pose.last();
+        int steps = Math.max(4, (int) (len * 6));
+        int color = scaleColor(rgb, 0.9f);
+        for (int i = 0; i < steps; i++) {
+            float t0 = (float) i / steps, t1 = (float) (i + 1) / steps;
+            float a0 = (float) (t0 * len * 3.2 - time * 0.6), a1 = (float) (t1 * len * 3.2 - time * 0.6);
+            Vec3 c0 = to.scale(t0), c1 = to.scale(t1);
+            Vec3 r0 = u.scale(Mth.cos(a0) * radius).add(v.scale(Mth.sin(a0) * radius));
+            Vec3 r1 = u.scale(Mth.cos(a1) * radius).add(v.scale(Mth.sin(a1) * radius));
+            Vec3 w = dir.scale(0.06);
+            quad(vc, p, c0.add(r0).subtract(w), c1.add(r1).subtract(w), c1.add(r1).add(w), c0.add(r0).add(w), 0f, 1f, 0f, 1f, color, color);
+        }
     }
 
     private static void uvSphere(PoseStack.Pose p, VertexConsumer vc, float radius, int color) {

@@ -70,7 +70,8 @@ public enum Transformation {
         };
     }
 
-    public enum HairStyle { NONE, FLARE, HEAVY, RIDGE, MANE, WILD, SLEEK, SPIRE, CREST }
+    /** Form hair (FLARE..CREST) plus the everyday styles picked in the character creator (WARRIOR..LONG). */
+    public enum HairStyle { NONE, FLARE, HEAVY, RIDGE, MANE, WILD, SLEEK, SPIRE, CREST, WARRIOR, FLAME, SCRUFFY, SHORT, LONG }
 
     /** CALM = soft flame, FLAME = full aura, STORM = aura + lightning, SILVER = thin sparkling aura. */
     public enum AuraStyle { CALM, FLAME, STORM, SILVER }

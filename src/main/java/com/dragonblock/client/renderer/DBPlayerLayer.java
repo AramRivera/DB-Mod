@@ -116,7 +116,7 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
                                     PlayerDBCData data, PlayerModel<AbstractClientPlayer> body, float age) {
         Race race = data.getRace();
         Transformation form = data.getTransformation();
-        int color = 0xFF000000 | race.getFeatureColor();
+        int color = 0xFF000000 | (race.hasSaiyanTail() ? race.getFeatureColor() : data.getSkinColor());
         boolean flying = AnimState.isFlying(player, data);
         switch (race.getBodyFeature()) {
             case TAIL -> {
@@ -146,31 +146,47 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
 
     // ------------------------------------------------------------------ hair and face
 
+    /** entityId -> {r, g, b, last update millis}: the displayed hair color eases toward its target. */
+    private static final Map<Integer, float[]> HAIR_COLOR = new java.util.HashMap<>();
+
     /**
-     * Hair of the current form. While powering up, the target form's hair flickers in (most forms) or
-     * grows out from the scalp (cataclysm forms); right after transforming it overshoots slightly.
+     * Hair: the form's style and color, or the player's own (character creator) when the form doesn't
+     * change it. While powering up the target style flickers in (most forms) or grows out from the scalp
+     * (cataclysm forms) and the color bleeds from the old one to the new one in pulses; reverting fades it
+     * back. Right after transforming it overshoots slightly and glows.
      */
     private void renderHair(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player,
                             PlayerDBCData data, PlayerModel<AbstractClientPlayer> body, float partial) {
         if (!body.head.visible) return;
         Transformation shown = data.getTransformation();
         float growth = 1f;
+        int goal = hairColor(data, shown);
+        boolean glow = shown.hasGlowingHair();
 
-        if (data.isTransformHeld() && data.getSelectedForm().getHairStyle() != Transformation.HairStyle.NONE) {
+        float burst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, TransformFx.BURST_TICKS, partial);
+        if (data.isTransformHeld() && data.getSelectedForm() != shown) {
             Transformation target = data.getSelectedForm();
             float c = data.getTransformCharge();
-            if (target.getSequence() == Transformation.Sequence.CATACLYSM) {
-                shown = target;
-                growth = 0.25f + 0.75f * c;
-            } else if (c > 0.3f && (c > 0.75f || (player.tickCount / 2) % 2 == 0)) {
-                shown = target; // the hair flashes between forms before it settles
+            int from = hairColor(data, shown), to = hairColor(data, target);
+            // Pulses of the new color that come faster and last longer as the charge builds
+            boolean pulse = Mth.sin((player.tickCount + partial) * (0.4f + c * 1.6f)) > 1f - 1.6f * c;
+            goal = pulse ? to : EnergyRender.mix(from, to, c * c * 0.6f);
+            glow |= pulse && target.hasGlowingHair();
+            if (styleOf(data, target) != styleOf(data, shown)) {
+                if (target.getSequence() == Transformation.Sequence.CATACLYSM) {
+                    shown = target;
+                    growth = 0.25f + 0.75f * c;
+                } else if (c > 0.3f && (c > 0.75f || (player.tickCount / 2) % 2 == 0)) {
+                    shown = target; // the hair flashes between forms before it settles
+                }
             }
-        } else {
-            float burst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, TransformFx.BURST_TICKS, partial);
-            if (burst >= 0) growth = 1f + 0.1f * Mth.sin(burst * Mth.PI);
+        } else if (burst >= 0) {
+            growth = 1f + 0.1f * Mth.sin(burst * Mth.PI);
+            glow = glow || burst < 0.5f;
         }
 
-        ModelPart part = hair.get(shown.getHairStyle());
+        int color = easeHairColor(player.getId(), goal);
+        ModelPart part = hair.get(styleOf(data, shown));
         if (part == null || shown.isOozaru()) return;
         pose.pushPose();
         body.head.translateAndRotate(pose);
@@ -181,11 +197,31 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
             pose.translate(0, 0.5f, 0);
         }
         part.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(HAIR_TEX)),
-                shown.hasGlowingHair() ? FULL_BRIGHT : light, OverlayTexture.NO_OVERLAY, 0xFF000000 | shown.getHairColor());
+                glow ? FULL_BRIGHT : light, OverlayTexture.NO_OVERLAY, 0xFF000000 | color);
         pose.popPose();
     }
 
-    /** Colored irises over the skin's eyes (standard eye row), plus the red rim of the tier-4 form. */
+    private static Transformation.HairStyle styleOf(PlayerDBCData data, Transformation form) {
+        return form.getHairStyle() != Transformation.HairStyle.NONE ? form.getHairStyle() : data.getHairStyle();
+    }
+
+    private static int hairColor(PlayerDBCData data, Transformation form) {
+        return form.getHairColor() != 0 ? form.getHairColor() : data.getHairColor();
+    }
+
+    private static int easeHairColor(int id, int goal) {
+        long now = net.minecraft.Util.getMillis();
+        float[] c = HAIR_COLOR.computeIfAbsent(id, k -> new float[]{goal >> 16 & 255, goal >> 8 & 255, goal & 255, now});
+        float k = 1f - (float) Math.exp(-(now - c[3]) / 90f);
+        c[3] = now;
+        c[0] += ((goal >> 16 & 255) - c[0]) * k;
+        c[1] += ((goal >> 8 & 255) - c[1]) * k;
+        c[2] += ((goal & 255) - c[2]) * k;
+        if (HAIR_COLOR.size() > 256) HAIR_COLOR.clear();
+        return (int) c[0] << 16 | (int) c[1] << 8 | (int) c[2];
+    }
+
+    /** Colored irises over the race face's eyes, plus the red rims of the tier-4 form. */
     private void renderEyes(PoseStack pose, MultiBufferSource buffers, PlayerModel<AbstractClientPlayer> body,
                             Transformation form) {
         int eye = form.getEyeColor();
@@ -193,12 +229,13 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         pose.pushPose();
         body.head.translateAndRotate(pose);
         VertexConsumer vc = buffers.getBuffer(RenderType.entityTranslucentEmissive(FEATURE_TEX));
-        float z = -4.02f, y = -4f;
-        faceRect(vc, pose, -2.6f, y, -1.4f, y + 1f, z, 0xFF000000 | eye);
-        faceRect(vc, pose, 1.4f, y, 2.6f, y + 1f, z, 0xFF000000 | eye);
+        float z = -4.02f, y = -3f;
+        faceRect(vc, pose, -2f, y, -1f, y + 1f, z, 0xFF000000 | eye);
+        faceRect(vc, pose, 1f, y, 2f, y + 1f, z, 0xFF000000 | eye);
         if (form == Transformation.SSJ4) {
-            faceRect(vc, pose, -3.2f, y - 0.5f, -0.8f, y - 0.15f, z - 0.01f, 0xFFC02028);
-            faceRect(vc, pose, 0.8f, y - 0.5f, 3.2f, y - 0.15f, z - 0.01f, 0xFFC02028);
+            // Red rims along the lash line
+            faceRect(vc, pose, -3f, y - 1f, -1f, y - 0.6f, z - 0.01f, 0xFFC02028);
+            faceRect(vc, pose, 1f, y - 1f, 3f, y - 0.6f, z - 0.01f, 0xFFC02028);
         }
         pose.popPose();
     }
@@ -285,14 +322,11 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
             }
         }
 
-        // Ki wave gathering between the cupped hands
-        if (data.isWaveHeld() && data.getWaveCharge() > 0f) {
-            pose.pushPose();
-            Vec3 hands = getParentModel() instanceof DBPlayerModel m ? m.handsMidpoint() : new Vec3(-0.45, 0.62, -0.15);
-            pose.translate(hands.x, hands.y, hands.z);
-            EnergyRender.sphere(pose, buffers, 0.08f + 0.22f * data.getWaveCharge(), form.getAuraColor(), time);
-            pose.popPose();
+        // Technique energy gathering where the stance puts the hands, and body-borne releases
+        if (getParentModel() instanceof DBPlayerModel model) {
+            com.dragonblock.client.fx.TechniqueFx.renderCharge(pose, buffers, model, data, time, false);
         }
+        if (visible) com.dragonblock.client.fx.TechniqueFx.renderRelease(pose, buffers, player, data, partial);
     }
 
     // ------------------------------------------------------------------ animation helpers

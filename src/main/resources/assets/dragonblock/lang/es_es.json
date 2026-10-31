@@ -18,9 +18,8 @@
   "key.dragonblock.transform": "Transformarse (mantener)",
   "key.dragonblock.character_sheet": "Ficha de personaje",
   "key.dragonblock.fly": "Volar",
-  "key.dragonblock.ki_blast": "Ráfaga de ki",
+  "key.dragonblock.technique": "Usar técnica (mantener para cargar)",
   "key.dragonblock.revert": "Volver a forma base",
-  "key.dragonblock.ki_wave": "Onda de ki (mantener)",
   "key.dragonblock.dash": "Impulso",
   "key.dragonblock.guard": "Guardia (mantener)",
   "key.dragonblock.toggle_aura": "Mostrar/ocultar aura"
