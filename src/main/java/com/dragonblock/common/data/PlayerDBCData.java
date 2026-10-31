@@ -72,6 +72,8 @@ public class PlayerDBCData {
 
     public final EnumMap<Technique, Integer> cooldowns = new EnumMap<>(Technique.class);
     public int dashCooldown = 0;
+    /** Ticks before a power-up abandoned halfway can start again (no endless invulnerable charging). */
+    public int transformRetry = 0;
     public int dashIframes = 0;
 
     public PlayerDBCData() {

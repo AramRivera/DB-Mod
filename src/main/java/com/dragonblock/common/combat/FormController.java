@@ -19,6 +19,7 @@ public final class FormController {
 
     /** Called every server tick. */
     public static void tick(ServerPlayer player, PlayerDBCData data) {
+        if (data.transformRetry > 0) data.transformRetry--;
         checkFullMoon(player, data);
         Transformation target = data.getSelectedForm();
 
