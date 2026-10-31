@@ -32,12 +32,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 
+import net.minecraft.util.Mth;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ShenlongEntity extends Entity {
     private final List<BlockPos> ballPositions = new ArrayList<>();
     private boolean wishGranted = false;
+    private java.util.UUID summonerUUID;
     private double baseY;
 
     public ShenlongEntity(EntityType<?> entityType, Level level) {
@@ -59,6 +62,20 @@ public class ShenlongEntity extends Entity {
         // Gentle floating hover
         double floatY = this.baseY + Math.sin(this.tickCount * 0.05) * 0.4;
         this.setPos(this.getX(), floatY, this.getZ());
+
+        // Smoothly rotate to face the summoner or nearest player
+        Player target = this.summonerUUID != null ? this.level().getPlayerByUUID(this.summonerUUID) : null;
+        if (target == null) {
+            target = this.level().getNearestPlayer(this, 48.0);
+        }
+        if (target != null) {
+            double dx = target.getX() - this.getX();
+            double dz = target.getZ() - this.getZ();
+            float targetYaw = (float) (Mth.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0F;
+            float currentYaw = this.getYRot();
+            this.yRotO = currentYaw;
+            this.setYRot(Mth.rotLerp(0.1F, currentYaw, targetYaw));
+        }
 
         // Ambient particles around Shenlong
         if (this.level().isClientSide) {
@@ -202,6 +219,12 @@ public class ShenlongEntity extends Entity {
         this.discard();
     }
 
+    public void setSummoner(Player player) {
+        if (player != null) {
+            this.summonerUUID = player.getUUID();
+        }
+    }
+
     public void setBallPositions(List<BlockPos> positions) {
         this.ballPositions.clear();
         this.ballPositions.addAll(positions);
@@ -214,6 +237,9 @@ public class ShenlongEntity extends Entity {
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         this.wishGranted = tag.getBoolean("WishGranted");
+        if (tag.hasUUID("Summoner")) {
+            this.summonerUUID = tag.getUUID("Summoner");
+        }
         this.baseY = tag.getDouble("BaseY");
         this.ballPositions.clear();
         if (tag.contains("Balls", Tag.TAG_LIST)) {
@@ -228,6 +254,9 @@ public class ShenlongEntity extends Entity {
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putBoolean("WishGranted", this.wishGranted);
+        if (this.summonerUUID != null) {
+            tag.putUUID("Summoner", this.summonerUUID);
+        }
         tag.putDouble("BaseY", this.baseY);
         ListTag list = new ListTag();
         for (BlockPos bp : this.ballPositions) {
