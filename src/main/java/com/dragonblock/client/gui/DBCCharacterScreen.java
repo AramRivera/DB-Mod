@@ -8,6 +8,7 @@ import com.dragonblock.common.network.packet.C2SUpgradeStatPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -82,9 +83,15 @@ public class DBCCharacterScreen extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // Pure dark dimming without invoking vanilla's blur effect shader
+        guiGraphics.fill(0, 0, this.width, this.height, 0x90000000);
+    }
+
+    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Clear non-blurred background tint
-        guiGraphics.fill(0, 0, this.width, this.height, 0x88000000);
+        // 1. Dark background
+        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
@@ -93,27 +100,27 @@ public class DBCCharacterScreen extends Screen {
         int top = (this.height - PANEL_HEIGHT) / 2;
         PlayerDBCData data = PlayerDBCData.get(mc.player);
 
-        // Solid crisp panel background (no transparency blur leak)
+        // 2. Solid crisp panel background (completely opaque, no blur leak)
         guiGraphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xFF14161D);
-        // Outer Golden Border
+        // Golden Outer Border
         guiGraphics.renderOutline(left, top, PANEL_WIDTH, PANEL_HEIGHT, 0xFFE0A020);
-        // Header separator
+        // Inner divider
         guiGraphics.fill(left + 8, top + 24, left + PANEL_WIDTH - 8, top + 25, 0xFF353C4E);
 
-        // Header Title
+        // 3. Header Title
         guiGraphics.drawCenteredString(this.font, "§6§lDRAGON BLOCK §e§lESTADÍSTICAS", left + PANEL_WIDTH / 2, top + 8, 0xFFFFFF);
 
-        // Player Info Section
+        // 4. Character Info
         guiGraphics.drawString(this.font, "§7Guerrero: §f" + mc.player.getGameProfile().getName(), left + 12, top + 30, 0xFFFFFF, true);
         guiGraphics.drawString(this.font, "§7Raza: §b" + data.getRace().getDisplayName(), left + 12, top + 44, 0xFFFFFF, true);
         guiGraphics.drawString(this.font, "§7Estado: §a" + data.getTransformation().getDisplayName(), left + 12, top + 58, 0xFFFFFF, true);
         guiGraphics.drawString(this.font, "§7Poder de Pelea (BP): §e" + String.format("%,d", data.getBattlePower()), left + 12, top + 72, 0xFFFFFF, true);
         guiGraphics.drawString(this.font, "§7Puntos de Entrenamiento (TP): §a" + String.format("%,d", data.getTrainingPoints()), left + 12, top + 86, 0xFFFFFF, true);
 
-        // Stats Divider
+        // 5. Stats Divider
         guiGraphics.fill(left + 8, top + 98, left + PANEL_WIDTH - 8, top + 99, 0xFF353C4E);
 
-        // Stats List
+        // 6. Stats List
         int startY = top + 106;
         renderStatLine(guiGraphics, "Fuerza (STR):", data.getStr(), data.getEffectiveStr(), data.getUpgradeCost("STR"), left + 12, startY);
         renderStatLine(guiGraphics, "Destreza (DEX):", data.getDex(), data.getEffectiveDex(), data.getUpgradeCost("DEX"), left + 12, startY + 18);
@@ -121,8 +128,10 @@ public class DBCCharacterScreen extends Screen {
         renderStatLine(guiGraphics, "Voluntad (WIL):", data.getWil(), data.getEffectiveWil(), data.getUpgradeCost("WIL"), left + 12, startY + 54);
         renderStatLine(guiGraphics, "Mente (MND):", data.getMnd(), data.getMnd(), data.getUpgradeCost("MND"), left + 12, startY + 72);
 
-        // Render widgets/buttons and tooltips
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        // 7. Render all interactive widgets/buttons directly (prevents super.render from triggering blur)
+        for (Renderable renderable : this.renderables) {
+            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
     }
 
     private void renderStatLine(GuiGraphics guiGraphics, String name, int base, int effective, int cost, int x, int y) {

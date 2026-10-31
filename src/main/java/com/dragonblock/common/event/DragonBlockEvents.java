@@ -49,6 +49,15 @@ public class DragonBlockEvents {
     }
 
     @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            PlayerDBCData data = PlayerDBCData.get(player);
+            data.saveToPlayer(player);
+            PlayerDBCData.removePlayer(player.getUUID());
+        }
+    }
+
+    @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
@@ -68,7 +77,10 @@ public class DragonBlockEvents {
         if (original.getPersistentData().contains("DragonBlockData")) {
             newPlayer.getPersistentData().put("DragonBlockData", original.getPersistentData().getCompound("DragonBlockData"));
         }
+        PlayerDBCData.removePlayer(original.getUUID());
         if (newPlayer instanceof ServerPlayer serverPlayer) {
+            PlayerDBCData data = PlayerDBCData.get(serverPlayer);
+            data.saveToPlayer(serverPlayer);
             ModMessages.syncToPlayer(serverPlayer);
         }
     }
@@ -106,13 +118,12 @@ public class DragonBlockEvents {
         // Player taking damage
         if (event.getEntity() instanceof Player player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            // Dexterity provides damage reduction
             float reduction = Math.min(0.6f, data.getEffectiveDex() * 0.012f);
             if (reduction > 0) {
                 event.setAmount(event.getAmount() * (1.0f - reduction));
             }
 
-            // Saiyan Zenkai boost when very low HP
+            // Saiyan Zenkai boost when low HP
             if (data.getRace() == Race.SAIYAN && player.getHealth() - event.getAmount() <= 5.0f) {
                 if (!player.level().isClientSide) {
                     data.addTrainingPoints(50);
@@ -135,7 +146,7 @@ public class DragonBlockEvents {
 
         // Ki Charging logic
         if (data.isChargingKi()) {
-            float chargeRate = 0.5f + (data.getEffectiveWil() * 0.06f);
+            float chargeRate = 1.2f + (data.getEffectiveWil() * 0.1f);
             data.setCurrentKi(data.getCurrentKi() + chargeRate);
 
             if (player.level().isClientSide) {
@@ -151,10 +162,14 @@ public class DragonBlockEvents {
                     player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                             ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
                 }
+                // Sync rapidly while charging so the HUD is completely smooth
+                if (player.tickCount % 4 == 0 && player instanceof ServerPlayer sp) {
+                    ModMessages.syncToPlayer(sp);
+                }
             }
         } else {
-            // Passive Ki regeneration
-            float passiveRegen = 0.04f + (data.getRace() == Race.HUMAN ? 0.05f : 0.02f);
+            // Passive Ki regeneration (replenishes fully over time)
+            float passiveRegen = 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f);
             data.setCurrentKi(data.getCurrentKi() + passiveRegen);
         }
 
@@ -175,7 +190,6 @@ public class DragonBlockEvents {
                     );
                 }
             } else {
-                // Exhausted, revert form
                 data.setCurrentKi(0);
                 data.setTransformation(Transformation.BASE);
                 if (!player.level().isClientSide) {
@@ -191,7 +205,7 @@ public class DragonBlockEvents {
 
         // Flight (Bukujutsu) Ki drain
         if (data.isFlying()) {
-            float flightCost = (data.getRace() == Race.ARCOSIAN ? 0.05f : 0.1f) / 20.0f;
+            float flightCost = (data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f);
             if (data.getCurrentKi() > flightCost) {
                 data.setCurrentKi(data.getCurrentKi() - flightCost);
                 if (player.level().isClientSide && player.tickCount % 4 == 0) {
@@ -209,6 +223,10 @@ public class DragonBlockEvents {
                 if (!player.level().isClientSide) {
                     data.saveToPlayer(player);
                     if (player instanceof ServerPlayer sp) ModMessages.syncToPlayer(sp);
+                    player.displayClientMessage(
+                            Component.literal("§c¡Ki insuficiente para mantener el vuelo!"),
+                            true
+                    );
                 }
             }
         }
@@ -229,7 +247,6 @@ public class DragonBlockEvents {
     }
 
     private static void updatePlayerAttributes(Player player, PlayerDBCData data) {
-        // Constitution Max Health bonus
         AttributeInstance maxHp = player.getAttribute(Attributes.MAX_HEALTH);
         if (maxHp != null) {
             double bonusHealth = Math.max(0, (data.getEffectiveCon() - 5) * 2.0);
@@ -239,7 +256,6 @@ public class DragonBlockEvents {
             maxHp.addOrUpdateTransientModifier(mod);
         }
 
-        // Dexterity Speed bonus
         AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speed != null) {
             double bonusSpeed = Math.max(0, (data.getEffectiveDex() - 5) * 0.003);

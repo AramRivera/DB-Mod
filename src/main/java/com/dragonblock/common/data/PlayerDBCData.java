@@ -3,13 +3,14 @@ package com.dragonblock.common.data;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerDBCData {
     private static final String NBT_KEY = "DragonBlockData";
-    private static final Map<UUID, PlayerDBCData> CLIENT_CACHE = new HashMap<>();
+    private static final Map<UUID, PlayerDBCData> CLIENT_CACHE = new ConcurrentHashMap<>();
+    private static final Map<UUID, PlayerDBCData> SERVER_CACHE = new ConcurrentHashMap<>();
 
     private Race race = Race.HUMAN;
     private Transformation transformation = Transformation.BASE;
@@ -34,18 +35,25 @@ public class PlayerDBCData {
         if (player.level().isClientSide) {
             return CLIENT_CACHE.computeIfAbsent(player.getUUID(), uuid -> new PlayerDBCData());
         }
-        CompoundTag persistent = player.getPersistentData();
-        PlayerDBCData data = new PlayerDBCData();
-        if (persistent.contains(NBT_KEY)) {
-            data.loadFromNBT(persistent.getCompound(NBT_KEY));
-        } else {
-            data.saveToPlayer(player);
-        }
-        return data;
+        return SERVER_CACHE.computeIfAbsent(player.getUUID(), uuid -> {
+            CompoundTag persistent = player.getPersistentData();
+            PlayerDBCData data = new PlayerDBCData();
+            if (persistent.contains(NBT_KEY)) {
+                data.loadFromNBT(persistent.getCompound(NBT_KEY));
+            } else {
+                data.saveToPlayer(player);
+            }
+            return data;
+        });
     }
 
     public static void setClientData(UUID uuid, PlayerDBCData data) {
         CLIENT_CACHE.put(uuid, data);
+    }
+
+    public static void removePlayer(UUID uuid) {
+        SERVER_CACHE.remove(uuid);
+        CLIENT_CACHE.remove(uuid);
     }
 
     public void saveToPlayer(Player player) {
