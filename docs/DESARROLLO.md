@@ -70,6 +70,15 @@ python tools/hair_sheet.py previews
 ```
 `preview_hair.py` monta los mechones igual que el juego (misma rotación ZYX y escalones), así que lo que ves es lo que sale.
 
+## Cabeza del Ozaru
+`src/main/resources/assets/dragonblock/ape_head.json` define la cabeza de simio por grupos de cajas (`fur`, `skin`, `dark`, `fangs`, `eyes`), cada uno teñido aparte. Vista previa:
+```
+blender -b --factory-startup --python tools/preview_ape.py -- src/main/resources/assets/dragonblock/ape_head.json previews
+```
+
+## Escombros de transformación — `client/fx/Debris`
+Trozos del bloque del suelo que flotan alrededor de quien se transforma y salen despedidos al completar (`Debris.blast`, llamado al recibir el `S2CAnimPacket.TRANSFORM`). Son solo visuales: cada cliente los genera a partir del estado sincronizado. Se dibujan en `RenderLevelStageEvent.AFTER_ENTITIES`.
+
 ## Brazos en primera persona
 Forge no tiene un evento para cambiar la animación de los brazos, así que `ClientRenderEvents.onRenderHand` cancela las manos vanilla y dibuja los brazos de nuestro `DBPlayerModel` con `firstPerson = true`. Como un brazo de Minecraft no tiene codo, desde el hombro real nunca entraría en la vista: los hombros se colocan delante de la cámara (`FP_SHOULDER_*`, como la mano vanilla). Las poses de primera persona se ajustaron con `tools/preview_poses.py`, que renderiza la vista desde los ojos con FOV 70.
 

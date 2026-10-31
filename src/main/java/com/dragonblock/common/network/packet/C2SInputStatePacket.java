@@ -13,6 +13,8 @@ public class C2SInputStatePacket {
     public static final int TRANSFORM = 2;
     public static final int GUARD = 4;
     public static final int WAVE = 8;
+    /** A screen opened: drop held techniques instead of firing them. */
+    public static final int SUPPRESS = 16;
 
     private final int flags;
 
@@ -38,7 +40,10 @@ public class C2SInputStatePacket {
             data.setTransformHeld((flags & TRANSFORM) != 0);
             data.setGuarding((flags & GUARD) != 0);
             boolean wave = (flags & WAVE) != 0;
-            if (data.isWaveHeld() && !wave) KiAttacks.releaseWave(player, data);
+            if (data.isWaveHeld() && !wave) {
+                if ((flags & SUPPRESS) != 0) data.setWaveCharge(0f);
+                else KiAttacks.releaseWave(player, data);
+            }
             data.setWaveHeld(wave);
             if (!data.isTransformHeld()) data.setTransformCharge(0f);
             data.saveToPlayer(player);

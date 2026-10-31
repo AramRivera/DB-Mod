@@ -15,6 +15,10 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 
 ---
 
+### Interfaz
+* **Ficha (`V`)**: se abre con animación y muestra una **vista 3D de tu personaje** que sigue el ratón (con pelo, aura y cola). Pestañas con subrayado animado, barras de atributos que crecen al mejorar y tarjetas de formas con color, maestría y una descripción al pasar el ratón.
+* **HUD**: barras que se mueven con suavidad, "fantasma" de daño en la vida, barra de Ki que brilla al cargar, anillo de carga en la mira, título al transformarte y TP ganados flotando.
+
 ### 2. Ficha de Personaje y Atributos (Tecla `V`)
 Al presionar la tecla `V` se accede a la interfaz de estadísticas del personaje estilo Dragon Block:
 
@@ -75,15 +79,15 @@ Cada forma tiene su secuencia de transformación (más larga y violenta cuanto m
 ---
 
 ### Secuencias de transformación
-Mantén `G` y la transformación avanza según el tamaño de la forma (más maestría = más rápida):
-* **Destello** (SSJ): el pelo parpadea entre forma base y dorada antes de asentarse.
-* **Oleada** (SSJ2, G3): el suelo se resquebraja, saltan rocas y aparecen rayos.
-* **Cataclismo** (SSJ3, SSJ4, Bestia...): larga, la cámara tiembla para todos los cercanos y el pelo crece.
-* **Divina** (Dios, Blue, Instinto): calma, partículas que convergen y una columna de luz al cielo.
-* **Gigante** (Ozaru, Gigante Namekiano): el cuerpo crece de forma progresiva.
-* **Tensión** (Kaio-ken): llamarada roja.
+Mantén `G` y vive la transformación por fases:
+1. **Postura**: plantas los pies (casi no te mueves) y tensas los brazos; en primera persona ves tus puños temblar.
+2. **Carga**: el aura crece, un anillo alrededor de la mira se va llenando y la pantalla tiembla más cuanto más poderosa es la forma (para ti y para los que estén cerca).
+3. **Escombros**: trozos reales del suelo se arrancan y **flotan girando** a tu alrededor.
+4. **Implosión**: justo antes del final el aura se contrae un instante.
+5. **Estallido**: explosión de energía, los escombros salen despedidos, onda en el suelo, destello en pantalla y el **nombre de la forma** aparece en grande.
 
-Al completarse: explosión de energía, onda expansiva en el suelo y destello en pantalla.
+Cada forma tiene su estilo: *Destello* (el pelo parpadea), *Oleada* (rayos), *Cataclismo* (larga, terremoto, el pelo crece), *Divina* (serena, columna de luz), *Gigante* (creces poco a poco), *Tensión* (llamarada roja). Con más maestría la carga es más corta.
+
 
 ---
 

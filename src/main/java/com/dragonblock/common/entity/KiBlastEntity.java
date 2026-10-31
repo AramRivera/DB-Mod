@@ -9,7 +9,10 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
@@ -114,7 +117,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         super.onHitEntity(result);
         if (!this.level().isClientSide) {
             if (result.getEntity() instanceof LivingEntity target) {
-                target.hurt(this.damageSources().mobAttack(this.getOwner() instanceof LivingEntity l ? l : null), this.damage);
+                target.hurt(this.damageSources().mobProjectile(this, this.getOwner() instanceof LivingEntity l ? l : null), this.damage);
             }
             explode();
         }
@@ -130,12 +133,16 @@ public class KiBlastEntity extends ThrowableItemProjectile {
 
     private void explode() {
         if (!this.level().isClientSide) {
-            this.level().explode(
-                    this,
-                    this.getX(), this.getY(), this.getZ(),
-                    this.explosionPower,
-                    Level.ExplosionInteraction.MOB
-            );
+            // The shooter is never hurt by their own blast
+            Entity owner = this.getOwner();
+            ExplosionDamageCalculator sparesOwner = new ExplosionDamageCalculator() {
+                @Override
+                public boolean shouldDamageEntity(Explosion explosion, Entity entity) {
+                    return entity != owner && super.shouldDamageEntity(explosion, entity);
+                }
+            };
+            this.level().explode(this, null, sparesOwner, this.getX(), this.getY(), this.getZ(),
+                    this.explosionPower, false, Level.ExplosionInteraction.MOB);
             this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
                     ModSounds.KI_EXPLODE.get(), SoundSource.PLAYERS, 1.5f, 1.0f);
             this.discard();

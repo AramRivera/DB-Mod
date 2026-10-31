@@ -102,9 +102,12 @@ public final class DBModels {
     }
 
     private static JsonObject readHair(HairStyle style) {
-        String path = "/assets/" + DragonBlockMod.MODID + "/hair/" + style.name().toLowerCase() + ".json";
+        return readJson("/assets/" + DragonBlockMod.MODID + "/hair/" + style.name().toLowerCase() + ".json");
+    }
+
+    private static JsonObject readJson(String path) {
         try (InputStream in = DBModels.class.getResourceAsStream(path)) {
-            if (in == null) throw new IllegalStateException("Missing hair file " + path);
+            if (in == null) throw new IllegalStateException("Missing model file " + path);
             return JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
@@ -203,25 +206,24 @@ public final class DBModels {
     }
 
     /**
-     * Giant-ape head over the player's head: children are drawn with different tints by name
-     * ("fur" brow/ears/cheeks, "skin" muzzle, "fangs").
+     * Giant-ape head over the player's head, read from assets/dragonblock/ape_head.json (preview it with
+     * tools/preview_ape.py). Each group becomes a child part so the renderer can tint it separately.
      */
     private static LayerDefinition apeHead() {
+        JsonObject json = readJson("/assets/" + DragonBlockMod.MODID + "/ape_head.json");
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
-        root.addOrReplaceChild("fur", CubeListBuilder.create().texOffs(0, 0)
-                .addBox(-5.0f, -9.2f, -5.0f, 10f, 3.0f, 10f)          // shaggy crown
-                .addBox(-5.2f, -6.6f, -5.4f, 10.4f, 1.6f, 1.6f)       // heavy brow ridge
-                .addBox(-5.4f, -6.0f, -4.6f, 1.4f, 5.0f, 8.8f)        // cheek fur
-                .addBox(4.0f, -6.0f, -4.6f, 1.4f, 5.0f, 8.8f)
-                .addBox(-7.2f, -7.0f, -1.0f, 2.2f, 3.0f, 1.2f)        // ears
-                .addBox(5.0f, -7.0f, -1.0f, 2.2f, 3.0f, 1.2f), PartPose.ZERO);
-        root.addOrReplaceChild("skin", CubeListBuilder.create().texOffs(0, 14)
-                .addBox(-3.4f, -4.6f, -7.6f, 6.8f, 4.4f, 3.6f)        // muzzle
-                .addBox(-1.8f, -5.2f, -7.9f, 3.6f, 1.0f, 1.2f), PartPose.ZERO); // nose bridge
-        root.addOrReplaceChild("fangs", CubeListBuilder.create().texOffs(0, 22)
-                .addBox(-2.6f, -0.4f, -7.4f, 0.9f, 1.4f, 0.9f)
-                .addBox(1.7f, -0.4f, -7.4f, 0.9f, 1.4f, 0.9f), PartPose.ZERO);
+        int v = 0;
+        for (String group : new String[]{"fur", "skin", "dark", "fangs", "eyes"}) {
+            CubeListBuilder cubes = CubeListBuilder.create().texOffs(0, v);
+            for (JsonElement e : json.getAsJsonArray(group)) {
+                JsonArray b = e.getAsJsonArray();
+                cubes.addBox(b.get(0).getAsFloat(), b.get(1).getAsFloat(), b.get(2).getAsFloat(),
+                        b.get(3).getAsFloat(), b.get(4).getAsFloat(), b.get(5).getAsFloat());
+            }
+            root.addOrReplaceChild(group, cubes, PartPose.ZERO);
+            v += 6;
+        }
         return LayerDefinition.create(mesh, 64, 32);
     }
 

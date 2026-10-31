@@ -34,12 +34,14 @@ public class ClientRenderEvents {
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         AnimState.clear();
         TILTED.clear();
+        PlayerDBCData.clearClient();
     }
 
     // ------------------------------------------------------------------ flight tilt (third person)
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
+        if (event.isCanceled()) return;
         Player player = event.getEntity();
         if (AnimState.pose(player, event.getPartialTick()) != AnimState.Pose.FLY) return;
 
@@ -75,8 +77,12 @@ public class ClientRenderEvents {
         if (walk <= 0) return;
 
         double withOurs = speed.getValue();
-        double factor = 1 + DragonBlockEvents.dexSpeedBonus(data);
-        if (data.isGuarding()) factor *= 0.5;
+        double factor = 1;
+        for (String id : new String[]{"dex_speed_bonus", "guard_slow"}) {
+            var mod = speed.getModifier(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, id));
+            if (mod != null) factor *= 1 + mod.amount();
+        }
+        if (factor <= 0.01) return;
         double without = withOurs / factor;
         float correction = (float) (((without / walk) + 1) / ((withOurs / walk) + 1));
         event.setNewFovModifier(event.getNewFovModifier() * correction);

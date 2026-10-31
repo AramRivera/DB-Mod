@@ -48,7 +48,11 @@ public final class TransformFx {
     /** Target aura power from the synced state. */
     private static float targetPower(PlayerDBCData data) {
         Transformation form = data.getTransformation();
-        if (data.isTransformHeld()) return 1.0f + 0.35f * data.getTransformCharge();
+        if (data.isTransformHeld()) {
+            float c = data.getTransformCharge();
+            // The aura folds in for an instant right before the transformation bursts out
+            return c > 0.9f ? 0.45f : 1.0f + 0.35f * c;
+        }
         if (data.isChargingKi() || data.isWaveHeld()) return 1.0f;
         if (form != Transformation.BASE && form.getAuraStyle() != Transformation.AuraStyle.CALM) return 0.6f;
         return 0f;
@@ -63,6 +67,7 @@ public final class TransformFx {
             return;
         }
         shake *= 0.85f;
+        Debris.tick();
 
         for (Player player : mc.level.players()) {
             PlayerDBCData data = PlayerDBCData.get(player);
@@ -75,15 +80,17 @@ public final class TransformFx {
             double dist = player.distanceTo(mc.player);
             spawnParticles(mc.level, player, data, dist);
 
-            // Big power-ups shake the camera of everyone nearby
-            if (data.isTransformHeld() && dist < 32) {
-                Transformation.Sequence seq = data.getSelectedForm().getSequence();
-                float base = switch (seq) {
-                    case CATACLYSM -> 0.9f;
-                    case GIANT, SURGE -> 0.45f;
-                    default -> 0.12f;
-                };
-                shake = Math.max(shake, base * data.getTransformCharge() * (float) (1 - dist / 32));
+            // Powering up: the ground tears loose and the camera of everyone nearby shakes, harder for stronger forms
+            if (data.isTransformHeld() && dist < 48) {
+                Transformation goal = data.getSelectedForm();
+                float c = data.getTransformCharge();
+                float power = Mth.clamp(goal.getStatMultiplier() / 3f, 0.35f, 2.5f);
+                if (goal.getSequence() == Transformation.Sequence.CATACLYSM) power *= 1.4f;
+                if (goal.getSequence() == Transformation.Sequence.DIVINE) power *= 0.4f; // divine forms are serene
+                if (player.getRandom().nextFloat() < (0.25f + c) * power) {
+                    Debris.spawn(player, 1 + (int) (power * c), 2.0f + power, 1.2f + 1.6f * c * power);
+                }
+                if (dist < 32) shake = Math.max(shake, (0.08f + 0.35f * power) * c * (float) (1 - dist / 32));
             }
             float burst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, BURST_TICKS, 0);
             if (burst >= 0 && burst < 0.4f && dist < 32) {

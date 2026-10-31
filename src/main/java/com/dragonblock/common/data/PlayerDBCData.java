@@ -52,6 +52,8 @@ public class PlayerDBCData {
     public float rage = 0f;
     /** Scale currently applied; eases toward the form's scale so giants visibly grow. */
     public float appliedScale = 1f;
+    public boolean guardApplied = false;
+    public boolean rootApplied = false;
 
     public int blastCooldown = 0;
     public int dashCooldown = 0;
@@ -79,6 +81,11 @@ public class PlayerDBCData {
 
     public static void setClientData(UUID uuid, PlayerDBCData data) {
         CLIENT_CACHE.put(uuid, data);
+    }
+
+    /** Client logout: forget every other player's data. */
+    public static void clearClient() {
+        CLIENT_CACHE.clear();
     }
 
     public static void removePlayer(UUID uuid) {

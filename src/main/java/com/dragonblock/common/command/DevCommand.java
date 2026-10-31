@@ -110,7 +110,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.addTrainingPoints(amount);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aSe añadieron §e" + String.format("%,d", amount) + " TP§a. Total: §e" + String.format("%,d", data.getTrainingPoints()) + " TP"), false);
         return 1;
@@ -123,7 +123,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setTrainingPoints(amount);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aTP establecidos a: §e" + String.format("%,d", amount) + " TP"), false);
         return 1;
@@ -136,7 +136,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setCurrentKi(data.getMaxKi());
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §b¡Ki restaurado al máximo! (" + String.format("%.0f", data.getMaxKi()) + " Ki)"), false);
         return 1;
@@ -149,7 +149,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setCurrentKi(amount);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §bKi establecido a: " + amount), false);
         return 1;
@@ -183,7 +183,7 @@ public class DevCommand {
 
         data.setCurrentKi(Math.min(data.getCurrentKi(), data.getMaxKi()));
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aAtributo §e" + name + " §aestablecido a §e" + value), false);
         return 1;
@@ -201,7 +201,7 @@ public class DevCommand {
             data.setTransformation(Transformation.BASE);
             data.setSelectedForm(Transformation.BASE);
             data.saveToPlayer(player);
-            ModMessages.syncToPlayer(player);
+            ModMessages.syncToTracking(player);
 
             source.sendSuccess(() -> Component.literal("§6[DEV] §aRaza cambiada a: §e" + race.getDisplayName()), false);
             return 1;
@@ -228,7 +228,7 @@ public class DevCommand {
         data.setSelectedForm(target);
         data.forcedForm = true;
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aTransformación cambiada a: §e" + target.getDisplayName()), false);
         return 1;
@@ -240,7 +240,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         for (Transformation form : Transformation.values()) data.setMastery(form, value);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
         source.sendSuccess(() -> Component.literal("[DEV] Maestría de todas las formas: " + value + "%"), false);
         return 1;
     }
@@ -258,7 +258,7 @@ public class DevCommand {
         data.setTrainingPoints(50000);
         data.setCurrentKi(data.getMaxKi());
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §e¡Modo Dios activado! Stats a 100, 50,000 TP y Ki al máximo."), false);
         return 1;
@@ -284,7 +284,7 @@ public class DevCommand {
         data.setFlying(false);
         data.setChargingKi(false);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §eEstadísticas y datos restablecidos a valores iniciales."), false);
         return 1;

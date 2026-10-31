@@ -189,12 +189,11 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
     private void renderEyes(PoseStack pose, MultiBufferSource buffers, PlayerModel<AbstractClientPlayer> body,
                             Transformation form) {
         int eye = form.getEyeColor();
-        if (eye == 0 || !body.head.visible) return;
+        if (eye == 0 || !body.head.visible || form.isOozaru()) return; // the ape head has its own eyes
         pose.pushPose();
         body.head.translateAndRotate(pose);
         VertexConsumer vc = buffers.getBuffer(RenderType.entityTranslucentEmissive(FEATURE_TEX));
-        float z = form.isOozaru() ? -7.65f : -4.02f;
-        float y = form.isOozaru() ? -5.6f : -4f;
+        float z = -4.02f, y = -4f;
         faceRect(vc, pose, -2.6f, y, -1.4f, y + 1f, z, 0xFF000000 | eye);
         faceRect(vc, pose, 1.4f, y, 2.6f, y + 1f, z, 0xFF000000 | eye);
         if (form == Transformation.SUPER_SAIYAN_4) {
@@ -228,7 +227,10 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         VertexConsumer skin = buffers.getBuffer(RenderType.entityCutoutNoCull(FEATURE_TEX));
         apeHead.getChild("skin").render(pose, skin, light, OverlayTexture.NO_OVERLAY,
                 form == Transformation.GOLDEN_OOZARU ? 0xFFE8C890 : 0xFFC89A70);
+        apeHead.getChild("dark").render(pose, skin, light, OverlayTexture.NO_OVERLAY, 0xFF2A1A12);
         apeHead.getChild("fangs").render(pose, skin, light, OverlayTexture.NO_OVERLAY, 0xFFF4F0E6);
+        apeHead.getChild("eyes").render(pose, buffers.getBuffer(RenderType.entityTranslucentEmissive(FEATURE_TEX)),
+                FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0xFF000000 | form.getEyeColor());
         pose.popPose();
     }
 

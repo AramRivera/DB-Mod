@@ -29,6 +29,10 @@ public final class AnimState {
         if (Minecraft.getInstance().level == null) return;
         ONE_SHOTS.computeIfAbsent(entityId, id -> new long[Anim.values().length])[anim.ordinal()] =
                 Minecraft.getInstance().level.getGameTime();
+        if (anim == Anim.TRANSFORM && Minecraft.getInstance().level.getEntity(entityId) instanceof Player p) {
+            float power = Mth.clamp(PlayerDBCData.get(p).getTransformation().getStatMultiplier() / 3f, 0.5f, 2.5f);
+            com.dragonblock.client.fx.Debris.blast(p, power);
+        }
     }
 
     public static void clear() {

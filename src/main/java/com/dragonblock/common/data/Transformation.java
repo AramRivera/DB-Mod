@@ -208,6 +208,41 @@ public enum Transformation {
         return getSequence() == Sequence.CATACLYSM ? base * 1.4f : getSequence() == Sequence.STRAIN ? base * 0.5f : base;
     }
 
+    /** One-line description of what makes the form play differently (shown in the forms tab). */
+    public String getEssence() {
+        return switch (this) {
+            case BASE -> "Tu estado natural. Sin consumo de Ki.";
+            case KAIOKEN, KAIOKEN_X10, KAIOKEN_X20 -> "Multiplica tu poder a costa de tu cuerpo: drena vida.";
+            case POTENTIAL_UNLEASHED -> "Todo tu potencial sin transformación aparente. Consumo muy bajo.";
+            case ULTRA_INSTINCT_SIGN -> "El cuerpo se mueve solo: 30% de esquivar cualquier golpe.";
+            case ULTRA_INSTINCT -> "Esquiva el 55% de los golpes sin pensar.";
+            case SUPER_SAIYAN -> "El primer despertar dorado. Equilibrado.";
+            case SSJ_GRADE_2 -> "Más músculo: recibes un 10% menos de daño.";
+            case SSJ_GRADE_3 -> "Músculo extremo: +25% golpe, -25% daño recibido, pero eres lento.";
+            case SSJ_FULL_POWER -> "Dominio total: sin consumo, regenera Ki, técnicas más baratas.";
+            case SUPER_SAIYAN_2 -> "Rayos constantes y +15% de daño de Ki.";
+            case SUPER_SAIYAN_3 -> "El pelo crece hasta la cintura. +15% golpe, consumo muy alto.";
+            case OOZARU -> "Gigante x4 bajo la luna llena. Golpe x1,5, no puede volar.";
+            case GOLDEN_OOZARU -> "Gigante dorado. Ráfagas x1,6 y más resistencia.";
+            case SUPER_SAIYAN_4 -> "Pelaje rojo y ojos dorados. Regenera el cuerpo.";
+            case SUPER_SAIYAN_GOD -> "Energía divina serena: cura poco a poco, técnicas más baratas.";
+            case SUPER_SAIYAN_BLUE -> "Control perfecto del Ki: técnicas un 30% más baratas.";
+            case SSJ_BLUE_EVOLVED -> "Blue llevado al límite: técnicas baratas y +15% daño de Ki.";
+            case ULTRA_EGO -> "Se fortalece cuanto más daño recibe.";
+            case BEAST -> "Furia latente: 20% de golpes críticos x1,6.";
+            case ARCOSIAN_SECOND, ARCOSIAN_THIRD -> "Libera parte del poder contenido.";
+            case ARCOSIAN_FINAL -> "Tu forma verdadera: sin consumo y regenera Ki.";
+            case ARCOSIAN_FULL_POWER -> "Todo el poder de la forma final, con músculo extra.";
+            case ARCOSIAN_GOLDEN -> "Brillo dorado, poder enorme y consumo alto sin maestría.";
+            case ARCOSIAN_BLACK -> "La cima arcosiana. Rayos violeta.";
+            case NAMEKIAN_GIANT -> "Creces x3: golpe x1,5 y más resistencia, sin vuelo.";
+            case NAMEKIAN_SYNC -> "Fusión de poder namekiano.";
+            case NAMEKIAN_ORANGE -> "Despertar naranja: recibes un 25% menos de daño.";
+            case MAJIN_SUPER -> "Majin endurecido.";
+            case MAJIN_PURE -> "Caos puro: regenera el cuerpo rápidamente.";
+        };
+    }
+
     /** Body scale for size-changing forms. */
     public float getScale() {
         return switch (this) {

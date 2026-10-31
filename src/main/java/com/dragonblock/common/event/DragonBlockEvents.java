@@ -245,6 +245,7 @@ public class DragonBlockEvents {
         data.saveToPlayer(player);
 
         if (player.tickCount % 20 == 0) updatePlayerAttributes(player, data);
+        if (data.isGuarding() != data.guardApplied || data.isTransformHeld() != data.rootApplied) applyStanceSlow(player, data);
         tickScale(player, data);
 
         boolean active = data.isChargingKi() || data.isTransformHeld() || data.isWaveHeld();
@@ -257,6 +258,7 @@ public class DragonBlockEvents {
             stopFlying(player, data, "Tu cuerpo es demasiado grande para volar.");
             return;
         }
+        if (!player.getAbilities().flying) return; // hovering off: walking or falling costs nothing
         float cost = data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f;
         if (player.isSprinting()) cost *= 2.5f;
 
@@ -305,8 +307,19 @@ public class DragonBlockEvents {
         setModifier(player, Attributes.MOVEMENT_SPEED, DEX_SPEED_MODIFIER,
                 dexSpeedBonus(data), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 
-        setModifier(player, Attributes.MOVEMENT_SPEED, GUARD_SLOW_MODIFIER,
-                data.isGuarding() ? -0.5 : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        applyStanceSlow(player, data);
+    }
+
+    /** Guarding halves speed; powering up roots you in place (you plant your feet to transform). */
+    private static void applyStanceSlow(Player player, PlayerDBCData data) {
+        data.guardApplied = data.isGuarding();
+        data.rootApplied = data.isTransformHeld();
+        setModifier(player, Attributes.MOVEMENT_SPEED, GUARD_SLOW_MODIFIER, stanceSlow(data),
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+    }
+
+    public static double stanceSlow(PlayerDBCData data) {
+        return data.isTransformHeld() ? -0.85 : data.isGuarding() ? -0.5 : 0;
     }
 
     /** Up to +35% walk speed. The FOV effect is cancelled client-side so it never looks like a speed potion. */

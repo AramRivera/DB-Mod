@@ -65,7 +65,8 @@ public class ClientEvents {
             if (ModKeyBindings.GUARD_KEY.isDown()) flags |= C2SInputStatePacket.GUARD;
             if (ModKeyBindings.KI_WAVE_KEY.isDown()) flags |= C2SInputStatePacket.WAVE;
         }
-        if (flags != lastInputFlags) {
+        if (mc.screen != null && (lastInputFlags & C2SInputStatePacket.WAVE) != 0) flags |= C2SInputStatePacket.SUPPRESS;
+        if ((flags & ~C2SInputStatePacket.SUPPRESS) != (lastInputFlags & ~C2SInputStatePacket.SUPPRESS)) {
             lastInputFlags = flags;
             ModMessages.sendToServer(new C2SInputStatePacket(flags));
         }
