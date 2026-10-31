@@ -1,5 +1,8 @@
 package com.dragonblock;
 
+import com.dragonblock.client.ClientConfig;
+import net.minecraftforge.fml.config.ModConfig;
+
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.registry.ModCreativeTabs;
 import com.dragonblock.common.registry.ModEntities;
@@ -26,6 +29,8 @@ public class DragonBlockMod {
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
+
+        context.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 
         // Lifecycle listeners
         modEventBus.addListener(this::commonSetup);

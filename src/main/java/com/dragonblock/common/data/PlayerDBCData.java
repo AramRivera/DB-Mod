@@ -48,6 +48,10 @@ public class PlayerDBCData {
     /** Vanilla health we last wrote; any other difference came from vanilla healing or damage. */
     public float lastMirroredHealth = -1f;
     public float lastMaxBody = -1f;
+    /** Ultra Ego rage 0..1, see FormEffects. */
+    public float rage = 0f;
+    /** Scale currently applied; eases toward the form's scale so giants visibly grow. */
+    public float appliedScale = 1f;
 
     public int blastCooldown = 0;
     public int dashCooldown = 0;
@@ -265,9 +269,9 @@ public class PlayerDBCData {
         return transformation.getKiDrainPerSecond() * (1f - 0.6f * getMastery(transformation) / 100f);
     }
 
-    /** Seconds of holding the transform key: 3s untrained, 0.5s mastered. */
+    /** Seconds of holding the transform key, by form size and mastery. */
     public float getTransformTimeSeconds(Transformation target) {
-        return 3.0f - 2.5f * getMastery(target) / 100f;
+        return target.getBaseTransformSeconds() * (1f - 0.75f * getMastery(target) / 100f);
     }
 
     // ---------------------------------------------------------------- getters / setters

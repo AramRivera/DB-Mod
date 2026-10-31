@@ -10,6 +10,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -26,6 +36,7 @@ public final class DBModels {
     public static final ModelLayerLocation HORNS = layer("horns");
     public static final ModelLayerLocation TENDRIL = layer("tendril");
     public static final ModelLayerLocation FUR = layer("fur");
+    public static final ModelLayerLocation APE_HEAD = layer("ape_head");
 
     /** Segments in a tail chain, named seg0..segN-1, each a child of the previous. */
     public static final int TAIL_SEGMENTS = 7;
@@ -51,117 +62,84 @@ public final class DBModels {
         event.registerLayerDefinition(ANTENNAE, DBModels::antennae);
         event.registerLayerDefinition(HORNS, DBModels::horns);
         event.registerLayerDefinition(TENDRIL, DBModels::tendril);
+        event.registerLayerDefinition(APE_HEAD, DBModels::apeHead);
         event.registerLayerDefinition(FUR, () -> LayerDefinition.create(HumanoidModel.createMesh(new CubeDeformation(0.45f), 0), 64, 64));
     }
 
     // ------------------------------------------------------------------ hair
 
+    /** Four tapering steps (fraction of length, fraction of width); the outer two follow the bend. */
+    private static final float[][] TIERS = {{0.34f, 1.0f}, {0.26f, 0.76f}, {0.22f, 0.52f}, {0.18f, 0.28f}};
+
     /**
-     * Hair = a cap hugging the skull plus chunky stepped spikes. Spikes are laid out by hand per style
-     * (mirrored left/right) so each reads as one hairstyle. Angles: {@code back} > 0 sweeps a spike toward
-     * the back of the head (PI/2 = straight back, PI = straight down), {@code side} > 0 tilts it outward.
+     * Hair is data-driven: assets/dragonblock/hair/<style>.json holds a volume block ("mass") and spikes.
+     * The layout must match tools/preview_hair.py, which renders the same files in Blender for review.
      */
     private static LayerDefinition hair(HairStyle style) {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot().addOrReplaceChild("root", CubeListBuilder.create(), PartPose.ZERO);
-        root.addOrReplaceChild("cap", CubeListBuilder.create()
+        CubeListBuilder cap = CubeListBuilder.create()
                 .texOffs(0, 0).addBox(-4.4f, -8.8f, -4.4f, 8.8f, 3.4f, 8.8f)
                 .texOffs(0, 12).addBox(-4.4f, -6.2f, 0.6f, 8.8f, 5.4f, 3.8f)
                 .texOffs(26, 12).addBox(-4.45f, -6.0f, -3.6f, 0.9f, 2.6f, 4.4f)
-                .texOffs(26, 12).addBox(3.55f, -6.0f, -3.6f, 0.9f, 2.6f, 4.4f), PartPose.ZERO);
+                .texOffs(26, 12).addBox(3.55f, -6.0f, -3.6f, 0.9f, 2.6f, 4.4f);
 
-        Spikes h = new Spikes(root);
-        switch (style) {
-            case FLARE -> { // upswept golden-tier style
-                h.add(0f, -8.4f, -1.6f, 0.35f, 0f, 3.8f, 10f);
-                h.add(0f, -8.4f, 1.6f, 0.75f, 0f, 3.8f, 10.5f);
-                h.mirror(2.5f, -8.2f, -1.0f, 0.3f, 0.35f, 3.4f, 9f);
-                h.mirror(2.5f, -8.0f, 2.0f, 0.85f, 0.3f, 3.4f, 9.5f);
-                h.mirror(3.9f, -6.6f, 0.2f, 0.25f, 1.0f, 3.0f, 7f);
-                h.add(0f, -4.2f, 3.8f, 1.95f, 0f, 3.4f, 6.5f);
-                h.mirror(2.6f, -4.4f, 3.6f, 1.85f, 0.35f, 3.0f, 6f);
-                bangs(h, 3, 4.5f);
-            }
-            case RIDGE -> { // taller, sharper, more vertical
-                h.add(0f, -8.4f, -1.2f, 0.12f, 0f, 3.4f, 13f);
-                h.add(0f, -8.4f, 1.8f, 0.45f, 0f, 3.4f, 12.5f);
-                h.mirror(2.4f, -8.2f, -0.8f, 0.1f, 0.25f, 3.0f, 11.5f);
-                h.mirror(2.5f, -8.0f, 2.2f, 0.55f, 0.22f, 3.0f, 11.5f);
-                h.mirror(3.9f, -6.6f, 0.0f, 0.15f, 0.8f, 2.8f, 8.5f);
-                h.add(0f, -4.0f, 3.8f, 1.8f, 0f, 3.2f, 7f);
-                h.mirror(2.6f, -4.2f, 3.6f, 1.7f, 0.3f, 2.8f, 6.5f);
-                h.add(-1.2f, -7.8f, -4.0f, Mth.PI - 0.35f, -0.15f, 2.4f, 6.5f); // single loose bang
-            }
-            case MANE -> { // waist-length mane
-                h.add(0f, -8.4f, -1.0f, 0.5f, 0f, 3.6f, 7f);
-                h.mirror(2.4f, -8.2f, -0.6f, 0.45f, 0.4f, 3.2f, 6.5f);
-                h.mirror(1.2f, -5.2f, 3.9f, Mth.PI - 0.22f, 0.06f, 4.2f, 30f);
-                h.mirror(3.2f, -5.0f, 3.6f, Mth.PI - 0.25f, 0.16f, 3.8f, 26f);
-                h.add(0f, -7.4f, 3.4f, Mth.PI - 0.3f, 0f, 4.2f, 28f);
-                h.mirror(4.2f, -4.2f, 1.2f, Mth.PI - 0.18f, 0.22f, 3.2f, 18f);
-                bangs(h, 2, 5f);
-            }
-            case WILD -> { // untamed dark style with a long back
-                for (int i = 0; i < 5; i++) {
-                    float a = -0.9f + i * 0.45f;
-                    h.add(Mth.sin(a) * 3f, -8.3f, -1.5f + Mth.cos(a) * 1.5f, 0.45f + Math.abs(a) * 0.3f, a * 0.9f, 3.4f, 8f + (i % 2) * 1.5f);
-                }
-                h.mirror(3.9f, -6.4f, 0.8f, 0.6f, 1.15f, 3.2f, 8f);
-                h.add(0f, -5.0f, 3.9f, 2.55f, 0f, 3.8f, 15f);
-                h.mirror(2.2f, -5.0f, 3.8f, 2.45f, 0.25f, 3.6f, 13.5f);
-                h.mirror(3.8f, -4.0f, 3.0f, 2.35f, 0.45f, 3.0f, 11f);
-                bangs(h, 3, 4f);
-            }
-            case SLEEK -> { // slicked back, flatter spikes
-                h.add(0f, -8.6f, -2.2f, 1.25f, 0f, 3.6f, 8f);
-                h.mirror(2.3f, -8.4f, -2.0f, 1.2f, 0.2f, 3.2f, 7.5f);
-                h.add(0f, -8.0f, 1.0f, 1.45f, 0f, 3.6f, 7.5f);
-                h.mirror(2.4f, -7.8f, 1.2f, 1.4f, 0.25f, 3.2f, 7f);
-                h.mirror(3.9f, -6.4f, 0.4f, 1.0f, 0.55f, 2.8f, 5.5f);
-                bangs(h, 2, 3.5f);
-            }
-            case SPIRE -> { // tall central crest
-                h.add(0f, -8.6f, 0f, 0.05f, 0f, 4.2f, 17f);
-                h.mirror(2.2f, -8.4f, -0.4f, 0.15f, 0.25f, 3.4f, 12.5f);
-                h.mirror(2.4f, -8.2f, 2.2f, 0.55f, 0.3f, 3.2f, 10f);
-                h.mirror(3.9f, -6.6f, 0.2f, 0.2f, 0.9f, 2.8f, 7.5f);
-                h.add(0f, -4.2f, 3.8f, 1.9f, 0f, 3.4f, 7f);
-                bangs(h, 1, 5f);
-            }
-            default -> {}
+        JsonObject json = readHair(style);
+        if (json.has("mass")) {
+            JsonArray m = json.getAsJsonArray("mass");
+            cap.texOffs(0, 40).addBox(m.get(0).getAsFloat(), m.get(1).getAsFloat(), m.get(2).getAsFloat(),
+                    m.get(3).getAsFloat(), m.get(4).getAsFloat(), m.get(5).getAsFloat());
+        }
+        root.addOrReplaceChild("cap", cap, PartPose.ZERO);
+
+        int index = 0;
+        for (JsonElement e : json.getAsJsonArray("spikes")) {
+            JsonObject sp = e.getAsJsonObject();
+            spike(root, "spike" + index++, sp, false);
+            if (sp.has("mirror") && sp.get("mirror").getAsBoolean()) spike(root, "spike" + index++, sp, true);
         }
         return LayerDefinition.create(mesh, 64, 64);
     }
 
-    /** Strands falling over the forehead. */
-    private static void bangs(Spikes h, int count, float length) {
-        float[][] layouts = {{0f}, {-1.6f, 1.4f}, {-2.0f, 0.1f, 1.9f}};
-        for (float x : layouts[count - 1]) {
-            h.add(x, -7.8f, -4.0f, Mth.PI - 0.4f, x * -0.06f, 2.6f, length - Math.abs(x) * 0.3f);
+    private static JsonObject readHair(HairStyle style) {
+        String path = "/assets/" + DragonBlockMod.MODID + "/hair/" + style.name().toLowerCase() + ".json";
+        try (InputStream in = DBModels.class.getResourceAsStream(path)) {
+            if (in == null) throw new IllegalStateException("Missing hair file " + path);
+            return JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
         }
     }
 
-    /** Builds three-step tapered spikes (root, middle, tip) pointing along local -Y. */
-    private static final class Spikes {
-        private final PartDefinition root;
-        private int index;
-
-        Spikes(PartDefinition root) { this.root = root; }
-
-        void mirror(float x, float y, float z, float back, float side, float width, float length) {
-            add(x, y, z, back, side, width, length);
-            add(-x, y, z, back, -side, width, length);
+    /** One spike: a root part with the two inner steps, and a bent child with the two outer steps. */
+    private static void spike(PartDefinition root, String name, JsonObject sp, boolean mirror) {
+        JsonArray p = sp.getAsJsonArray("p");
+        float x = p.get(0).getAsFloat(), y = p.get(1).getAsFloat(), z = p.get(2).getAsFloat();
+        float side = sp.get("side").getAsFloat();
+        if (mirror) {
+            x = -x;
+            side = -side;
         }
+        float w = sp.get("w").getAsFloat();
+        float d = sp.has("d") ? sp.get("d").getAsFloat() : w;
+        float len = sp.get("len").getAsFloat();
+        float bend = sp.has("bend") ? sp.get("bend").getAsFloat() : 0f;
 
-        void add(float x, float y, float z, float back, float side, float width, float length) {
-            float l1 = length * 0.45f, l2 = length * 0.33f, l3 = length - l1 - l2;
-            float w2 = width * 0.66f, w3 = width * 0.34f;
-            root.addOrReplaceChild("spike" + index++, CubeListBuilder.create()
-                            .texOffs(0, 24).addBox(-width / 2, -l1, -width / 2, width, l1, width)
-                            .texOffs(18, 24).addBox(-w2 / 2, -l1 - l2 - 0.2f, -w2 / 2, w2, l2 + 0.4f, w2)
-                            .texOffs(32, 24).addBox(-w3 / 2, -length, -w3 / 2, w3, l3 + 0.3f, w3),
-                    PartPose.offsetAndRotation(x, y, z, -back, 0f, side));
+        CubeListBuilder inner = CubeListBuilder.create().texOffs(0, 24);
+        CubeListBuilder outer = CubeListBuilder.create().texOffs(28, 24);
+        float start = 0f, innerLength = 0f;
+        for (int i = 0; i < TIERS.length; i++) {
+            if (i == 2) {
+                innerLength = start;
+                start = 0f;
+            }
+            float l = len * TIERS[i][0], tw = w * TIERS[i][1], td = d * TIERS[i][1];
+            (i < 2 ? inner : outer).addBox(-tw / 2, -start - l - 0.15f, -td / 2, tw, l + 0.3f, td);
+            start += l;
         }
+        PartDefinition base = root.addOrReplaceChild(name, inner,
+                PartPose.offsetAndRotation(x, y, z, -sp.get("back").getAsFloat() * Mth.DEG_TO_RAD, 0f, side * Mth.DEG_TO_RAD));
+        base.addOrReplaceChild("tip", outer, PartPose.offsetAndRotation(0f, -innerLength, 0f, -bend * Mth.DEG_TO_RAD, 0f, 0f));
     }
 
     // ------------------------------------------------------------------ body features
@@ -222,6 +200,29 @@ public final class DBModels {
                     PartPose.offsetAndRotation(0f, -3.1f, 0f, -0.45f, 0f, 0f));
         }
         return LayerDefinition.create(mesh, 32, 32);
+    }
+
+    /**
+     * Giant-ape head over the player's head: children are drawn with different tints by name
+     * ("fur" brow/ears/cheeks, "skin" muzzle, "fangs").
+     */
+    private static LayerDefinition apeHead() {
+        MeshDefinition mesh = new MeshDefinition();
+        PartDefinition root = mesh.getRoot();
+        root.addOrReplaceChild("fur", CubeListBuilder.create().texOffs(0, 0)
+                .addBox(-5.0f, -9.2f, -5.0f, 10f, 3.0f, 10f)          // shaggy crown
+                .addBox(-5.2f, -6.6f, -5.4f, 10.4f, 1.6f, 1.6f)       // heavy brow ridge
+                .addBox(-5.4f, -6.0f, -4.6f, 1.4f, 5.0f, 8.8f)        // cheek fur
+                .addBox(4.0f, -6.0f, -4.6f, 1.4f, 5.0f, 8.8f)
+                .addBox(-7.2f, -7.0f, -1.0f, 2.2f, 3.0f, 1.2f)        // ears
+                .addBox(5.0f, -7.0f, -1.0f, 2.2f, 3.0f, 1.2f), PartPose.ZERO);
+        root.addOrReplaceChild("skin", CubeListBuilder.create().texOffs(0, 14)
+                .addBox(-3.4f, -4.6f, -7.6f, 6.8f, 4.4f, 3.6f)        // muzzle
+                .addBox(-1.8f, -5.2f, -7.9f, 3.6f, 1.0f, 1.2f), PartPose.ZERO); // nose bridge
+        root.addOrReplaceChild("fangs", CubeListBuilder.create().texOffs(0, 22)
+                .addBox(-2.6f, -0.4f, -7.4f, 0.9f, 1.4f, 0.9f)
+                .addBox(1.7f, -0.4f, -7.4f, 0.9f, 1.4f, 0.9f), PartPose.ZERO);
+        return LayerDefinition.create(mesh, 64, 32);
     }
 
     private static LayerDefinition tendril() {

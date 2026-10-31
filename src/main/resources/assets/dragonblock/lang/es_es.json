@@ -22,5 +22,6 @@
   "key.dragonblock.revert": "Volver a forma base",
   "key.dragonblock.ki_wave": "Onda de ki (mantener)",
   "key.dragonblock.dash": "Impulso",
-  "key.dragonblock.guard": "Guardia (mantener)"
+  "key.dragonblock.guard": "Guardia (mantener)",
+  "key.dragonblock.toggle_aura": "Mostrar/ocultar aura"
 }

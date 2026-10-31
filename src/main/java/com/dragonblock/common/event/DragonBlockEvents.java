@@ -2,6 +2,7 @@ package com.dragonblock.common.event;
 
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.common.combat.FormController;
+import com.dragonblock.common.combat.FormEffects;
 import com.dragonblock.common.combat.KiAttacks;
 import com.dragonblock.common.command.DevCommand;
 import com.dragonblock.common.data.PlayerDBCData;
@@ -112,7 +113,7 @@ public class DragonBlockEvents {
         if (event.getSource().getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
             if (event.getSource().getDirectEntity() == player) {
-                event.setAmount(event.getAmount() + data.getEffectiveStr() * 0.4f);
+                event.setAmount((event.getAmount() + data.getEffectiveStr() * 0.4f) * FormEffects.meleeMultiplier(player, data));
             }
 
             float tp = Math.max(1f, event.getAmount() * 0.4f + data.getMnd() / 5.0f);
@@ -132,10 +133,16 @@ public class DragonBlockEvents {
                 event.setCanceled(true);
                 return;
             }
+            var attacker = event.getSource().getEntity();
+            if (FormEffects.tryDodge(player, data, attacker == null ? null : attacker.position())) {
+                event.setCanceled(true);
+                return;
+            }
 
             float amount = event.getAmount();
             amount *= 1f - Math.min(0.6f, data.getEffectiveDex() * 0.012f);
             if (data.getRace() == Race.MAJIN) amount *= 0.85f;
+            amount *= FormEffects.incomingMultiplier(data);
 
             // Guard: 65% blocked, paid with Ki
             if (data.isGuarding() && data.consumeKi(amount * 1.5f)) {
@@ -169,6 +176,7 @@ public class DragonBlockEvents {
         syncBodyWithVanilla(player, data);
 
         float before = player.getHealth();
+        FormEffects.onDamaged(data, event.getAmount() / data.getMaxBody());
         data.setBody(data.getBody() - event.getAmount());
         float target = data.getBody() <= 0 ? 0f : mirroredHealth(player, data);
         float amount = data.getBody() <= 0 ? before + 1000f : Math.max(0f, before - target);
@@ -225,6 +233,7 @@ public class DragonBlockEvents {
         }
 
         FormController.tick(sp, data);
+        FormEffects.tick(sp, data);
         KiAttacks.tick(sp, data);
         tickFlight(sp, data);
 
@@ -236,6 +245,7 @@ public class DragonBlockEvents {
         data.saveToPlayer(player);
 
         if (player.tickCount % 20 == 0) updatePlayerAttributes(player, data);
+        tickScale(player, data);
 
         boolean active = data.isChargingKi() || data.isTransformHeld() || data.isWaveHeld();
         if (player.tickCount % (active ? 4 : 20) == 0) ModMessages.syncToTracking(sp);
@@ -243,6 +253,10 @@ public class DragonBlockEvents {
 
     private static void tickFlight(ServerPlayer player, PlayerDBCData data) {
         if (!data.isFlying()) return;
+        if (!data.getTransformation().canFly()) {
+            stopFlying(player, data, "Tu cuerpo es demasiado grande para volar.");
+            return;
+        }
         float cost = data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f;
         if (player.isSprinting()) cost *= 2.5f;
 
@@ -258,6 +272,10 @@ public class DragonBlockEvents {
             return;
         }
 
+        stopFlying(player, data, "Ki insuficiente para mantener el vuelo.");
+    }
+
+    private static void stopFlying(ServerPlayer player, PlayerDBCData data, String reason) {
         data.setFlying(false);
         if (!player.isCreative() && !player.isSpectator()) {
             player.getAbilities().mayfly = false;
@@ -266,7 +284,7 @@ public class DragonBlockEvents {
         player.getAbilities().setFlyingSpeed(0.05f);
         player.onUpdateAbilities();
         ModMessages.syncToTracking(player);
-        player.displayClientMessage(Component.literal("Ki insuficiente para mantener el vuelo."), true);
+        player.displayClientMessage(Component.literal(reason), true);
     }
 
     private static void clientParticles(Player player, PlayerDBCData data) {
@@ -286,15 +304,26 @@ public class DragonBlockEvents {
         setModifier(player, Attributes.MAX_HEALTH, CON_HEALTH_MODIFIER, 0, AttributeModifier.Operation.ADD_VALUE);
         setModifier(player, Attributes.MOVEMENT_SPEED, DEX_SPEED_MODIFIER,
                 dexSpeedBonus(data), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
-        setModifier(player, Attributes.SCALE, FORM_SCALE_MODIFIER,
-                data.getTransformation().getScale() - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+
         setModifier(player, Attributes.MOVEMENT_SPEED, GUARD_SLOW_MODIFIER,
                 data.isGuarding() ? -0.5 : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 
     /** Up to +35% walk speed. The FOV effect is cancelled client-side so it never looks like a speed potion. */
     public static double dexSpeedBonus(PlayerDBCData data) {
-        return Math.min(0.35, Math.max(0, (data.getEffectiveDex() - 5) * 0.002));
+        double dex = Math.min(0.35, Math.max(0, (data.getEffectiveDex() - 5) * 0.002));
+        return (1 + dex) * FormEffects.speedMultiplier(data) - 1;
+    }
+
+    /** Eases body scale toward the form's scale over ~2 seconds, so giant forms grow (and shrink) visibly. */
+    private static void tickScale(Player player, PlayerDBCData data) {
+        float target = data.getTransformation().getScale();
+        if (Math.abs(data.appliedScale - target) < 0.005f && player.tickCount % 20 != 0) return;
+        float step = Math.max(0.02f, Math.abs(target - data.appliedScale) * 0.08f);
+        data.appliedScale = data.appliedScale < target
+                ? Math.min(target, data.appliedScale + step) : Math.max(target, data.appliedScale - step);
+        setModifier(player, Attributes.SCALE, FORM_SCALE_MODIFIER, data.appliedScale - 1.0,
+                AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
     }
 
     private static void setModifier(Player player, Holder<Attribute> attribute, ResourceLocation id, double value,

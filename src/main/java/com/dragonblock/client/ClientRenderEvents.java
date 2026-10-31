@@ -2,15 +2,17 @@ package com.dragonblock.client;
 
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.anim.AnimState;
+import com.dragonblock.client.anim.DBPlayerModel;
 import com.dragonblock.client.renderer.EnergyRender;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.event.DragonBlockEvents;
-import com.dragonblock.common.network.packet.S2CAnimPacket;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -82,76 +84,79 @@ public class ClientRenderEvents {
 
     // ------------------------------------------------------------------ first-person arms
 
+    /**
+     * First-person shoulder pivots (model px, eyes at y=-3.6). A Minecraft arm has no elbow, so from the true
+     * shoulder it never enters the view; like the vanilla hand, the shoulders sit in front of the camera.
+     * Values tuned with tools/preview_poses.py.
+     */
+    private static final float FP_SHOULDER_X = 6.0f, FP_SHOULDER_Y = 0.8f, FP_SHOULDER_Z = -4.0f;
+    /** Eye height in model space: the eyes sit 3.6 px above the neck pivot. */
+    private static final float EYE_Y = -3.6f / 16f;
+    /** PlayerRenderer draws players at 15/16 scale. */
+    private static final float PLAYER_SCALE = 0.9375f;
+
+    /**
+     * Forge has no hook to change first-person arm animation, so while a pose is active we cancel the
+     * vanilla hands and draw the arms of our own posed model, placed relative to the eyes and tilted with
+     * the camera pitch. The arms in first person are therefore exactly the ones other players see.
+     */
     @SubscribeEvent
     public static void onRenderHand(RenderHandEvent event) {
         Minecraft mc = Minecraft.getInstance();
         AbstractClientPlayer player = mc.player;
         if (player == null) return;
-        AnimState.Pose pose = AnimState.pose(player, event.getPartialTick());
+        float partial = event.getPartialTick();
+        AnimState.Pose pose = AnimState.pose(player, partial);
         if (pose == AnimState.Pose.NONE || pose == AnimState.Pose.FLY || pose == AnimState.Pose.HOVER) return;
 
         event.setCanceled(true);
         if (event.getHand() != InteractionHand.MAIN_HAND) return; // both arms are drawn once, from the main-hand event
+        if (!(mc.getEntityRenderDispatcher().getRenderer(player) instanceof PlayerRenderer renderer)
+                || !(renderer.getModel() instanceof DBPlayerModel model)) return;
 
         PlayerDBCData data = PlayerDBCData.get(player);
-        float partial = event.getPartialTick();
-        float time = player.tickCount + partial;
-        float shake = Mth.sin(time * 2.7f) * 0.01f;
+        float pitch = event.getInterpolatedPitch();
+        float age = player.tickCount + partial;
+
+        model.attackTime = 0f;
+        model.crouching = false;
+        model.swimAmount = 0f;
+        model.firstPerson = true;
+        // Arms follow the view in first person, so no head pitch here
+        model.setupAnim(player, player.walkAnimation.position(partial), player.walkAnimation.speed(partial), age, 0f, 0f);
+        model.firstPerson = false;
+
         PoseStack ps = event.getPoseStack();
+        ps.pushPose();
+        // Camera space -> model space: flip like the entity renderer does, scale like PlayerRenderer,
+        // and put the eyes at the camera origin.
+        ps.scale(-PLAYER_SCALE, -PLAYER_SCALE, PLAYER_SCALE);
+        ps.translate(0f, -EYE_Y, 0f);
+
         var buffers = event.getMultiBufferSource();
         int light = event.getPackedLight();
-        PlayerRenderer renderer = (PlayerRenderer) mc.getEntityRenderDispatcher().getRenderer(player);
-
-        // Offsets are added to vanilla's empty-hand position: x toward the center, y up, z away from the camera
-        switch (pose) {
-            case BLAST -> {
-                float p = AnimState.progress(player, S2CAnimPacket.Anim.BLAST, AnimState.BLAST_TICKS, partial);
-                float thrust = p < 0.3f ? p / 0.3f : 1f - (p - 0.3f) / 0.7f;
-                arm(ps, buffers, light, player, renderer, true, -0.28f * thrust, 0.22f * thrust, -0.25f * thrust, -25f * thrust);
-            }
-            case WAVE_RELEASE -> {
-                arm(ps, buffers, light, player, renderer, true, -0.32f, 0.2f, -0.3f, -20f);
-                arm(ps, buffers, light, player, renderer, false, -0.32f, 0.2f, -0.3f, -20f);
-            }
-            case WAVE_CHARGE -> {
-                float c = data.getWaveCharge();
-                arm(ps, buffers, light, player, renderer, true, -0.42f + shake, 0.02f, 0.05f, -35f);
-                arm(ps, buffers, light, player, renderer, false, -0.42f - shake, 0.02f, 0.05f, -35f);
-                ps.pushPose();
-                ps.translate(0, -0.38f, -0.85f);
-                EnergyRender.sphere(ps, buffers, 0.05f + 0.13f * c, data.getTransformation().getAuraColor(), time);
-                ps.popPose();
-            }
-            case GUARD -> {
-                arm(ps, buffers, light, player, renderer, true, -0.38f, 0.3f, 0.05f, -60f);
-                arm(ps, buffers, light, player, renderer, false, -0.38f, 0.22f, 0.1f, -60f);
-            }
-            case POWER_UP, CHARGE -> {
-                float s = pose == AnimState.Pose.POWER_UP ? shake * 3f : shake;
-                arm(ps, buffers, light, player, renderer, true, 0.05f + s, -0.12f, 0.1f, 15f);
-                arm(ps, buffers, light, player, renderer, false, 0.05f - s, -0.12f, 0.1f, 15f);
-            }
-            default -> {}
+        var skin = buffers.getBuffer(RenderType.entityTranslucent(player.getSkin().texture()));
+        int overlay = net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY;
+        float rx = model.rightArm.x, ry = model.rightArm.y, rz = model.rightArm.z;
+        float lx = model.leftArm.x, ly = model.leftArm.y, lz = model.leftArm.z;
+        model.rightArm.setPos(-FP_SHOULDER_X, FP_SHOULDER_Y, FP_SHOULDER_Z);
+        model.leftArm.setPos(FP_SHOULDER_X, FP_SHOULDER_Y, FP_SHOULDER_Z);
+        model.rightSleeve.copyFrom(model.rightArm);
+        model.leftSleeve.copyFrom(model.leftArm);
+        model.rightArm.render(ps, skin, light, overlay);
+        model.rightSleeve.render(ps, skin, light, overlay);
+        if (pose != AnimState.Pose.BLAST) { // a single-arm move: keep the idle arm out of view
+            model.leftArm.render(ps, skin, light, overlay);
+            model.leftSleeve.render(ps, skin, light, overlay);
         }
-    }
 
-    /** Vanilla's first-person empty-arm transform with an extra offset/roll applied first. */
-    private static void arm(PoseStack ps, net.minecraft.client.renderer.MultiBufferSource buffers, int light,
-                            AbstractClientPlayer player, PlayerRenderer renderer, boolean right,
-                            float inward, float up, float back, float roll) {
-        float side = right ? 1f : -1f;
-        ps.pushPose();
-        ps.translate(side * inward, up, back);
-        ps.translate(side * 0.64f, -0.6f, -0.72f);
-        ps.mulPose(Axis.YP.rotationDegrees(side * 45f));
-        ps.mulPose(Axis.ZP.rotationDegrees(side * roll));
-        ps.translate(side * -1.0f, 3.6f, 3.5f);
-        ps.mulPose(Axis.ZP.rotationDegrees(side * 120f));
-        ps.mulPose(Axis.XP.rotationDegrees(200f));
-        ps.mulPose(Axis.YP.rotationDegrees(side * -135f));
-        ps.translate(side * 5.6f, 0f, 0f);
-        if (right) renderer.renderRightHand(ps, buffers, light, player);
-        else renderer.renderLeftHand(ps, buffers, light, player);
+        if (pose == AnimState.Pose.WAVE_CHARGE && data.getWaveCharge() > 0f) {
+            Vec3 hands = model.handsMidpoint();
+            ps.translate(hands.x, hands.y, hands.z - 0.08f);
+            EnergyRender.sphere(ps, buffers, 0.06f + 0.16f * data.getWaveCharge(), data.getTransformation().getAuraColor(), age);
+        }
         ps.popPose();
+        model.rightArm.setPos(rx, ry, rz);
+        model.leftArm.setPos(lx, ly, lz);
     }
 }

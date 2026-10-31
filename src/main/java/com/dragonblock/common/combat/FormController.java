@@ -3,6 +3,7 @@ package com.dragonblock.common.combat;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Transformation;
 import com.dragonblock.common.network.ModMessages;
+import com.dragonblock.common.network.packet.S2CAnimPacket;
 import com.dragonblock.common.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -33,10 +34,7 @@ public final class FormController {
                 // Powering up drains a little Ki and shakes the ground
                 data.setCurrentKi(data.getCurrentKi() - 0.15f);
                 data.setTransformCharge(data.getTransformCharge() + 1f / (20f * data.getTransformTimeSeconds(target)));
-                if (player.tickCount % 10 == 0 && player.level() instanceof ServerLevel level) {
-                    level.sendParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.1, player.getZ(),
-                            6, 0.6, 0.05, 0.6, 0.08);
-                }
+
                 if (data.getTransformCharge() >= 1f) transform(player, data, target);
             }
         }
@@ -79,13 +77,18 @@ public final class FormController {
         data.setTransformHeld(false);
         data.saveToPlayer(player);
         ModMessages.syncToTracking(player);
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.TRANSFORM);
 
+        float pitch = switch (target.getSequence()) {
+            case GIANT -> 0.5f;
+            case CATACLYSM -> 0.75f;
+            case DIVINE -> 1.4f;
+            default -> 1.0f;
+        };
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                ModSounds.TRANSFORM.get(), SoundSource.PLAYERS, 1.6f, target.isOozaru() ? 0.5f : 1.0f);
-        if (player.level() instanceof ServerLevel level) {
+                ModSounds.TRANSFORM.get(), SoundSource.PLAYERS, 1.6f, pitch);
+        if (player.level() instanceof ServerLevel level && target.getSequence() != Transformation.Sequence.DIVINE) {
             level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, player.getX(), player.getY() + 1.0, player.getZ(), 1, 0, 0, 0, 0);
-            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.0, player.getZ(),
-                    50, 0.8, 1.2, 0.8, 0.3);
         }
         player.displayClientMessage(Component.literal(target.getDisplayName()), true);
     }

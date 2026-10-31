@@ -30,6 +30,14 @@ public class ClientEvents {
         if (ModKeyBindings.FLY_KEY.consumeClick()) ModMessages.sendToServer(new C2SFlyPacket());
         if (ModKeyBindings.KI_BLAST_KEY.consumeClick()) ModMessages.sendToServer(new C2SKiBlastPacket());
         if (ModKeyBindings.REVERT_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.REVERT, 0));
+        if (ModKeyBindings.TOGGLE_AURA_KEY.consumeClick()) {
+            String label = switch (ClientConfig.cycleAura()) {
+                case ALL -> "Auras: todas visibles";
+                case HIDE_MINE -> "Auras: la tuya oculta";
+                case HIDE_ALL -> "Auras: todas ocultas";
+            };
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal(label), true);
+        }
         if (ModKeyBindings.DASH_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.DASH, 0));
     }
 

@@ -22,5 +22,6 @@
   "key.dragonblock.revert": "Revert to base form",
   "key.dragonblock.ki_wave": "Ki Wave (hold)",
   "key.dragonblock.dash": "Dash",
-  "key.dragonblock.guard": "Guard (hold)"
+  "key.dragonblock.guard": "Guard (hold)",
+  "key.dragonblock.toggle_aura": "Toggle aura visibility"
 }

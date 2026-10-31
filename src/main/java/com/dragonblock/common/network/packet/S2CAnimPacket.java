@@ -8,7 +8,7 @@ import net.minecraftforge.fml.DistExecutor;
 
 /** One-shot animation (blast, wave release, dash) broadcast to everyone tracking the player. */
 public class S2CAnimPacket {
-    public enum Anim { BLAST, WAVE_RELEASE, DASH }
+    public enum Anim { BLAST, WAVE_RELEASE, DASH, TRANSFORM }
 
     private final int entityId;
     private final Anim anim;

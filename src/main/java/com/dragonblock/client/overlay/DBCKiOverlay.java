@@ -1,6 +1,9 @@
 package com.dragonblock.client.overlay;
 
+import com.dragonblock.client.anim.AnimState;
+import com.dragonblock.client.fx.TransformFx;
 import com.dragonblock.client.gui.UiTheme;
+import com.dragonblock.common.network.packet.S2CAnimPacket;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Transformation;
 import net.minecraft.client.DeltaTracker;
@@ -21,6 +24,7 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
 
         PlayerDBCData data = PlayerDBCData.get(mc.player);
         Font font = mc.font;
+        renderTransformFlash(g, mc, data);
         if (mc.gameMode != null && mc.gameMode.canHurtPlayer()) renderHealthBar(g, mc, data);
         Transformation form = data.getTransformation();
         int accent = 0xFF000000 | form.getAuraColor();
@@ -55,6 +59,23 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         if (form != Transformation.BASE) {
             chargeBar(g, font, x, y, "Maestría", data.getMastery(form) / 100f, 0xFF8090A0);
         }
+    }
+
+    /** Full-screen flash right after your own transformation completes, strongest for cataclysm forms. */
+    private static void renderTransformFlash(GuiGraphics g, Minecraft mc, PlayerDBCData data) {
+        float t = AnimState.progress(mc.player, S2CAnimPacket.Anim.TRANSFORM, TransformFx.BURST_TICKS,
+                mc.getTimer().getGameTimeDeltaPartialTick(false));
+        if (t < 0 || t > 0.5f) return;
+        Transformation form = data.getTransformation();
+        float strength = switch (form.getSequence()) {
+            case CATACLYSM -> 0.85f;
+            case DIVINE -> 0.45f;
+            case STRAIN -> 0.35f;
+            default -> 0.6f;
+        };
+        int alpha = (int) (255 * strength * (1f - t / 0.5f));
+        int rgb = form.getSequence() == Transformation.Sequence.DIVINE ? 0xFFFFFF : form.getAuraColor();
+        g.fill(0, 0, g.guiWidth(), g.guiHeight(), alpha << 24 | rgb);
     }
 
     /**

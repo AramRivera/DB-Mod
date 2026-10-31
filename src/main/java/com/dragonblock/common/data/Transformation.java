@@ -16,12 +16,12 @@ public enum Transformation {
     KAIOKEN_X20("Kaio-ken x20", KAIOKEN_X10, all(), 150, 3.6f, 6.0f, 0xE00000, HairStyle.NONE, 0, AuraStyle.STORM, 0),
     POTENTIAL_UNLEASHED("Potencial Liberado", BASE, of(Race.HUMAN, Race.NAMEKIAN, Race.HALF_SAIYAN), 220, 4.5f, 0.6f, 0xEDEDFF, HairStyle.NONE, 0, AuraStyle.CALM, 0),
     ULTRA_INSTINCT_SIGN("Instinto Superior (Presagio)", BASE, all(), 450, 7.0f, 6.0f, 0xB9D4FF, HairStyle.NONE, 0, AuraStyle.SILVER, 0),
-    ULTRA_INSTINCT("Instinto Superior Dominado", ULTRA_INSTINCT_SIGN, all(), 600, 9.0f, 7.0f, 0xF2F6FF, HairStyle.FLARE, 0xDCE4F0, AuraStyle.SILVER, 0),
+    ULTRA_INSTINCT("Instinto Superior Dominado", ULTRA_INSTINCT_SIGN, all(), 600, 9.0f, 7.0f, 0xF2F6FF, HairStyle.CREST, 0xDCE4F0, AuraStyle.SILVER, 0),
 
     // Saiyan line
     SUPER_SAIYAN("Super Saiyajin", BASE, saiyans(), 40, 2.0f, 1.5f, 0xFFD23A, HairStyle.FLARE, 0xFFE15A, AuraStyle.FLAME, 0),
-    SSJ_GRADE_2("Super Saiyajin Grado 2", SUPER_SAIYAN, saiyans(), 70, 2.25f, 2.5f, 0xFFC820, HairStyle.FLARE, 0xFFD94A, AuraStyle.FLAME, 0),
-    SSJ_GRADE_3("Super Saiyajin Grado 3", SSJ_GRADE_2, saiyans(), 95, 2.5f, 4.0f, 0xFFBE10, HairStyle.FLARE, 0xFFD030, AuraStyle.FLAME, 0),
+    SSJ_GRADE_2("Super Saiyajin Grado 2", SUPER_SAIYAN, saiyans(), 70, 2.25f, 2.5f, 0xFFC820, HairStyle.HEAVY, 0xFFD94A, AuraStyle.FLAME, 0),
+    SSJ_GRADE_3("Super Saiyajin Grado 3", SSJ_GRADE_2, saiyans(), 95, 2.5f, 4.0f, 0xFFBE10, HairStyle.HEAVY, 0xFFD030, AuraStyle.FLAME, 0),
     SSJ_FULL_POWER("Super Saiyajin Pleno", SUPER_SAIYAN, saiyans(), 110, 2.2f, 0.0f, 0xFFE070, HairStyle.FLARE, 0xFFE878, AuraStyle.CALM, 0),
     SUPER_SAIYAN_2("Super Saiyajin 2", SUPER_SAIYAN, saiyans(), 130, 3.0f, 2.8f, 0xFFD23A, HairStyle.RIDGE, 0xFFE15A, AuraStyle.STORM, 0),
     SUPER_SAIYAN_3("Super Saiyajin 3", SUPER_SAIYAN_2, saiyans(), 200, 4.0f, 7.0f, 0xFFC020, HairStyle.MANE, 0xFFD838, AuraStyle.STORM, 0),
@@ -54,7 +54,7 @@ public enum Transformation {
     /** Parent mastery (%) needed before a child form unlocks. */
     public static final float UNLOCK_MASTERY = 25.0f;
 
-    public enum HairStyle { NONE, FLARE, RIDGE, MANE, WILD, SLEEK, SPIRE }
+    public enum HairStyle { NONE, FLARE, HEAVY, RIDGE, MANE, WILD, SLEEK, SPIRE, CREST }
 
     /** CALM = soft flame, FLAME = full aura, STORM = aura + lightning, SILVER = thin sparkling aura. */
     public enum AuraStyle { CALM, FLAME, STORM, SILVER }
@@ -107,7 +107,106 @@ public enum Transformation {
     public boolean isOozaru() { return this == OOZARU || this == GOLDEN_OOZARU; }
     public boolean needsTail() { return isOozaru() || this == SUPER_SAIYAN_4; }
     /** Glowing hair is rendered full-bright. */
-    public boolean hasGlowingHair() { return hairStyle != HairStyle.NONE && this != SUPER_SAIYAN_4; }
+    public boolean hasGlowingHair() { return hairStyle != HairStyle.NONE && this != SUPER_SAIYAN_4 && this != SUPER_SAIYAN_GOD; }
+    public boolean canFly() { return !isOozaru() && this != NAMEKIAN_GIANT; }
+
+    /** How the power-up looks while the key is held and when it completes. */
+    public enum Sequence {
+        /** Quick golden flash. */ FLASH,
+        /** Ground cracks, lightning, rising rocks. */ SURGE,
+        /** Long, the world shakes, hair grows in. */ CATACLYSM,
+        /** Calm: aura folds into the body, then a pillar of light. */ DIVINE,
+        /** Body swells to giant size. */ GIANT,
+        /** Red flare around the body. */ STRAIN
+    }
+
+    /** Particles the aura sheds while active. */
+    public enum Particles { NONE, SPARKS, EMBERS, SPARKLES, DUST }
+
+    public Sequence getSequence() {
+        return switch (this) {
+            case BASE -> Sequence.FLASH;
+            case KAIOKEN, KAIOKEN_X10, KAIOKEN_X20 -> Sequence.STRAIN;
+            case SUPER_SAIYAN_3, SUPER_SAIYAN_4, BEAST, NAMEKIAN_ORANGE, MAJIN_PURE, ARCOSIAN_BLACK, SSJ_BLUE_EVOLVED -> Sequence.CATACLYSM;
+            case SUPER_SAIYAN_2, SSJ_GRADE_3, ARCOSIAN_FULL_POWER, ULTRA_EGO, MAJIN_SUPER, NAMEKIAN_SYNC -> Sequence.SURGE;
+            case SUPER_SAIYAN_GOD, SUPER_SAIYAN_BLUE, ULTRA_INSTINCT_SIGN, ULTRA_INSTINCT, POTENTIAL_UNLEASHED,
+                 ARCOSIAN_GOLDEN, SSJ_FULL_POWER -> Sequence.DIVINE;
+            case OOZARU, GOLDEN_OOZARU, NAMEKIAN_GIANT -> Sequence.GIANT;
+            default -> Sequence.FLASH;
+        };
+    }
+
+    public Particles getParticles() {
+        return switch (this) {
+            case SUPER_SAIYAN_2, SUPER_SAIYAN_3, SSJ_BLUE_EVOLVED, BEAST, ARCOSIAN_FULL_POWER, ARCOSIAN_BLACK,
+                 KAIOKEN_X20, MAJIN_PURE, NAMEKIAN_ORANGE -> Particles.SPARKS;
+            case SUPER_SAIYAN_GOD, ULTRA_EGO, SUPER_SAIYAN_4, KAIOKEN, KAIOKEN_X10 -> Particles.EMBERS;
+            case SUPER_SAIYAN_BLUE, ULTRA_INSTINCT_SIGN, ULTRA_INSTINCT, POTENTIAL_UNLEASHED, ARCOSIAN_GOLDEN -> Particles.SPARKLES;
+            case SSJ_GRADE_2, SSJ_GRADE_3, OOZARU, GOLDEN_OOZARU, NAMEKIAN_GIANT -> Particles.DUST;
+            default -> Particles.NONE;
+        };
+    }
+
+    /** Lightning crackling over the body (0 = none). */
+    public int getLightningColor() {
+        return switch (this) {
+            case SUPER_SAIYAN_2, SUPER_SAIYAN_3 -> 0xBFE8FF;
+            case SSJ_BLUE_EVOLVED -> 0x9FC8FF;
+            case BEAST -> 0xFF5070;
+            case ARCOSIAN_FULL_POWER, ARCOSIAN_BLACK -> 0xE0A0FF;
+            case MAJIN_PURE, NAMEKIAN_ORANGE, KAIOKEN_X20 -> 0xFFD0B0;
+            default -> 0;
+        };
+    }
+
+    /** Iris color drawn over the skin's eyes (0 = keep the skin). */
+    public int getEyeColor() {
+        return switch (this) {
+            case SUPER_SAIYAN, SSJ_GRADE_2, SSJ_GRADE_3, SSJ_FULL_POWER, SUPER_SAIYAN_2, SUPER_SAIYAN_3 -> 0x2FD8C8;
+            case SUPER_SAIYAN_GOD -> 0xE0304A;
+            case SUPER_SAIYAN_BLUE, SSJ_BLUE_EVOLVED -> 0x30C8FF;
+            case ULTRA_INSTINCT_SIGN, ULTRA_INSTINCT -> 0xD8E2F0;
+            case ULTRA_EGO -> 0xB060FF;
+            case BEAST, OOZARU, GOLDEN_OOZARU, KAIOKEN_X20 -> 0xFF2020;
+            case SUPER_SAIYAN_4 -> 0xFFC020;
+            case MAJIN_PURE, ARCOSIAN_BLACK -> 0xFF3070;
+            default -> 0;
+        };
+    }
+
+    /** Extra muscle mass on arms and torso. */
+    public float getBulk() {
+        return switch (this) {
+            case SSJ_GRADE_2 -> 1.08f;
+            case SSJ_GRADE_3 -> 1.2f;
+            case ARCOSIAN_FULL_POWER -> 1.12f;
+            case SUPER_SAIYAN_4, ULTRA_EGO -> 1.06f;
+            default -> 1.0f;
+        };
+    }
+
+    /** Aura proportions: (width, height) multipliers on top of the power-based size. */
+    public float getAuraWidth() {
+        return switch (auraStyle) {
+            case SILVER -> 0.8f;
+            case STORM -> 1.15f;
+            default -> this == SUPER_SAIYAN_GOD ? 0.85f : 1.0f;
+        };
+    }
+
+    public float getAuraHeight() {
+        return switch (this) {
+            case SUPER_SAIYAN_3, BEAST, ULTRA_EGO, ARCOSIAN_BLACK -> 1.25f;
+            case SUPER_SAIYAN_GOD, ULTRA_INSTINCT_SIGN, ULTRA_INSTINCT -> 1.1f;
+            default -> 1.0f;
+        };
+    }
+
+    /** Seconds the power-up takes untrained; mastery cuts it to a quarter. Bigger forms take longer. */
+    public float getBaseTransformSeconds() {
+        float base = 1.4f + minLevel / 130f;
+        return getSequence() == Sequence.CATACLYSM ? base * 1.4f : getSequence() == Sequence.STRAIN ? base * 0.5f : base;
+    }
 
     /** Body scale for size-changing forms. */
     public float getScale() {

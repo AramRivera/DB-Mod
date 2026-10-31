@@ -29,15 +29,16 @@ public final class EnergyRender {
      * the player's power: three nested shells with rising flame tongues, loose wisps, and a ground ring.
      */
     public static void aura(PoseStack pose, MultiBufferSource buffers, float time, int rgb, float intensity,
-                            float size, boolean groundRing) {
+                            float size, float width, float height, boolean groundRing) {
         float scroll = (time * 0.05f) % 1f;
         VertexConsumer vc = buffers.getBuffer(RenderType.energySwirl(AURA_TEX, time * 0.006f % 1f, -scroll));
         PoseStack.Pose p = pose.last();
-        shell(p, vc, time, scaleColor(rgb, intensity * 0.38f), 1.05f * size, size, 0.0f, 0.55f);
-        shell(p, vc, time, scaleColor(rgb, intensity * 0.65f), 0.82f * size, size, 0.37f, 0.4f);
-        shell(p, vc, time, scaleColor(mix(rgb, 0xFFFFFF, 0.45f), intensity * 0.55f), 0.58f * size, size * 0.92f, 0.71f, 0.25f);
-        wisps(p, vc, time, rgb, intensity, size);
-        if (groundRing) groundRing(p, vc, time, rgb, intensity, size);
+        float w = size * width, h = size * height;
+        shell(p, vc, time, scaleColor(rgb, intensity * 0.32f), 1.5f * w, h * 1.08f, 0.0f, 0.65f);
+        shell(p, vc, time, scaleColor(rgb, intensity * 0.6f), 1.15f * w, h, 0.37f, 0.5f);
+        shell(p, vc, time, scaleColor(mix(rgb, 0xFFFFFF, 0.45f), intensity * 0.55f), 0.78f * w, h * 0.9f, 0.71f, 0.3f);
+        wisps(p, vc, time, rgb, intensity, w, h);
+        if (groundRing) groundRing(p, vc, time, rgb, intensity, w);
     }
 
     private static void shell(PoseStack.Pose p, VertexConsumer vc, float time, int color, float radius, float size,
@@ -72,21 +73,21 @@ public final class EnergyRender {
                 + 0.6 * Math.pow(Math.max(0, Math.sin(angle * 9 - time * 0.47f + t * 7f)), 6) * t);
         float flicker = 1f + 0.06f * Mth.sin(time * 0.9f + angle * 4f + t * 9f);
         float r = radius * profile * flicker * (1f + tongue * 0.5f);
-        float height = 2.6f * (0.8f + 0.2f * size);
+        float height = 3.1f * size; // size is the height scale here
         float y = 1.6f - t * height - tongue * 0.9f * t * size;
         return new Vec3(Mth.cos(angle) * r, y, Mth.sin(angle) * r);
     }
 
     /** Loose flame wisps that peel off the aura and rise above the head before fading. */
-    private static void wisps(PoseStack.Pose p, VertexConsumer vc, float time, int rgb, float intensity, float size) {
-        for (int i = 0; i < 12; i++) {
+    private static void wisps(PoseStack.Pose p, VertexConsumer vc, float time, int rgb, float intensity, float width, float height) {
+        for (int i = 0; i < 16; i++) {
             float life = (time * 0.035f + i * 0.137f) % 1f;
             float angle = i * 2.39996f + Mth.sin(time * 0.02f + i) * 0.4f;
-            float rad = 0.62f * size * (1f - life * 0.5f);
+            float rad = 0.85f * width * (1f - life * 0.5f);
             float x = Mth.cos(angle) * rad, z = Mth.sin(angle) * rad;
-            float y = 1.0f - life * 2.9f * size;
-            float h = 0.75f * size * (1f - life);
-            float w = 0.14f * size * (1f - life * 0.6f);
+            float y = 1.0f - life * 3.6f * height;
+            float h = 0.9f * height * (1f - life);
+            float w = 0.16f * width * (1f - life * 0.6f);
             int c = scaleColor(rgb, intensity * 0.7f * (1f - life));
             int tip = 0xFF000000;
             quad(vc, p, new Vec3(x - w, y, z), new Vec3(x + w, y, z), new Vec3(x, y - h, z), new Vec3(x, y - h, z),
@@ -120,31 +121,36 @@ public final class EnergyRender {
         return Mth.clamp(1.0f + fromPower + 0.05f * (formMultiplier - 1f), 1.0f, 2.4f);
     }
 
-    /** Jagged bolts crackling around the body. Re-rolled every 2 ticks. */
-    public static void lightning(PoseStack pose, MultiBufferSource buffers, int seed, int rgb) {
+    /** Jagged branching bolts over the body. Same seed = same bolts, so callers re-roll every few ticks. */
+    public static void lightning(PoseStack pose, MultiBufferSource buffers, int seed, int rgb, int count, float reach) {
         VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
         PoseStack.Pose p = pose.last();
         Random rnd = new Random(seed);
-        int bolts = 2 + rnd.nextInt(2);
-        for (int b = 0; b < bolts; b++) {
+        for (int b = 0; b < count; b++) {
             float a = rnd.nextFloat() * Mth.TWO_PI;
-            float x = Mth.cos(a) * 0.45f, z = Mth.sin(a) * 0.45f;
-            float y = 1.3f - rnd.nextFloat() * 0.6f;
-            for (int i = 0; i < 6; i++) {
-                float nx = x + (rnd.nextFloat() - 0.5f) * 0.35f;
-                float ny = y - 0.18f - rnd.nextFloat() * 0.2f;
-                float nz = z + (rnd.nextFloat() - 0.5f) * 0.35f;
-                boltSegment(vc, p, x, y, z, nx, ny, nz, 0.022f, 0xFFFFFF, 220);
-                boltSegment(vc, p, x, y, z, nx, ny, nz, 0.06f, rgb, 90);
-                x = nx; y = ny; z = nz;
-            }
+            float x = Mth.cos(a) * 0.35f, z = Mth.sin(a) * 0.35f;
+            float y = 1.4f - rnd.nextFloat() * 0.5f;
+            bolt(vc, p, rnd, x, y, z, 7, reach, rgb, true);
+        }
+    }
+
+    private static void bolt(VertexConsumer vc, PoseStack.Pose p, Random rnd, float x, float y, float z, int steps,
+                             float reach, int rgb, boolean canBranch) {
+        for (int i = 0; i < steps; i++) {
+            float nx = x + (rnd.nextFloat() - 0.5f) * 0.45f * reach;
+            float ny = y - (0.18f + rnd.nextFloat() * 0.22f) * reach;
+            float nz = z + (rnd.nextFloat() - 0.5f) * 0.45f * reach;
+            boltSegment(vc, p, x, y, z, nx, ny, nz, 0.018f, 0xFFFFFF, 255);
+            boltSegment(vc, p, x, y, z, nx, ny, nz, 0.055f, rgb, 110);
+            if (canBranch && i == 2) bolt(vc, p, rnd, nx, ny, nz, 3, reach * 0.7f, rgb, false);
+            x = nx; y = ny; z = nz;
         }
     }
 
     private static void boltSegment(VertexConsumer vc, PoseStack.Pose p, float x0, float y0, float z0,
                                     float x1, float y1, float z1, float w, int rgb, int alpha) {
         int r = rgb >> 16 & 255, g = rgb >> 8 & 255, b = rgb & 255;
-        // Two crossed ribbons so the bolt reads from any angle
+        // Two crossed ribbons, each wound both ways: the lightning render type culls back faces
         vc.addVertex(p, x0 - w, y0, z0).setColor(r, g, b, alpha);
         vc.addVertex(p, x1 - w, y1, z1).setColor(r, g, b, alpha);
         vc.addVertex(p, x1 + w, y1, z1).setColor(r, g, b, alpha);
@@ -153,6 +159,34 @@ public final class EnergyRender {
         vc.addVertex(p, x1, y1, z1 - w).setColor(r, g, b, alpha);
         vc.addVertex(p, x1, y1, z1 + w).setColor(r, g, b, alpha);
         vc.addVertex(p, x0, y0, z0 + w).setColor(r, g, b, alpha);
+        vc.addVertex(p, x0 + w, y0, z0).setColor(r, g, b, alpha);
+        vc.addVertex(p, x1 + w, y1, z1).setColor(r, g, b, alpha);
+        vc.addVertex(p, x1 - w, y1, z1).setColor(r, g, b, alpha);
+        vc.addVertex(p, x0 - w, y0, z0).setColor(r, g, b, alpha);
+        vc.addVertex(p, x0, y0, z0 + w).setColor(r, g, b, alpha);
+        vc.addVertex(p, x1, y1, z1 + w).setColor(r, g, b, alpha);
+        vc.addVertex(p, x1, y1, z1 - w).setColor(r, g, b, alpha);
+        vc.addVertex(p, x0, y0, z0 - w).setColor(r, g, b, alpha);
+    }
+
+    /** Transformation burst: an expanding bright shell and a ground shockwave, t = 0..1. */
+    public static void burst(PoseStack pose, MultiBufferSource buffers, float t, int rgb, float size) {
+        float fade = 1f - t;
+        pose.pushPose();
+        pose.translate(0, 0.6f, 0);
+        VertexConsumer vc = buffers.getBuffer(RenderType.eyes(KI_TEX));
+        uvSphere(pose.last(), vc, (0.6f + t * 4.5f) * size, scaleColor(mix(rgb, 0xFFFFFF, 0.5f), fade * fade));
+        pose.popPose();
+        groundRing(pose.last(), buffers.getBuffer(RenderType.energySwirl(AURA_TEX, 0, 0)), t * 20f, rgb, fade, size * (1f + t * 3f));
+    }
+
+    /** Divine forms: a column of light reaching into the sky, t = 0..1. */
+    public static void pillar(PoseStack pose, MultiBufferSource buffers, float t, int rgb, float time) {
+        float fade = t < 0.2f ? t / 0.2f : 1f - (t - 0.2f) / 0.8f;
+        pose.pushPose();
+        pose.translate(0, 1.5f, 0);
+        beam(pose, buffers, new Vec3(0, -40, 0), 0.7f * fade + 0.1f, scaleColor(rgb, fade) & 0xFFFFFF, time);
+        pose.popPose();
     }
 
     /** Glowing ball: white core inside a colored halo. */

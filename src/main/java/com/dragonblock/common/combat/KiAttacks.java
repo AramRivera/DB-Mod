@@ -27,7 +27,7 @@ public final class KiAttacks {
         if (data.dashIframes > 0) data.dashIframes--;
 
         // Charging a wave: 2.5s to full, 0.5 Ki per tick
-        if (data.isWaveHeld() && data.getWaveCharge() < 1f && data.consumeKi(0.5f)) {
+        if (data.isWaveHeld() && data.getWaveCharge() < 1f && data.consumeKi(0.5f * FormEffects.kiCostMultiplier(data))) {
             data.setWaveCharge(data.getWaveCharge() + 1f / 50f);
             if (player.tickCount % 8 == 0) {
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
@@ -38,13 +38,14 @@ public final class KiAttacks {
 
     public static void fireBlast(ServerPlayer player, PlayerDBCData data) {
         if (data.blastCooldown > 0) return;
-        if (!data.consumeKi(BLAST_COST)) {
+        float cost = BLAST_COST * FormEffects.kiCostMultiplier(data);
+        if (!data.consumeKi(cost)) {
             player.displayClientMessage(Component.literal("Ki insuficiente (" + (int) BLAST_COST + ")."), true);
             return;
         }
         data.blastCooldown = BLAST_COOLDOWN;
 
-        float damage = 6.0f + data.getEffectiveWil() * 0.6f;
+        float damage = (6.0f + data.getEffectiveWil() * 0.6f) * FormEffects.kiMultiplier(data);
         float explosion = 0.8f + Math.min(2.0f, data.getEffectiveWil() * 0.02f);
         spawn(player, data, damage, explosion, 0.35f, false, 2.0f);
         ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.BLAST);
@@ -58,7 +59,7 @@ public final class KiAttacks {
         data.setWaveCharge(0f);
         if (charge < 0.2f) return;
 
-        float damage = (10.0f + data.getEffectiveWil() * 1.1f) * (0.5f + 1.5f * charge);
+        float damage = (10.0f + data.getEffectiveWil() * 1.1f) * (0.5f + 1.5f * charge) * FormEffects.kiMultiplier(data);
         float explosion = 1.5f + Math.min(4.0f, data.getEffectiveWil() * 0.03f) * charge;
         spawn(player, data, damage, explosion, 0.5f + 1.1f * charge, true, 2.6f);
         ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.WAVE_RELEASE);

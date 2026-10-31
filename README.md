@@ -9,7 +9,7 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 ### 1. Ki, vida y aura
 * **Ki**: máximo según Voluntad (WIL) y raza. Se carga manteniendo `C` y se regenera solo.
 * **Vida (cuerpo)**: reserva propia que crece con la Constitución (CON) efectiva, así que transformarte te hace más resistente. Se muestra en una **barra roja** en lugar de los corazones; los corazones vanilla solo reflejan el porcentaje, por eso nunca se apilan. La comida, pociones y regeneración siguen funcionando.
-* **Aura**: llamas que suben con lenguas, chispas que se desprenden y un anillo de presión en el suelo al cargar. **Crece con el poder de pelea y el multiplicador de la forma**, y las formas altas suman rayos.
+* **Aura**: tres capas de llamas, más **ancha y alta** que el cuerpo, con lenguas que suben, chispas que se desprenden y un anillo de presión en el suelo. Al empezar a cargar **se hincha** y late; al soltar se apaga poco a poco. **Crece con el poder de pelea y el multiplicador de la forma.** Se puede ocultar con `J`.
 * **Vuelo (`F`)**: velocidad cercana a la de creativo; corriendo en el aire vas más rápido y gastas más Ki. El cuerpo se inclina hacia delante según la velocidad.
 * **Velocidad**: la Destreza da hasta +35% al caminar, **sin el efecto de "poción de velocidad"** en el campo de visión.
 
@@ -50,7 +50,43 @@ Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para t
 * **Maestría (0-100%)**: sube estando transformado y combatiendo. Reduce hasta un 60% el consumo de Ki.
 * **Agotamiento**: sin Ki vuelves a la forma base.
 * **Ozaru**: si eres Saiyajin con la cola suelta y **miras la luna llena** de noche, te transformas solo. También puedes elegirlo y mantener `G` cualquier noche a cielo abierto. Al salir el sol (o al enrollar la cola) vuelves a la normalidad. `/dev form oozaru` lo fuerza de día para pruebas.
-* **Peinados**: diseños propios por nivel de poder (no copias del pelo de personajes concretos): *Flare* (dorados), *Ridge* (más alto y afilado), *Mane* (melena hasta la cintura), *Wild* (oscuro y salvaje), *Sleek* (peinado hacia atrás) y *Spire* (cresta alta). Brillan en las formas de energía.
+* **Peinados**: 8 diseños propios por nivel (no copias del pelo de personajes concretos), hechos con mechones triangulares escalonados que salen de un volumen de pelo: *Flare*, *Heavy* (grados musculosos), *Ridge* (cresta afilada con un mechón suelto), *Mane* (melena hasta la cintura), *Wild* (oscuro y salvaje), *Sleek* (hacia atrás), *Spire* (cresta central) y *Crest* (plateado y sereno). Se definen en `assets/dragonblock/hair/*.json`.
+
+#### La esencia de cada forma
+Cada forma tiene su secuencia de transformación (más larga y violenta cuanto más poderosa), partículas, ojos y una mecánica propia:
+
+| Forma | Cómo se ve | Qué hace distinto |
+| :--- | :--- | :--- |
+| Super Saiyajin | Pelo dorado *Flare*, ojos verde azulado, destello dorado | Base dorada equilibrada |
+| Grado 2 / Grado 3 | Pelo *Heavy*, más músculo, polvo | G2: -10% daño recibido. G3: +25% golpe, -25% daño recibido, 25% más lento |
+| SSJ Pleno | Aura serena | Sin consumo, regenera Ki, técnicas más baratas |
+| Super Saiyajin 2 | Cresta afilada con mechón, **rayos constantes**, chispas | +15% daño de Ki |
+| Super Saiyajin 3 | **El pelo crece** hasta la cintura mientras cargas, terremoto, rayos | +15% golpe, consumo alto |
+| Dios | Pelo *Sleek* rojizo, brasas, columna de luz | Cura el cuerpo poco a poco, técnicas más baratas |
+| Blue / Blue Evolución | Pelo y aura cian, destellos | Control perfecto: técnicas 30% más baratas |
+| Ultra Ego | Aura violeta, brasas | Se hace más fuerte cuanto más daño recibe |
+| Instinto Superior | Aura plateada fina, destellos, columna de luz | **Esquiva sola** (30% / 55%) desplazándose |
+| Bestia | Cresta alta plateada, ojos rojos, rayos rojos | 20% de golpes críticos x1,6 |
+| Ozaru / Ozaru Dorado | Crece poco a poco hasta 4x, **cabeza de simio con hocico, colmillos y ojos rojos**, pelaje | No puede volar, golpe x1,5, ráfagas x1,6, más resistente |
+| SSJ4 | Pelo *Wild* negro, **chaleco de pelaje rojo con pecho descubierto**, ojos dorados con delineado rojo, cola | Regenera el cuerpo |
+| Kaio-ken | **Cuerpo brillando en rojo** con latido | Drena vida |
+| Arcosiano / Namekiano / Majin | Cuernos, gigante, aura propia | Formas de su línea con sus bonus |
+
+---
+
+### Secuencias de transformación
+Mantén `G` y la transformación avanza según el tamaño de la forma (más maestría = más rápida):
+* **Destello** (SSJ): el pelo parpadea entre forma base y dorada antes de asentarse.
+* **Oleada** (SSJ2, G3): el suelo se resquebraja, saltan rocas y aparecen rayos.
+* **Cataclismo** (SSJ3, SSJ4, Bestia...): larga, la cámara tiembla para todos los cercanos y el pelo crece.
+* **Divina** (Dios, Blue, Instinto): calma, partículas que convergen y una columna de luz al cielo.
+* **Gigante** (Ozaru, Gigante Namekiano): el cuerpo crece de forma progresiva.
+* **Tensión** (Kaio-ken): llamarada roja.
+
+Al completarse: explosión de energía, onda expansiva en el suelo y destello en pantalla.
+
+---
+
 
 | Línea | Formas |
 | :--- | :--- |
@@ -78,7 +114,7 @@ Las formas tienen modelos propios: peinados procedurales que brillan, pelaje (Oz
 ---
 
 ### Animaciones
-Funcionan igual en primera y tercera persona y las ven todos los jugadores:
+Funcionan en primera y tercera persona y las ven todos los jugadores. En primera persona los brazos salen del mismo modelo animado que ven los demás, colocados delante de la cámara para que se vean (cargar: puños al frente; onda: manos juntas con la esfera entre ellas; guardia: antebrazos cruzados):
 
 | Acción | Pose |
 | :--- | :--- |
@@ -114,6 +150,7 @@ Funcionan igual en primera y tercera persona y las ven todos los jugadores:
 | `Z` *(mantener)* | Cargar y soltar onda de Ki |
 | `R` | Impulso |
 | `B` *(mantener)* | Guardia |
+| `J` | Mostrar/ocultar auras (todas, ocultar la mía, ocultar todas). Solo estético, se guarda en tu config. |
 
 > *Reasignables en **Opciones -> Controles -> Dragon Block**.*
 

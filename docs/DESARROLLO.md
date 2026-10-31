@@ -33,6 +33,11 @@ La vida real es `body / getMaxBody()`. La vida vanilla solo la refleja (`DragonB
 2. Si cambia de tamaño, añádela a `getScale()`; si tiene pelaje, dale `furColor`.
 3. Listo: aparece en la pestaña Formas, en `/dev form` y en el render.
 
+## Esencia de cada forma
+Todo lo que distingue a una forma vive en `Transformation` (visual) y `FormEffects` (mecánica):
+- `Transformation`: `getSequence()` (cómo se transforma), `getParticles()`, `getLightningColor()`, `getEyeColor()`, `getBulk()` (músculo), `getAuraWidth/Height()`, `getBaseTransformSeconds()`, `canFly()`, `getScale()`.
+- `common/combat/FormEffects`: multiplicadores de golpe/ki/coste/daño recibido/velocidad, esquiva de Instinto Superior, furia de Ultra Ego, críticos de Bestia, regeneración de las formas divinas.
+
 ## Lógica de servidor — `common/combat`
 - `FormController`: mantener `G` carga la forma seleccionada, consumo de Ki con maestría, drenaje de vida del Kaio-ken, Ozaru con luna llena / reversión de día.
 - `KiAttacks`: ráfaga, onda cargada, impulso. Cada técnica envía su `S2CAnimPacket`.
@@ -55,6 +60,21 @@ La vida real es `body / getMaxBody()`. La vida vanilla solo la refleja (`DragonB
 1. Si es de un golpe: añade un valor a `S2CAnimPacket.Anim` y llama a `ModMessages.broadcastAnim()` desde el servidor.
 2. Añade la pose en `AnimState.Pose` y su prioridad en `AnimState.pose()`.
 3. Tercera persona: un `case` en `DBPlayerModel.setupAnim`. Primera persona: un `case` en `ClientRenderEvents.onRenderHand`.
+
+## Pelo (JSON + vista previa en Blender)
+Los peinados están en `src/main/resources/assets/dragonblock/hair/<estilo>.json` y los genera `tools/gen_hair_json.py` (los campos están explicados ahí). `DBModels` los lee al arrancar. Para verlos sin abrir el juego:
+```
+python tools/gen_hair_json.py src/main/resources/assets/dragonblock/hair
+blender -b --factory-startup --python tools/preview_hair.py -- src/main/resources/assets/dragonblock/hair previews
+python tools/hair_sheet.py previews
+```
+`preview_hair.py` monta los mechones igual que el juego (misma rotación ZYX y escalones), así que lo que ves es lo que sale.
+
+## Brazos en primera persona
+Forge no tiene un evento para cambiar la animación de los brazos, así que `ClientRenderEvents.onRenderHand` cancela las manos vanilla y dibuja los brazos de nuestro `DBPlayerModel` con `firstPerson = true`. Como un brazo de Minecraft no tiene codo, desde el hombro real nunca entraría en la vista: los hombros se colocan delante de la cámara (`FP_SHOULDER_*`, como la mano vanilla). Las poses de primera persona se ajustaron con `tools/preview_poses.py`, que renderiza la vista desde los ojos con FOV 70.
+
+## Efectos de cliente — `client/fx/TransformFx`
+Potencia de aura suavizada (se hincha al cargar, se apaga al soltar), partículas por forma, temblor de cámara de las transformaciones grandes. El estallido y la columna de luz se dibujan en `DBPlayerLayer.renderEnergy`; el destello de pantalla en `DBCKiOverlay`. La tecla `J` cambia `ClientConfig.AURA` (config de cliente `dragonblock-client.toml`).
 
 ## Texturas
 Las texturas de `textures/entity` son en escala de grises y se tiñen en el juego (pelo, pelaje, rasgos, aura, ki). Para cambiar el color de una forma edita `Transformation`, no la textura.
