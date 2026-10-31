@@ -25,5 +25,14 @@
   "key.dragonblock.toggle_aura": "Toggle aura visibility",
   "key.dragonblock.accessories": "Accessories",
   "item.dragonblock.wrist_weights": "Wrist Weights",
-  "item.dragonblock.combat_belt": "Combat Belt"
+  "item.dragonblock.combat_belt": "Combat Belt",
+  "block.dragonblock.dragon_ball_1": "Dragon Ball (1 Star)",
+  "block.dragonblock.dragon_ball_2": "Dragon Ball (2 Stars)",
+  "block.dragonblock.dragon_ball_3": "Dragon Ball (3 Stars)",
+  "block.dragonblock.dragon_ball_4": "Dragon Ball (4 Stars)",
+  "block.dragonblock.dragon_ball_5": "Dragon Ball (5 Stars)",
+  "block.dragonblock.dragon_ball_6": "Dragon Ball (6 Stars)",
+  "block.dragonblock.dragon_ball_7": "Dragon Ball (7 Stars)",
+  "entity.dragonblock.shenlong": "Eternal Dragon",
+  "container.dragonblock.accessories": "Accessories"
 }

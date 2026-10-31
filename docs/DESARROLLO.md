@@ -110,6 +110,16 @@ Los peinados base (*warrior*, *flame*, *scruffy*, *short*, *long*) están en `ge
 ## Escala de poder y choques
 `Technique.powerScale(data)` (1 en base, ~2,3 en las formas más altas) multiplica el tamaño de proyectiles, explosiones (tope 8) y la energía de carga. `KiBlastEntity` sincroniza `HALO` (color del aura del tirador) y `CLASH` (ticks de choque): dos técnicas que se tocan se congelan `CLASH_TICKS`, los dueños que mantienen la tecla suman `clashBoost`, y la de id menor resuelve (`resolveClash`). El oscurecimiento del cielo (`TransformFx.darkness`) es una cúpula translúcida dibujada después del mundo con test de profundidad más el color de la niebla.
 
+## Accesorios
+`common/item/AccessoryItem` (casilla + texto del efecto), `common/menu/AccessoryMenu` (4 casillas respaldadas por `PlayerDBCData.accessories`, que guarda ids de objeto y se sincroniza a todos) y `client/gui/AccessoryScreen`. Los efectos se aplican donde se calcula cada cosa (`DragonBlockEvents`: TP, regeneración de ki, velocidad). El scouter: `client/overlay/ScouterHud` (lente, lectura, flecha) y `ScouterItem.tickWorn` en el servidor decide la sobrecarga (`S2CAnimPacket.SCOUTER_BREAK`). Los modelos que se ven puestos están en `DBModels` (`SCOUTER`, `WRISTBANDS`, `BELT`) y se dibujan en `DBPlayerLayer.renderAccessories`.
+
+## Esferas y Dragón Eterno
+- `common/block/DragonBallBlock` + `DragonBallTracker` (SavedData con la posición de cada esfera colocada, para el radar).
+- `common/entity/ShenlongEntity`: estados `RISING` → `WAITING` → `LEAVING` con sus tiempos, deseos (`Wish`), dispersión de esferas (una por tick, genera el chunk si hace falta). No se guarda en el mundo.
+- `client/renderer/ShenlongRenderer`: el ritual en pantalla. El cuerpo sigue `path()` (hélice); cada segmento se orienta hacia el siguiente; la cabeza mira al invocador. `path`, `SEGMENTS` y `SCALE` deben coincidir con `tools/preview_dragon_blender.py`.
+- `client/gui/WishScreen` + `S2COpenWishPacket` / `C2SWishPacket` (el servidor valida quién pide y en qué estado).
+- Cielo oscuro y rayos del ritual en `TransformFx` (`LightningStrikes.strikeAt`).
+
 ## Probar
 ```
 ./gradlew.bat runClient

@@ -1,0 +1,6 @@
+{
+ "parent": "dragonblock:block/dragon_ball",
+ "textures": {
+  "ball": "dragonblock:block/dragon_ball_2"
+ }
+}

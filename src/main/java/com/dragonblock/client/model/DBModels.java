@@ -40,12 +40,17 @@ public final class DBModels {
     public static final ModelLayerLocation SCOUTER = layer("scouter");
     public static final ModelLayerLocation WRISTBANDS = layer("wristbands");
     public static final ModelLayerLocation BELT = layer("belt");
+    /** Eternal dragon parts, built from assets/dragonblock/dragon.json (tools/gen_dragon_json.py). */
+    public static final String[] DRAGON_PARTS = {"head", "segment", "tail", "leg"};
+    public static final Map<String, ModelLayerLocation> DRAGON = new java.util.LinkedHashMap<>();
+    public static final String[] DRAGON_GROUPS = {"scales", "belly", "horn", "whisker", "teeth", "eye", "fin"};
 
     /** Segments in a tail chain, named seg0..segN-1, each a child of the previous. */
     public static final int TAIL_SEGMENTS = 7;
     public static final int TENDRIL_SEGMENTS = 4;
 
     static {
+        for (String part : DRAGON_PARTS) DRAGON.put(part, layer("dragon_" + part));
         for (HairStyle style : HairStyle.values()) {
             if (style != HairStyle.NONE) HAIR.put(style, layer("hair_" + style.name().toLowerCase()));
         }
@@ -69,6 +74,7 @@ public final class DBModels {
         event.registerLayerDefinition(SCOUTER, DBModels::scouter);
         event.registerLayerDefinition(WRISTBANDS, DBModels::wristbands);
         event.registerLayerDefinition(BELT, DBModels::belt);
+        DRAGON.forEach((part, loc) -> event.registerLayerDefinition(loc, () -> dragonPart(part)));
         event.registerLayerDefinition(FUR, () -> LayerDefinition.create(HumanoidModel.createMesh(new CubeDeformation(0.45f), 0), 64, 64));
     }
 
@@ -236,6 +242,24 @@ public final class DBModels {
             v += 6;
         }
         return LayerDefinition.create(mesh, 64, 32);
+    }
+
+    /** One dragon part: every color group becomes a child part (always present, maybe empty) so it can be tinted. */
+    private static LayerDefinition dragonPart(String part) {
+        JsonObject groups = readJson("/assets/" + DragonBlockMod.MODID + "/dragon.json").getAsJsonObject(part);
+        MeshDefinition mesh = new MeshDefinition();
+        for (String group : DRAGON_GROUPS) {
+            CubeListBuilder cubes = CubeListBuilder.create().texOffs(0, 0);
+            if (groups.has(group)) {
+                for (JsonElement e : groups.getAsJsonArray(group)) {
+                    JsonArray b = e.getAsJsonArray();
+                    cubes.addBox(b.get(0).getAsFloat(), b.get(1).getAsFloat(), b.get(2).getAsFloat(),
+                            b.get(3).getAsFloat(), b.get(4).getAsFloat(), b.get(5).getAsFloat());
+                }
+            }
+            mesh.getRoot().addOrReplaceChild(group, cubes, PartPose.ZERO);
+        }
+        return LayerDefinition.create(mesh, 64, 64);
     }
 
     // ------------------------------------------------------------------ accessories

@@ -10,7 +10,7 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 * **Ki**: máximo según Voluntad (WIL) y raza. Se carga manteniendo `C` y se regenera solo.
 * **Vida (cuerpo)**: reserva propia que crece con la Constitución (CON) efectiva, así que transformarte te hace más resistente. Se muestra en una **barra roja** en lugar de los corazones; los corazones vanilla solo reflejan el porcentaje, por eso nunca se apilan. La comida, pociones y regeneración siguen funcionando.
 * **Aura**: tres capas de llamas, más **ancha y alta** que el cuerpo, con lenguas que suben, chispas que se desprenden y un anillo de presión en el suelo. Al empezar a cargar **se hincha** y late; al soltar se apaga poco a poco. **Crece con el poder de pelea y el multiplicador de la forma.** Se puede ocultar con `J`.
-* **Vuelo (`F`)**: velocidad cercana a la de creativo. En el aire el aura se apaga; al **acelerar** (correr volando) aparece un aura ceñida al cuerpo y una **estela de energía** detrás que ven todos. El cuerpo se inclina según la velocidad.
+* **Vuelo (`F`)**: velocidad cercana a la de creativo. En el aire el aura se apaga; solo al **volar rápido** (correr volando) aparece un aura ceñida al cuerpo y una **estela de energía** detrás que ven todos. El cuerpo se inclina según la velocidad.
 * **Velocidad**: la Destreza da hasta +35% al caminar, **sin el efecto de "poción de velocidad"** en el campo de visión.
 
 ---
@@ -18,7 +18,7 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 ### Interfaz
 Estilo Dragon Ball sobrio: paneles azul noche, naranja de gi como acento, dorado de esfera del dragón para lo importante y la esfera de cuatro estrellas en los encabezados.
 * **Ficha (`V`)**: se abre con animación y muestra una **vista 3D de tu personaje** que sigue el ratón (con pelo, aura y cola). Pestañas **Atributos, Formas, Técnicas y Apariencia** con subrayado animado, barras que crecen al mejorar y tarjetas con descripción al pasar el ratón.
-* **Creación de personaje**: la primera vez que entras eliges raza y personalizas piel, ojos, peinado, color de pelo y ropa, viéndolo en 3D al momento. El visor se **gira arrastrando**, la **rueda hace zoom** hasta la cara y el clic derecho lo reinicia. Con **Probar forma** ves cómo te quedan las transformaciones de tu raza (pelo, ojos, aura) antes de jugar. La apariencia se puede cambiar después en la pestaña *Apariencia*; la raza es permanente.
+* **Creación de personaje**: la primera vez que entras eliges raza y personalizas piel, ojos, peinado, color de pelo y ropa, viéndolo en 3D al momento. El visor se **gira arrastrando**, la **rueda hace zoom** hasta la cara y el clic derecho lo reinicia. Las transformaciones no se pueden previsualizar: son sorpresa. La apariencia se puede cambiar después en la pestaña *Apariencia*; la raza es permanente.
 * **HUD**: barras que se mueven con suavidad, "fantasma" de daño en la vida, barra de Ki que brilla al cargar, anillo de carga en la mira, título al transformarte, TP ganados flotando y la **barra de técnicas** a la derecha.
 
 ### 2. Ficha de Personaje y Atributos (Tecla `V`)
@@ -115,9 +115,13 @@ Mantén `G` y vive la transformación por fases:
 5. **Estallido**: explosión de energía, los escombros salen despedidos, onda en el suelo, destello en pantalla y el **nombre de la forma** aparece en grande.
 
 **Formas poderosas, versión cinemática** (Super Saiyajin 2 en adelante, y las de tipo cataclismo, divina o gigante):
-* **Cámara de cine** (solo para quien se transforma): sale de tus ojos, te rodea despacio mientras cargas, se aleja con la carga y retrocede con la explosión; aparecen franjas negras de cine. Se apaga con `cinematicTransformations = false` en `config/dragonblock-client.toml`.
+* **Cámara de cine** (solo para quien se transforma): sale de tus ojos a un plano fijo de frente que te encuadra entero, aguanta la explosión y vuelve; aparecen franjas negras de cine. Se apaga con `cinematicTransformations = false` en `config/dragonblock-client.toml`.
 * **El cielo se oscurece** para todos los que estén cerca, teñido del color del aura, y un retumbar que sube de tono acompaña la carga.
-* **Onda expansiva**: al completar, todo lo que esté cerca sale despedido (otros jugadores solo si el servidor permite PvP entre vosotros), con una pared de polvo y, desde SSJ3, un trueno.
+* **Intocable mientras te transformas**: durante la carga nadie te puede golpear (jugadores, mobs ni técnicas). Si sueltas la `G` a medias, esperas 3 s para volver a intentarlo.
+* **Onda expansiva**: al completar, todo lo que esté cerca sale despedido; es solo un empujón, nunca quita vida. Con pared de polvo y, desde SSJ3, un trueno.
+* **Temblor de cámara**: solo las formas cumbre (Blue Evolución, Ultra Ego, Instinto Superior y Bestia) sacuden la cámara de todos en 20 bloques.
+* **Líneas de velocidad** de anime al final de la carga y un **fotograma de impacto** (blanco y negro) en el estallido.
+* **El cuerpo cambia de color** en las formas que lo hacen (Forma Dorada, Forma Negra, Namekiano Naranja, Majin Puro) y vuelve a tu color al revertir.
 * **Sentir el ki**: los demás jugadores reciben un aviso tipo "Sientes un ki colosal al noreste (54 m)".
 
 La carga dura al menos 1,5 s y más en las formas poderosas (SSJ1 unos 3 s, SSJ3 unos 6 s, Blue unos 8 s); la maestría la acorta como mucho un 40%. Cada forma tiene su estilo: *Destello* (el pelo parpadea), *Oleada* (rayos), *Cataclismo* (larga, terremoto, el pelo crece), *Divina* (serena, columna de luz), *Gigante* (creces poco a poco), *Tensión* (llamarada roja). Con más maestría la carga es más corta.
@@ -195,6 +199,28 @@ Funcionan en primera y tercera persona y las ven todos los jugadores. En primera
 
 ---
 
+### 7. Accesorios (`K`)
+Un segundo inventario con cuatro casillas: **Visor, Torso, Muñecas y Cintura**. Lo que llevas se ve en tu personaje para todos.
+
+| Accesorio | Casilla | Efecto |
+| :--- | :--- | :--- |
+| **Scouter** | Visor | Lente verde en tu ojo izquierdo: fija lo que miras, cuenta su poder dígito a dígito con un pitido, marca la distancia y una flecha apunta al ki más fuerte cercano. **Si mide un poder abrumador (25 veces el tuyo y más de 20.000), estalla y lo pierdes.** |
+| **Pesas de entrenamiento** | Torso | +50% de TP en combate, te mueves un poco más lento. Se ve un chaleco oscuro. |
+| **Muñequeras de peso** | Muñecas | +20% de TP. Bandas rojas en los antebrazos. |
+| **Cinturón de combate** | Cintura | El ki se regenera un 25% más rápido. Cinturón con hebilla dorada. |
+
+### 8. Esferas del Dragón y el Dragón Eterno
+Las siete esferas se **colocan como bloques** (brillan, no las destruyen las explosiones). Con las siete a menos de 4 bloques entre sí, **usa una** y empieza el ritual:
+1. Las esferas laten cada vez más fuerte, **el cielo se vuelve casi negro** para todos en 256 bloques y caen rayos alrededor.
+2. Un **pilar de luz** sale disparado de las esferas.
+3. El **Dragón Eterno** brota de la luz con la cabeza por delante y se enrosca hasta el cielo, ondulando, con astas, bigotes y ojos rojos que brillan, y **mira a quien lo invocó**.
+4. Se abre el **diálogo del deseo** (si lo cierras, vuelve a usar una esfera). Deseos: más fuerza (TP), riquezas, semillas del ermitaño, dominar tu poder (+40% de maestría) o renacer (eliges raza y apariencia de nuevo).
+5. Se marcha deshaciéndose en luz desde la cola, y las esferas **suben y salen volando** en siete direcciones: aparecen colocadas entre 400 y 1.500 bloques de distancia. El **Radar del Dragón** las encuentra estén donde estén.
+
+El dragón es un diseño propio de dragón oriental (modelo en `assets/dragonblock/dragon.json`, generado con `tools/gen_dragon_json.py` y revisado en Blender con `tools/preview_dragon_blender.py`). Para probar: `/dev dragon` pone las siete esferas a tu alrededor e invoca.
+
+---
+
 ## 🕹️ Controles por Defecto
 
 | Tecla | Acción |
@@ -208,6 +234,7 @@ Funcionan en primera y tercera persona y las ven todos los jugadores. En primera
 | `Ctrl` + rueda | Elegir técnica en la barra de la derecha |
 | `R` | Impulso |
 | `B` *(mantener)* | Guardia |
+| `K` | Accesorios (scouter, pesas, muñequeras, cinturón) |
 | `J` | Mostrar/ocultar auras (todas, ocultar la mía, ocultar todas). Solo estético, se guarda en tu config. |
 
 > *Reasignables en **Opciones -> Controles -> Dragon Block**.*

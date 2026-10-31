@@ -33,11 +33,11 @@ public class ModItems {
             ITEMS.register("ki_blast", KiAttackItem::new);
 
     // 7 Dragon Balls
-    public static final RegistryObject<Item> DRAGON_BALL_1 = ITEMS.register("dragon_ball_1", () -> new DragonBallItem(1));
-    public static final RegistryObject<Item> DRAGON_BALL_2 = ITEMS.register("dragon_ball_2", () -> new DragonBallItem(2));
-    public static final RegistryObject<Item> DRAGON_BALL_3 = ITEMS.register("dragon_ball_3", () -> new DragonBallItem(3));
-    public static final RegistryObject<Item> DRAGON_BALL_4 = ITEMS.register("dragon_ball_4", () -> new DragonBallItem(4));
-    public static final RegistryObject<Item> DRAGON_BALL_5 = ITEMS.register("dragon_ball_5", () -> new DragonBallItem(5));
-    public static final RegistryObject<Item> DRAGON_BALL_6 = ITEMS.register("dragon_ball_6", () -> new DragonBallItem(6));
-    public static final RegistryObject<Item> DRAGON_BALL_7 = ITEMS.register("dragon_ball_7", () -> new DragonBallItem(7));
+    public static final RegistryObject<Item> DRAGON_BALL_1 = ITEMS.register("dragon_ball_1", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(0).get(), 1));
+    public static final RegistryObject<Item> DRAGON_BALL_2 = ITEMS.register("dragon_ball_2", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(1).get(), 2));
+    public static final RegistryObject<Item> DRAGON_BALL_3 = ITEMS.register("dragon_ball_3", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(2).get(), 3));
+    public static final RegistryObject<Item> DRAGON_BALL_4 = ITEMS.register("dragon_ball_4", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(3).get(), 4));
+    public static final RegistryObject<Item> DRAGON_BALL_5 = ITEMS.register("dragon_ball_5", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(4).get(), 5));
+    public static final RegistryObject<Item> DRAGON_BALL_6 = ITEMS.register("dragon_ball_6", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(5).get(), 6));
+    public static final RegistryObject<Item> DRAGON_BALL_7 = ITEMS.register("dragon_ball_7", () -> new DragonBallItem(ModBlocks.DRAGON_BALLS.get(6).get(), 7));
 }

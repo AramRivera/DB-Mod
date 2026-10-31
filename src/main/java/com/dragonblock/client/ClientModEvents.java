@@ -28,6 +28,7 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.KI_BLAST.get(), KiBlastRenderer::new);
+        event.registerEntityRenderer(ModEntities.SHENLONG.get(), com.dragonblock.client.renderer.ShenlongRenderer::new);
     }
 
     @SubscribeEvent

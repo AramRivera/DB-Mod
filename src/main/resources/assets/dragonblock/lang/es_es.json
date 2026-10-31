@@ -25,5 +25,14 @@
   "key.dragonblock.toggle_aura": "Mostrar/ocultar aura",
   "key.dragonblock.accessories": "Accesorios",
   "item.dragonblock.wrist_weights": "Muñequeras de peso",
-  "item.dragonblock.combat_belt": "Cinturón de combate"
+  "item.dragonblock.combat_belt": "Cinturón de combate",
+  "block.dragonblock.dragon_ball_1": "Esfera del Dragón (1 Estrella)",
+  "block.dragonblock.dragon_ball_2": "Esfera del Dragón (2 Estrellas)",
+  "block.dragonblock.dragon_ball_3": "Esfera del Dragón (3 Estrellas)",
+  "block.dragonblock.dragon_ball_4": "Esfera del Dragón (4 Estrellas)",
+  "block.dragonblock.dragon_ball_5": "Esfera del Dragón (5 Estrellas)",
+  "block.dragonblock.dragon_ball_6": "Esfera del Dragón (6 Estrellas)",
+  "block.dragonblock.dragon_ball_7": "Esfera del Dragón (7 Estrellas)",
+  "entity.dragonblock.shenlong": "Dragón Eterno",
+  "container.dragonblock.accessories": "Accesorios"
 }

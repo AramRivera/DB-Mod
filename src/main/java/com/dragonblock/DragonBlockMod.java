@@ -25,6 +25,7 @@ public class DragonBlockMod {
         IEventBus modEventBus = context.getModEventBus();
 
         // Register deferred registers
+        com.dragonblock.common.registry.ModBlocks.BLOCKS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);

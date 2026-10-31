@@ -85,7 +85,9 @@ public class DevCommand {
                 .then(Commands.literal("max").executes(ctx -> setMax(ctx.getSource())))
 
                 // /dev reset (resets stats to base 5, 100 TP, base form)
-                .then(Commands.literal("reset").executes(ctx -> resetStats(ctx.getSource())));
+                .then(Commands.literal("reset").executes(ctx -> resetStats(ctx.getSource())))
+                // Sets the seven balls in a ring around you and starts the ritual
+                .then(Commands.literal("dragon").executes(ctx -> summonDragon(ctx.getSource())));
     }
 
     private static int sendHelp(CommandSourceStack source) {
@@ -289,6 +291,19 @@ public class DevCommand {
         ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §eEstadísticas y datos restablecidos a valores iniciales."), false);
+        return 1;
+    }
+
+    private static int summonDragon(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = source.getPlayerOrException();
+        net.minecraft.server.level.ServerLevel level = player.serverLevel();
+        net.minecraft.core.BlockPos center = player.blockPosition();
+        for (int i = 0; i < 7; i++) {
+            double a = Math.PI * 2 * i / 7;
+            net.minecraft.core.BlockPos pos = center.offset((int) Math.round(Math.cos(a) * 3), 0, (int) Math.round(Math.sin(a) * 3));
+            level.setBlockAndUpdate(pos, com.dragonblock.common.registry.ModBlocks.DRAGON_BALLS.get(i).get().defaultBlockState());
+        }
+        com.dragonblock.common.entity.ShenlongEntity.trySummon(level, center, player);
         return 1;
     }
 }

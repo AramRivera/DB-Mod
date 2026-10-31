@@ -20,4 +20,14 @@ public class ModEntities {
                             .updateInterval(2)
                             .build("ki_blast")
             );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.ShenlongEntity>> SHENLONG =
+            ENTITY_TYPES.register("shenlong", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.ShenlongEntity>of(com.dragonblock.common.entity.ShenlongEntity::new, MobCategory.MISC)
+                            .sized(2f, 2f)
+                            .clientTrackingRange(16)
+                            .updateInterval(20)
+                            .noSave()
+                            .build("shenlong")
+            );
 }

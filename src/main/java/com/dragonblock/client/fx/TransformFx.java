@@ -148,6 +148,18 @@ public final class TransformFx {
                 shake = Math.max(shake, 1.3f * (float) (1 - dist / 20));
             }
         }
+        // The eternal dragon turns the sky nearly black and calls lightning while it rises
+        for (var dragon : mc.level.getEntitiesOfClass(com.dragonblock.common.entity.ShenlongEntity.class, mc.player.getBoundingBox().inflate(256))) {
+            float d = 0.95f * (float) Math.max(0, 1 - dragon.distanceTo(mc.player) / 256);
+            if (dragon.getState() == com.dragonblock.common.entity.ShenlongEntity.State.LEAVING) d *= Math.max(0f, 1f - dragon.stateAge() / 110f);
+            if (d > dim) {
+                dim = d;
+                darkTint = 0x1A6030;
+            }
+            if (dragon.getState() == com.dragonblock.common.entity.ShenlongEntity.State.RISING && mc.player.getRandom().nextFloat() < 0.18f) {
+                LightningStrikes.strikeAt(mc.level, dragon.getId(), dragon.position(), 6, 26, 0xFFF4C0);
+            }
+        }
         prevDarkness = darkness;
         darkness += (dim - darkness) * (dim > darkness ? 0.06f : 0.03f);
         // Clashing techniques nearby rattle the view

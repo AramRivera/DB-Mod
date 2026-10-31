@@ -61,16 +61,20 @@ public final class LightningStrikes {
     }
 
     private static void strike(Player player, Transformation form, double minR, double maxR) {
-        if (STRIKES.size() >= MAX) return;
-        RandomSource rnd = player.getRandom();
-        double a = rnd.nextDouble() * Math.PI * 2, r = (minR + rnd.nextDouble() * (maxR - minR)) * player.getScale();
-        double x = player.getX() + Math.cos(a) * r, z = player.getZ() + Math.sin(a) * r;
-        var level = player.level();
-        int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(x), Mth.floor(z));
-        // Under a roof the heightmap is far above; strike the floor the player stands on instead
-        double groundY = top > player.getY() + 6 ? player.getY() : top;
         int color = form.getLightningColor() != 0 ? form.getLightningColor() : EnergyRender.mix(form.getAuraColor(), 0xFFFFFF, 0.55f);
-        STRIKES.add(new Strike(player.getId(), new Vec3(x, groundY, z), 16 + rnd.nextDouble() * 12, color, rnd.nextInt(), new int[1]));
+        strikeAt(player.level(), player.getId(), player.position(), minR * player.getScale(), maxR * player.getScale(), color);
+    }
+
+    /** One bolt somewhere between {@code minR} and {@code maxR} blocks around {@code center}. */
+    public static void strikeAt(net.minecraft.world.level.Level level, int ownerId, Vec3 center, double minR, double maxR, int color) {
+        if (STRIKES.size() >= MAX) return;
+        RandomSource rnd = level.getRandom();
+        double a = rnd.nextDouble() * Math.PI * 2, r = minR + rnd.nextDouble() * (maxR - minR);
+        double x = center.x + Math.cos(a) * r, z = center.z + Math.sin(a) * r;
+        int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(x), Mth.floor(z));
+        // Under a roof the heightmap is far above; strike the floor at the center's height instead
+        double groundY = top > center.y + 6 ? center.y : top;
+        STRIKES.add(new Strike(ownerId, new Vec3(x, groundY, z), 16 + rnd.nextDouble() * 12, color, rnd.nextInt(), new int[1]));
 
         for (int i = 0; i < 6; i++) {
             level.addParticle(ParticleTypes.ELECTRIC_SPARK, x, groundY + 0.1, z,
