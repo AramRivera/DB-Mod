@@ -94,18 +94,20 @@ public final class KiAttacks {
         float damage = base * power;
         float wil = Math.min(4f, data.getEffectiveWil() * 0.03f);
 
+        float scale = Technique.powerScale(data);
+        int halo = data.getTransformation() == com.dragonblock.common.data.Transformation.BASE ? 0 : data.getTransformation().getAuraColor();
         switch (tech.getKind()) {
-            case BLAST -> spawn(player, tech, damage, 0.8f + wil * 0.5f, color, 0.35f, 2.0f, 0.6f);
+            case BLAST -> spawn(player, tech, damage, 0.8f + wil * 0.5f, color, 0.35f, 2.0f, 0.6f, scale, halo);
             case BEAM -> {
                 float width = tech == Technique.FINAL_FLASH ? 1.3f : 0.75f;
-                spawn(player, tech, damage, (1.5f + wil) * power, color, (0.4f + width * charge), 2.6f, 0f);
+                spawn(player, tech, damage, (1.5f + wil) * power, color, (0.4f + width * charge), 2.6f, 0f, scale, halo);
             }
             case PIERCE -> spawn(player, tech, damage, tech == Technique.MAKANKOSAPPO ? 1.2f : 0f, color,
-                    tech == Technique.MAKANKOSAPPO ? 0.22f : 0.12f, tech == Technique.DEATH_BEAM ? 4.0f : 3.2f, 0f);
-            case DISC -> spawn(player, tech, damage, 0f, color, 0.35f + 0.35f * charge, 1.6f, 0f);
-            case BOMB -> spawn(player, tech, damage, (3f + wil * 1.5f) * (0.5f + charge), color, 0.6f + 2.2f * charge, 0.55f, 0f);
-            case BALL -> spawn(player, tech, damage, (2.2f + wil) * power, color, 0.5f + 0.5f * charge, 1.8f, 0f);
-            case SHOCKWAVE -> shockwave(player, damage, 3f + 4f * charge);
+                    tech == Technique.MAKANKOSAPPO ? 0.22f : 0.12f, tech == Technique.DEATH_BEAM ? 4.0f : 3.2f, 0f, scale, halo);
+            case DISC -> spawn(player, tech, damage, 0f, color, 0.35f + 0.35f * charge, 1.6f, 0f, scale, halo);
+            case BOMB -> spawn(player, tech, damage, (3f + wil * 1.5f) * (0.5f + charge), color, 0.6f + 2.2f * charge, 0.55f, 0f, scale, halo);
+            case BALL -> spawn(player, tech, damage, (2.2f + wil) * power, color, 0.5f + 0.5f * charge, 1.8f, 0f, scale, halo);
+            case SHOCKWAVE -> shockwave(player, damage, (3f + 4f * charge) * (0.8f + 0.2f * scale));
             case FLASH -> solarFlare(player);
             case TELEPORT -> teleport(player);
         }
@@ -124,9 +126,11 @@ public final class KiAttacks {
     }
 
     private static void spawn(ServerPlayer player, Technique tech, float damage, float explosion, int color,
-                              float size, float speed, float inaccuracy) {
-        // Past ~8 explosions mostly cause lag and crater whole builds
-        KiBlastEntity blast = new KiBlastEntity(player.level(), player, damage, Math.min(8f, explosion), color, size, tech);
+                              float size, float speed, float inaccuracy, float scale, int halo) {
+        // Stronger fighters throw bigger, heavier techniques; past ~8 explosions mostly cause lag and crater builds
+        KiBlastEntity blast = new KiBlastEntity(player.level(), player, damage, Math.min(8f, explosion * (0.75f + 0.25f * scale)),
+                color, size * scale, tech);
+        blast.setHalo(halo);
         blast.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, speed, inaccuracy);
         player.level().addFreshEntity(blast);
     }
@@ -167,7 +171,7 @@ public final class KiAttacks {
     }
 
     /** Other players are only affected when this server allows PvP between the two (teams included). */
-    private static boolean mayAffect(ServerPlayer caster, LivingEntity target) {
+    static boolean mayAffect(ServerPlayer caster, LivingEntity target) {
         return !(target instanceof net.minecraft.world.entity.player.Player other) || caster.canHarmPlayer(other);
     }
 

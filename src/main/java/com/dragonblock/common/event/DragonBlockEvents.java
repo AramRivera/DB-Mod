@@ -15,7 +15,10 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -163,6 +166,34 @@ public class DragonBlockEvents {
                 player.displayClientMessage(Component.literal("Zenkai: tu cuerpo se sobrepone al límite (+" + bonus + " TP)"), true);
             }
             data.saveToPlayer(player);
+        }
+    }
+
+    /**
+     * Power gap: a punch from someone far stronger sends the target flying, like in the series. Runs on the
+     * damage that actually landed (dodged, blocked or cancelled hits never get here).
+     */
+    @SubscribeEvent
+    public static void onMeleeLanded(LivingDamageEvent event) {
+        if (!(event.getSource().getEntity() instanceof ServerPlayer attacker) || event.getSource().getDirectEntity() != attacker) return;
+        LivingEntity target = event.getEntity();
+        PlayerDBCData data = PlayerDBCData.get(attacker);
+        float mine = data.getBattlePower();
+        float theirs = target instanceof Player p ? PlayerDBCData.get(p).getBattlePower() : target.getMaxHealth() * 10f;
+        float ratio = mine / Math.max(1f, theirs);
+        float launch = Math.min(3f, (float) Math.max(0, Math.log(ratio) / Math.log(2)) * 0.6f
+                + 0.08f * (data.getTransformation().getStatMultiplier() - 1f));
+        if (launch < 0.15f) return;
+
+        Vec3 dir = target.position().subtract(attacker.position()).multiply(1, 0, 1).normalize();
+        target.push(dir.x * launch, 0.15 + launch * 0.18, dir.z * launch);
+        target.hurtMarked = true;
+        if (launch > 0.9f && attacker.level() instanceof ServerLevel level) {
+            Vec3 at = target.position().add(0, target.getBbHeight() * 0.6, 0);
+            level.sendParticles(ParticleTypes.SONIC_BOOM, at.x, at.y, at.z, 1, 0, 0, 0, 0);
+            level.sendParticles(ParticleTypes.CLOUD, at.x, at.y, at.z, 8, 0.2, 0.2, 0.2, 0.15);
+            level.playSound(null, at.x, at.y, at.z, SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.PLAYERS, 1.2f, 0.6f);
+            if (launch > 2f) level.playSound(null, at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 0.5f, 1.6f);
         }
     }
 

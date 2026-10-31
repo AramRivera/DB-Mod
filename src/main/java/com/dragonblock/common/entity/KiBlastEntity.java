@@ -1,5 +1,6 @@
 package com.dragonblock.common.entity;
 
+import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Technique;
 import com.dragonblock.common.registry.ModEntities;
 import com.dragonblock.common.registry.ModItems;
@@ -10,7 +11,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -36,6 +39,11 @@ public class KiBlastEntity extends ThrowableItemProjectile {
     private static final EntityDataAccessor<Integer> COLOR = SynchedEntityData.defineId(KiBlastEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> SIZE = SynchedEntityData.defineId(KiBlastEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> TECH = SynchedEntityData.defineId(KiBlastEntity.class, EntityDataSerializers.INT);
+    /** Aura color of the shooter's form, drawn as a halo; 0 in base form. */
+    private static final EntityDataAccessor<Integer> HALO = SynchedEntityData.defineId(KiBlastEntity.class, EntityDataSerializers.INT);
+    /** Ticks left in a clash with another technique, 0 when flying freely. */
+    private static final EntityDataAccessor<Integer> CLASH = SynchedEntityData.defineId(KiBlastEntity.class, EntityDataSerializers.INT);
+    public static final int CLASH_TICKS = 50;
 
     /** Client-only: tail end of the beam. Held at the shooter's hands while they fire, then it catches up. */
     public Vec3 origin;
@@ -44,6 +52,10 @@ public class KiBlastEntity extends ThrowableItemProjectile {
     private float damage = 8.0f;
     private float explosionPower = 1.5f;
     private final Set<Integer> pierced = new HashSet<>();
+    // Server-only clash state
+    private int clashPartner = -1;
+    private Vec3 frozenVelocity = Vec3.ZERO;
+    private float clashBoost = 1f;
 
     public KiBlastEntity(EntityType<? extends KiBlastEntity> entityType, Level level) {
         super(entityType, level);
@@ -64,6 +76,8 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         builder.define(COLOR, 0x9AB8FF);
         builder.define(SIZE, 0.35f);
         builder.define(TECH, 0);
+        builder.define(HALO, 0);
+        builder.define(CLASH, 0);
     }
 
     @Override
@@ -72,6 +86,11 @@ public class KiBlastEntity extends ThrowableItemProjectile {
     }
 
     public int getColor() { return entityData.get(COLOR); }
+    public int getHalo() { return entityData.get(HALO); }
+    public void setHalo(int rgb) { entityData.set(HALO, rgb); }
+    public boolean isClashing() { return entityData.get(CLASH) > 0; }
+    /** 0..1 progress through the current clash. */
+    public float clashProgress() { return 1f - entityData.get(CLASH) / (float) CLASH_TICKS; }
     public float getSize() { return entityData.get(SIZE); }
 
     public Technique getTechnique() {
@@ -97,6 +116,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         tag.putInt("Color", getColor());
         tag.putFloat("Size", getSize());
         tag.putString("Technique", getTechnique().name());
+        tag.putInt("Halo", getHalo());
     }
 
     @Override
@@ -106,6 +126,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         explosionPower = tag.getFloat("Explosion");
         entityData.set(COLOR, tag.getInt("Color"));
         entityData.set(SIZE, tag.getFloat("Size"));
+        entityData.set(HALO, tag.getInt("Halo"));
         try {
             entityData.set(TECH, Technique.valueOf(tag.getString("Technique")).ordinal());
         } catch (IllegalArgumentException e) {
@@ -120,11 +141,24 @@ public class KiBlastEntity extends ThrowableItemProjectile {
 
     @Override
     public void tick() {
+        if (isClashing()) {
+            // Locked in place against the other technique: no movement, no collisions
+            xo = getX();
+            yo = getY();
+            zo = getZ();
+            if (level().isClientSide) clientTick();
+            else tickClash();
+            return;
+        }
         super.tick();
 
         if (this.level().isClientSide) {
             clientTick();
-        } else if (getTechnique().getKind() == Technique.Kind.BOMB) {
+        } else if (canClash()) {
+            findClash();
+            if (isRemoved() || isClashing()) return;
+        }
+        if (!this.level().isClientSide && getTechnique().getKind() == Technique.Kind.BOMB) {
             // A giant sphere hits whatever it rolls over, not only what its small hitbox touches
             float r = getSize();
             for (LivingEntity e : level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(r),
@@ -140,6 +174,93 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         }
     }
 
+    // ------------------------------------------------------------------ clashes
+
+    /** Beams, spheres and blasts collide with other fighters' techniques; piercing rays and discs cut through. */
+    private boolean canClash() {
+        Technique.Kind kind = getTechnique().getKind();
+        return kind != Technique.Kind.PIERCE && kind != Technique.Kind.DISC;
+    }
+
+    private float clashPower() {
+        return damage * clashBoost;
+    }
+
+    private void findClash() {
+        Entity owner = getOwner();
+        for (KiBlastEntity other : level().getEntitiesOfClass(KiBlastEntity.class, getBoundingBox().inflate(getSize() + 1.5),
+                o -> o != this && !o.isRemoved() && o.canClash() && !o.isClashing() && o.getOwner() != owner)) {
+            if (other.distanceTo(this) > (getSize() + other.getSize()) * 0.9f + 0.6f) continue;
+            if (getTechnique().getKind() == Technique.Kind.BLAST || other.getTechnique().getKind() == Technique.Kind.BLAST) {
+                resolveClash(other); // small shots just knock each other out
+            } else {
+                beginClash(other);
+                other.beginClash(this);
+                for (KiBlastEntity side : new KiBlastEntity[]{this, other}) {
+                    if (side.getOwner() instanceof ServerPlayer p) {
+                        p.displayClientMessage(Component.literal("¡Choque de ki! Mantén la tecla de técnica para empujar"), true);
+                    }
+                }
+                level().playSound(null, getX(), getY(), getZ(), ModSounds.KI_EXPLODE.get(), SoundSource.PLAYERS, 2.5f, 0.5f);
+            }
+            return;
+        }
+    }
+
+    private void beginClash(KiBlastEntity other) {
+        clashPartner = other.getId();
+        frozenVelocity = getDeltaMovement();
+        setDeltaMovement(Vec3.ZERO);
+        entityData.set(CLASH, CLASH_TICKS);
+    }
+
+    private void tickClash() {
+        int left = entityData.get(CLASH) - 1;
+        // Struggle: an owner still holding the technique key pours ki into the clash
+        if (getOwner() instanceof ServerPlayer p) {
+            PlayerDBCData data = PlayerDBCData.get(p);
+            if (data.isTechHeld() && data.consumeKi(0.6f)) clashBoost += 0.02f;
+        }
+        if (level() instanceof ServerLevel sl && (left % 3) == 0) {
+            sl.sendParticles(ParticleTypes.ELECTRIC_SPARK, getX(), getY(), getZ(), 6, getSize(), getSize(), getSize(), 0.4);
+        }
+        Entity partner = level().getEntity(clashPartner);
+        if (!(partner instanceof KiBlastEntity other) || other.isRemoved() || !other.isClashing()) {
+            release(); // the other side vanished: carry on
+            return;
+        }
+        entityData.set(CLASH, Math.max(1, left));
+        // The lower id settles it, so both sides don't resolve the same clash
+        if (left <= 0 && getId() < other.getId()) resolveClash(other);
+    }
+
+    private void release() {
+        entityData.set(CLASH, 0);
+        clashPartner = -1;
+        if (frozenVelocity.lengthSqr() > 0) setDeltaMovement(frozenVelocity);
+        hasImpulse = true;
+    }
+
+    /** The stronger technique (with a little luck) wins: the loser blows up, the winner goes on weakened. */
+    private void resolveClash(KiBlastEntity other) {
+        float mine = clashPower() * (0.9f + random.nextFloat() * 0.2f);
+        float theirs = other.clashPower() * (0.9f + random.nextFloat() * 0.2f);
+        KiBlastEntity winner = mine >= theirs ? this : other;
+        KiBlastEntity loser = winner == this ? other : this;
+        float ratio = Math.min(mine, theirs) / Math.max(1e-3f, Math.max(mine, theirs));
+        winner.damage *= Math.max(0.3f, 1f - ratio * 0.6f);
+        winner.entityData.set(SIZE, winner.getSize() * 1.15f);
+        winner.release();
+        if (level() instanceof ServerLevel sl) {
+            Vec3 mid = position().add(other.position()).scale(0.5);
+            sl.sendParticles(ParticleTypes.EXPLOSION_EMITTER, mid.x, mid.y, mid.z, 1, 0, 0, 0, 0);
+        }
+        loser.release();
+        loser.explode();
+    }
+
+    // ------------------------------------------------------------------ client
+
     private void clientTick() {
         Technique tech = getTechnique();
         Vec3 here = position();
@@ -148,7 +269,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         if (isBeam()) {
             // While the shooter still holds the firing pose the beam stays attached to their hands
             Entity owner = getOwner();
-            if (owner != null && tickCount <= tech.getSustain()) origin = handAnchor(owner, tech);
+            if (owner != null && (tickCount <= tech.getSustain() || isClashing())) origin = handAnchor(owner, tech);
             else origin = origin.add(here.subtract(origin).scale(tech == Technique.DEATH_BEAM ? 0.6 : 0.3));
         }
 

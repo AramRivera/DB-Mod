@@ -26,7 +26,7 @@ public final class TechniqueFx {
         float c = data.getTechCharge();
         int color = tech.colorFor(data.getTransformation());
         // First person draws smaller and a bit further out so the energy doesn't fill the screen
-        float k = firstPerson ? 0.7f : 1f;
+        float k = (firstPerson ? 0.7f : 1f) * Technique.powerScale(data);
 
         switch (tech.getStance()) {
             case ONE_PALM -> orb(pose, buffers, model.rightHand(), (0.06f + 0.22f * c) * k, color, time, firstPerson);
@@ -63,7 +63,7 @@ public final class TechniqueFx {
             case RAISED_BOTH -> {
                 // The sphere grows high above the head, fed from both raised hands
                 Vec3 hands = model.handsMidpoint();
-                float r = 0.2f + 1.9f * c;
+                float r = (0.2f + 1.9f * c) * Technique.powerScale(data);
                 pose.pushPose();
                 pose.translate(hands.x, hands.y - 0.5f - r, hands.z);
                 EnergyRender.sphere(pose, buffers, r, color, time);

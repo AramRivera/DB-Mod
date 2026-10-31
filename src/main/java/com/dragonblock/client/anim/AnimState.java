@@ -48,12 +48,45 @@ public final class AnimState {
             var form = PlayerDBCData.get(p).getTransformation();
             Debris.blast(p, Mth.clamp(form.getStatMultiplier() / 3f, 0.5f, 2.5f));
             LightningStrikes.burst(p, form);
+            if (p != mc.player && mc.player != null) senseKi(mc.player, p, form);
+            if (com.dragonblock.client.fx.CinematicCamera.worthy(form)) {
+                // A wall of dust rolls out from the blast
+                for (int i = 0; i < 48; i++) {
+                    double a = Math.PI * 2 * i / 48, v = 0.5 + p.getRandom().nextDouble() * 0.3;
+                    mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.CLOUD, p.getX(), p.getY() + 0.2, p.getZ(),
+                            Math.cos(a) * v, 0.02, Math.sin(a) * v);
+                }
+            }
         } else if (anim == Anim.TECHNIQUE && arg >= 0 && arg < Technique.values().length) {
             Technique tech = Technique.values()[arg];
             shots.technique = tech;
             if (p == mc.player) LOCAL_FIRED.put(tech, now);
             if (tech == Technique.TAIYOKEN && mc.player != null && p != mc.player) solarFlareHits(mc.player, p);
+            // Big releases jolt everyone nearby, more the stronger the user
+            float weight = switch (tech.getKind()) {
+                case BEAM, BALL -> 0.35f;
+                case BOMB, SHOCKWAVE -> 0.6f;
+                default -> 0f;
+            };
+            if (weight > 0 && mc.player != null && p.distanceTo(mc.player) < 24) {
+                com.dragonblock.client.fx.TransformFx.kick(weight * Technique.powerScale(PlayerDBCData.get(p)) * (1f - p.distanceTo(mc.player) / 24f));
+            }
         }
+    }
+
+    private static final String[] COMPASS = {"norte", "noreste", "este", "sureste", "sur", "suroeste", "oeste", "noroeste"};
+
+    /** Fighters feel a big power-up nearby: how strong, which way and how far. */
+    private static void senseKi(Player self, Player other, com.dragonblock.common.data.Transformation form) {
+        float mult = form.getStatMultiplier();
+        if (mult < 2f) return;
+        double dx = other.getX() - self.getX(), dz = other.getZ() - self.getZ();
+        int dist = (int) Math.sqrt(dx * dx + dz * dz);
+        String size = mult >= 8 ? "abrumador" : mult >= 5 ? "colosal" : mult >= 3 ? "enorme" : "poderoso";
+        double bearing = Math.toDegrees(Math.atan2(dx, -dz)); // 0 = north, clockwise
+        String where = dist < 6 ? "justo a tu lado" : "al " + COMPASS[Math.floorMod((int) Math.round(bearing / 45), 8)] + " (" + dist + " m)";
+        self.displayClientMessage(net.minecraft.network.chat.Component.literal("Sientes un ki " + size + " " + where)
+                .withColor(form.getAuraColor()), true);
     }
 
     /** Taiyoken blinds whoever is looking at the caster: a white-out on their screen. */

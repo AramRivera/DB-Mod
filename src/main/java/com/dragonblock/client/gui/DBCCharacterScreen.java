@@ -64,6 +64,13 @@ public class DBCCharacterScreen extends Screen {
     private Race savedRace;
     private HairStyle savedStyle;
     private boolean saved = false;
+    /** "Try a form" in the look editor: shown on the local player only, put back on close. */
+    private Transformation previewForm = null;
+    private Transformation savedForm;
+
+    // 3D viewer: drag to turn, wheel to zoom toward the face, right click to reset
+    private float viewYaw = 0f, viewPitch = 8f, zoom = 1f, shownZoom = 1f;
+    private boolean dragging = false;
 
     public DBCCharacterScreen() {
         super(Component.literal("Ficha de personaje"));
@@ -92,6 +99,7 @@ public class DBCCharacterScreen extends Screen {
         int[] base = baseStats(d);
         for (int i = 0; i < 5; i++) shownStats[i] = base[i];
         if (savedLook == null) {
+            savedForm = d.getTransformation();
             savedRace = d.getRace();
             savedStyle = d.getHairStyle();
             savedLook = new int[]{d.getSkinColor(), d.getEyeColor(), d.getHairColor(), d.getAccentColor()};
@@ -114,6 +122,7 @@ public class DBCCharacterScreen extends Screen {
         PlayerDBCData d = data();
         if (creating()) d.setRace(pendingRace);
         d.setLook(skin, eyes, hair, accent, hairStyle);
+        if (previewForm != null) d.setTransformation(previewForm);
     }
 
     private void pickRace(Race race) {
@@ -139,10 +148,12 @@ public class DBCCharacterScreen extends Screen {
         int cl = contentLeft(), t = top(), cw = contentWidth();
 
         if (editingLook()) {
-            addRenderableWidget(new FlatButton(cl + cw - 120, t + H - 26, 120, 18,
+            addRenderableWidget(new FlatButton(cl + cw - 100, t + H - 26, 100, 18,
                     Component.literal(creating() ? "Crear personaje" : "Guardar apariencia"), accentRgb, b -> {
                 ModMessages.sendToServer(new C2SSelectRacePacket(pendingRace.name(), skin, eyes, hair, accent, hairStyle.name()));
                 saved = true;
+                if (previewForm != null) data().setTransformation(savedForm);
+                previewForm = null;
                 if (creating()) onClose();
             }));
             if (creating()) return;
@@ -183,6 +194,8 @@ public class DBCCharacterScreen extends Screen {
 
     private void restoreLook() {
         PlayerDBCData d = data();
+        if (previewForm != null) d.setTransformation(savedForm);
+        previewForm = null;
         if (!d.isRaceChosen()) d.setRace(savedRace);
         d.setLook(savedLook[0], savedLook[1], savedLook[2], savedLook[3], savedStyle);
     }
@@ -191,6 +204,7 @@ public class DBCCharacterScreen extends Screen {
     public void removed() {
         // Leaving without saving puts the old look back (the server never heard of the preview)
         if (!saved && (creating() || tab == Tab.LOOK)) restoreLook();
+        else if (previewForm != null) data().setTransformation(savedForm);
         super.removed();
     }
 
@@ -259,13 +273,61 @@ public class DBCCharacterScreen extends Screen {
             g.fill(px + 10 + i * 4, py + ph - 14 + i, px + pw - 10 - i * 4, py + ph - 13 + i, a << 24 | (accent & 0xFFFFFF));
         }
         g.enableScissor(px, py, px + pw, py + ph);
-        int size = (int) (40 / Math.max(1f, minecraft.player.getScale()));
-        InventoryScreen.renderEntityInInventoryFollowsMouse(g, px, py, px + pw, py + ph - 8, size, 0.0625f,
-                mouseX, mouseY, minecraft.player);
+        renderViewer(g, minecraft.player, px + pw / 2f, py + (ph - 8) / 2f);
         g.disableScissor();
+        if (inside(mouseX, mouseY, px, py, pw, ph)) {
+            g.drawCenteredString(font, "Arrastra · Rueda · Clic der.", px + pw / 2, py + 3, 0x80000000 | UiTheme.TEXT_DIM);
+        }
 
         String race = (creating() ? pendingRace : data.getRace()).getDisplayName();
         g.drawCenteredString(font, race, px + pw / 2, py + ph + 4, UiTheme.TEXT_DIM);
+    }
+
+    /**
+     * The player turned by the drag angles and zoomed toward the face, drawn the way the inventory draws
+     * it but without following the mouse.
+     */
+    private void renderViewer(GuiGraphics g, net.minecraft.world.entity.LivingEntity e, float cx, float cy) {
+        shownZoom += (zoom - shownZoom) * 0.25f;
+        float s = Math.max(1f, e.getScale());
+        float focus = Mth.clamp((shownZoom - 1f) / 1.6f, 0f, 1f); // 0 = whole body, 1 = head
+        org.joml.Quaternionf pose = new org.joml.Quaternionf().rotateZ(Mth.PI);
+        org.joml.Quaternionf tilt = new org.joml.Quaternionf().rotateX(viewPitch * Mth.DEG_TO_RAD);
+        pose.mul(tilt);
+        float bodyRot = e.yBodyRot, yRot = e.getYRot(), xRot = e.getXRot(), headO = e.yHeadRotO, head = e.yHeadRot;
+        e.yBodyRot = 180f + viewYaw;
+        e.setYRot(180f + viewYaw);
+        e.setXRot(0f);
+        e.yHeadRot = e.getYRot();
+        e.yHeadRotO = e.getYRot();
+        float h = e.getBbHeight() / s;
+        org.joml.Vector3f center = new org.joml.Vector3f(0f, Mth.lerp(focus, h / 2f, h * 0.86f), 0f);
+        InventoryScreen.renderEntityInInventory(g, cx, cy, 40f * shownZoom / s, center, pose, tilt, e);
+        e.yBodyRot = bodyRot;
+        e.setYRot(yRot);
+        e.setXRot(xRot);
+        e.yHeadRotO = headO;
+        e.yHeadRot = head;
+    }
+
+    private boolean overViewer(double mx, double my) {
+        return inside(mx, my, left() + 8, top() + 24, PREVIEW_W - 6, H - 56);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+        if (dragging) {
+            viewYaw -= (float) dx * 2.2f;
+            viewPitch = Mth.clamp(viewPitch + (float) dy * 1.2f, -30f, 45f);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        dragging = false;
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     private void renderTabUnderline(GuiGraphics g, int accent) {
@@ -311,7 +373,9 @@ public class DBCCharacterScreen extends Screen {
         for (LookRow row : lookRows(cl, y)) {
             g.drawString(font, row.label, cl, row.y + 3, UiTheme.TEXT, false);
             if (row.styles) {
-                String text = "‹  " + Appearance.hairStyleName(hairStyle) + "  ›";
+                String value = row.kind == 5 ? (previewForm == null ? "Ninguna" : previewForm.getDisplayName())
+                        : Appearance.hairStyleName(hairStyle);
+                String text = "‹  " + font.plainSubstrByWidth(value, 84) + "  ›";
                 boolean hover = inside(mouseX, mouseY, row.x, row.y, 110, SWATCH);
                 g.fill(row.x, row.y, row.x + 110, row.y + SWATCH, hover ? UiTheme.BUTTON_HOVER : UiTheme.BUTTON);
                 g.drawCenteredString(font, text, row.x + 55, row.y + 3, UiTheme.TEXT_HEADER);
@@ -344,7 +408,22 @@ public class DBCCharacterScreen extends Screen {
             y += SWATCH + 5;
         }
         rows.add(new LookRow(accentLabel(), x, y, Appearance.accentPalette(pendingRace), accent, 4, false));
+        y += SWATCH + 5;
+        rows.add(new LookRow("Probar forma", x, y, null, 0, 5, true));
         return rows;
+    }
+
+    /** Steps through the forms of the race (none = your normal look). */
+    private void cyclePreviewForm(int step) {
+        List<Transformation> forms = new java.util.ArrayList<>();
+        forms.add(null);
+        for (Transformation f : Transformation.values()) {
+            if (f != Transformation.BASE && f.isAvailableTo(pendingRace) && !f.isOozaru()) forms.add(f);
+        }
+        int i = forms.indexOf(previewForm);
+        previewForm = forms.get(Math.floorMod(i + step, forms.size()));
+        if (previewForm == null) data().setTransformation(savedForm);
+        previewLook();
     }
 
     private String skinLabel() {
@@ -365,6 +444,10 @@ public class DBCCharacterScreen extends Screen {
         for (LookRow row : lookRows(cl, y)) {
             if (row.styles) {
                 if (!inside(mouseX, mouseY, row.x, row.y, 110, SWATCH)) continue;
+                if (row.kind == 5) {
+                    cyclePreviewForm(mouseX < row.x + 55 ? -1 : 1);
+                    return true;
+                }
                 List<HairStyle> styles = Appearance.hairStyles(pendingRace);
                 int step = mouseX < row.x + 55 ? -1 : 1;
                 hairStyle = styles.get(Math.floorMod(styles.indexOf(hairStyle) + step, styles.size()));
@@ -610,6 +693,16 @@ public class DBCCharacterScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (overViewer(mouseX, mouseY)) {
+            if (button == 1) {
+                viewYaw = 0f;
+                viewPitch = 8f;
+                zoom = 1f;
+            } else {
+                dragging = true;
+            }
+            return true;
+        }
         if (super.mouseClicked(mouseX, mouseY, button)) return true;
         PlayerDBCData data = data();
 
@@ -654,6 +747,10 @@ public class DBCCharacterScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (overViewer(mouseX, mouseY)) {
+            zoom = Mth.clamp(zoom * (scrollY > 0 ? 1.15f : 1f / 1.15f), 0.7f, 3.2f);
+            return true;
+        }
         if (!creating() && tab == Tab.FORMS) {
             formScroll -= (int) Math.signum(scrollY);
             return true;

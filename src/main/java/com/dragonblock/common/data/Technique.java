@@ -93,4 +93,14 @@ public enum Technique {
     /** Ticks the release pose is held (and a beam stays connected to the hands). */
     public int getSustain() { return sustain; }
     public String getDescription() { return description; }
+
+    /**
+     * How much bigger and heavier techniques get with the user's power: 1 in base form, around 1.15 as
+     * Super Saiyajin, about 2.3 in the top forms, plus a little from battle power. Size, explosion and the
+     * charge visuals use it (damage already grows through the form's stats).
+     */
+    public static float powerScale(PlayerDBCData d) {
+        float bp = (float) Math.log10(Math.max(100, d.getBattlePower()) / 100.0);
+        return Math.min(2.6f, Math.max(1f, 0.85f + 0.15f * d.getTransformation().getStatMultiplier() + 0.08f * bp));
+    }
 }

@@ -10,6 +10,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
 
 /** Server-side transformation flow: hold the key to power up into the selected form, mastery, exhaustion. */
 public final class FormController {
@@ -89,8 +91,27 @@ public final class FormController {
                 ModSounds.TRANSFORM.get(), SoundSource.PLAYERS, 1.6f, pitch);
         if (player.level() instanceof ServerLevel level && target.getSequence() != Transformation.Sequence.DIVINE) {
             level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, player.getX(), player.getY() + 1.0, player.getZ(), 1, 0, 0, 0, 0);
+            if (target.getStatMultiplier() >= 3f) blastAway(player, Math.min(10f, 3f + target.getStatMultiplier() * 0.7f));
+            if (target.getStatMultiplier() >= 4f) {
+                level.playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.LIGHTNING_BOLT_THUNDER,
+                        SoundSource.WEATHER, 2.5f, 0.75f);
+            }
         }
         player.displayClientMessage(Component.literal(target.getDisplayName()), true);
+    }
+
+    /** The burst of a strong form throws back everything around (players only where PvP allows it). */
+    private static void blastAway(ServerPlayer player, float radius) {
+        for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(radius),
+                e -> e != player && e.isAlive() && KiAttacks.mayAffect(player, e))) {
+            Vec3 away = e.position().subtract(player.position()).multiply(1, 0, 1);
+            double dist = away.length();
+            if (dist > radius) continue;
+            double strength = 1.4 * (1 - dist / radius) + 0.3;
+            Vec3 dir = dist < 1e-3 ? new Vec3(1, 0, 0) : away.scale(1 / dist);
+            e.push(dir.x * strength, 0.3 + strength * 0.25, dir.z * strength);
+            e.hurtMarked = true;
+        }
     }
 
     public static void revert(ServerPlayer player, PlayerDBCData data) {

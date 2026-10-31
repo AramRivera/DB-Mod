@@ -2,7 +2,12 @@ package com.dragonblock.client.fx;
 
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.anim.AnimState;
+import com.dragonblock.client.renderer.DBRenderTypes;
 import com.dragonblock.common.data.PlayerDBCData;
+import com.dragonblock.common.registry.ModSounds;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.sounds.SoundSource;
+import org.joml.Matrix4f;
 import com.dragonblock.common.data.Transformation;
 import com.dragonblock.common.network.packet.S2CAnimPacket;
 import net.minecraft.client.Minecraft;
@@ -16,6 +21,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -36,6 +42,14 @@ public final class TransformFx {
     /** entityId -> {current aura power, previous tick's power}. */
     private static final Map<Integer, float[]> AURA = new HashMap<>();
     private static float shake = 0f;
+    /** 0..1 how dark the sky is around a strong power-up nearby, and the tint it takes. */
+    private static float darkness = 0f, prevDarkness = 0f;
+    private static int darkTint = 0;
+
+    /** A one-off camera jolt (big techniques, impacts), never weaker than what is already shaking. */
+    public static void kick(float strength) {
+        shake = Math.max(shake, strength);
+    }
 
     private TransformFx() {}
 
@@ -76,8 +90,10 @@ public final class TransformFx {
         Debris.tick();
         SpeedTrail.tick();
         LightningStrikes.tick();
+        CinematicCamera.tick();
         com.dragonblock.client.renderer.RaceSkins.tick();
 
+        float dim = 0f;
         for (Player player : mc.level.players()) {
             PlayerDBCData data = PlayerDBCData.get(player);
             // The server syncs the charge a few times a second; advance it locally in between so it is smooth
@@ -109,6 +125,18 @@ public final class TransformFx {
                 }
                 if (dist < 32) shake = Math.max(shake, (0.08f + 0.35f * power) * c * (float) (1 - dist / 32));
                 LightningStrikes.charging(player, goal, c);
+                // Strong power-ups darken the sky for everyone around and rumble louder as they build
+                if (CinematicCamera.worthy(goal) && goal.getSequence() != Transformation.Sequence.DIVINE) {
+                    float d = (0.3f + 0.7f * LightningStrikes.tier(goal)) * c * (float) Math.max(0, 1 - dist / 80);
+                    if (d > dim) {
+                        dim = d;
+                        darkTint = goal.getAuraColor();
+                    }
+                }
+                if (player.tickCount % 8 == 0) {
+                    mc.level.playLocalSound(player.getX(), player.getY(), player.getZ(), ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS,
+                            Math.min(1f, 0.25f + 0.5f * c * power), 0.5f + 0.9f * c, false);
+                }
             } else if (data.isChargingKi() && dist < 16) {
                 // Plain ki charging rattles the view a little, more the stronger the fighter
                 float power = Mth.clamp((float) Math.log10(Math.max(10, data.getBattlePower())) / 7f, 0.1f, 1f)
@@ -120,6 +148,13 @@ public final class TransformFx {
                 Transformation.Sequence seq = data.getTransformation().getSequence();
                 if (seq != Transformation.Sequence.DIVINE) shake = Math.max(shake, (seq == Transformation.Sequence.CATACLYSM ? 1.4f : 0.7f) * (float) (1 - dist / 32));
             }
+        }
+        prevDarkness = darkness;
+        darkness += (dim - darkness) * (dim > darkness ? 0.06f : 0.03f);
+        // Clashing techniques nearby rattle the view
+        for (var clash : mc.level.getEntitiesOfClass(com.dragonblock.common.entity.KiBlastEntity.class,
+                mc.player.getBoundingBox().inflate(28), com.dragonblock.common.entity.KiBlastEntity::isClashing)) {
+            shake = Math.max(shake, 0.5f * (1f - clash.distanceTo(mc.player) / 28f));
         }
         AURA.keySet().removeIf(id -> mc.level.getEntity(id) == null);
     }
@@ -178,7 +213,54 @@ public final class TransformFx {
         return new DustParticleOptions(new Vector3f((rgb >> 16 & 255) / 255f, (rgb >> 8 & 255) / 255f, (rgb & 255) / 255f), size);
     }
 
+    /** The horizon fog darkens with the sky. */
     @SubscribeEvent
+    public static void onFogColor(ViewportEvent.ComputeFogColor event) {
+        float d = Mth.lerp((float) event.getPartialTick(), prevDarkness, darkness) * 0.75f;
+        if (d < 0.01f) return;
+        float tr = (darkTint >> 16 & 255) / 255f * 0.12f, tg = (darkTint >> 8 & 255) / 255f * 0.12f, tb = (darkTint & 255) / 255f * 0.12f;
+        event.setRed(Mth.lerp(d, event.getRed(), tr));
+        event.setGreen(Mth.lerp(d, event.getGreen(), tg));
+        event.setBlue(Mth.lerp(d, event.getBlue(), tb));
+    }
+
+    /**
+     * A dark dome around the camera, drawn after the world with depth testing: terrain in front hides it,
+     * so only the sky (and the farthest land) darkens.
+     */
+    @SubscribeEvent
+    public static void onRenderLevel(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+        float d = Mth.lerp(event.getPartialTick(), prevDarkness, darkness);
+        if (d < 0.01f) return;
+        Minecraft mc = Minecraft.getInstance();
+        var buffers = mc.renderBuffers().bufferSource();
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.DIM);
+        Matrix4f m = new Matrix4f(); // the camera rotation is already on the model-view stack
+        int r = (int) ((darkTint >> 16 & 255) * 0.1f), g = (int) ((darkTint >> 8 & 255) * 0.1f), b = (int) ((darkTint & 255) * 0.1f);
+        int a = (int) (200 * d);
+        final float radius = 140f;
+        final int lat = 8, lon = 16;
+        for (int i = 0; i < lat; i++) {
+            float t0 = Mth.PI * i / lat, t1 = Mth.PI * (i + 1) / lat;
+            for (int j = 0; j < lon; j++) {
+                float p0 = Mth.TWO_PI * j / lon, p1 = Mth.TWO_PI * (j + 1) / lon;
+                domeVertex(vc, m, t0, p0, radius, r, g, b, a);
+                domeVertex(vc, m, t0, p1, radius, r, g, b, a);
+                domeVertex(vc, m, t1, p1, radius, r, g, b, a);
+                domeVertex(vc, m, t1, p0, radius, r, g, b, a);
+            }
+        }
+        buffers.endBatch(DBRenderTypes.DIM);
+    }
+
+    private static void domeVertex(VertexConsumer vc, Matrix4f m, float theta, float phi, float radius, int r, int g, int b, int a) {
+        vc.addVertex(m, Mth.sin(theta) * Mth.cos(phi) * radius, Mth.cos(theta) * radius, Mth.sin(theta) * Mth.sin(phi) * radius)
+                .setColor(r, g, b, a);
+    }
+
+    // Lowest priority: the shake goes on top of wherever the cinematic camera points
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         if (shake < 0.01f) return;
         float t = (float) event.getPartialTick() + (Minecraft.getInstance().player == null ? 0 : Minecraft.getInstance().player.tickCount);

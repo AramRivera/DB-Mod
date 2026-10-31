@@ -47,6 +47,22 @@ public class KiBlastRenderer extends EntityRenderer<KiBlastEntity> {
             }
             default -> EnergyRender.sphere(pose, buffers, size, color, time);
         }
+        // A transformed fighter's techniques carry the color of their aura around them
+        if (entity.getHalo() != 0 && tech.getKind() != Technique.Kind.DISC) {
+            EnergyRender.sphere(pose, buffers, size * 1.8f, EnergyRender.scaleColor(entity.getHalo(), 0.35f) & 0xFFFFFF, time * 0.7f);
+        }
+        if (entity.isClashing()) {
+            // The meeting point swells and crackles until one side gives
+            float swell = size * (1.6f + 1.4f * entity.clashProgress()) * (1f + 0.12f * Mth.sin(time * 1.3f));
+            EnergyRender.sphere(pose, buffers, swell, EnergyRender.mix(color, 0xFFFFFF, 0.5f), time * 2f);
+            if (((int) time) % 3 != 2) {
+                pose.pushPose();
+                pose.translate(0, -1.2f * swell, 0);
+                pose.scale(swell, swell, swell);
+                EnergyRender.lightning(pose, buffers, entity.getId() * 13 + (int) time / 2, 0xFFFFFF, 3, 1.4f);
+                pose.popPose();
+            }
+        }
         super.render(entity, yaw, partialTick, pose, buffers, light);
     }
 

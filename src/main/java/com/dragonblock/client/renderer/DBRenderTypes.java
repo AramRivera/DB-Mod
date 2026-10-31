@@ -45,6 +45,15 @@ public final class DBRenderTypes extends RenderType {
                             .setWriteMaskState(COLOR_WRITE)
                             .createCompositeState(false)));
 
+    /** Plain translucent color that never writes depth: the darkening dome over the sky. */
+    public static final RenderType DIM = create("dragonblock_dim", DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS, 1536,
+            false, true, CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_SHADER)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .setCullState(NO_CULL)
+                    .setWriteMaskState(COLOR_WRITE)
+                    .createCompositeState(false));
+
     /** Full-bright additive glow (ki spheres, bursts). */
     public static RenderType glow(ResourceLocation texture) {
         return GLOW.apply(texture);

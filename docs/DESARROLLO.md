@@ -53,6 +53,7 @@ Todo lo que distingue a una forma vive en `Transformation` (visual) y `FormEffec
 | `renderer/RaceSkins` | Compone la textura del cuerpo de raza (capas de `textures/skin` teñidas con la apariencia) y la pone en la entrada de la lista de jugadores (`PlayerInfo`), así todos los renders la usan. |
 | `fx/TechniqueFx` | Energía de carga en las manos según la postura y efectos de soltar que no son proyectiles (Kiai, Taiyoken). Lo usan la tercera y la primera persona. |
 | `fx/LightningStrikes` | Rayos que caen del cielo al transformarse en las formas altas (`tier()` decide cuántos). |
+| `fx/CinematicCamera` | Cámara que orbita al jugador local durante las transformaciones fuertes (`worthy()`), moviendo `Camera` en `ComputeCameraAngles`; franjas de cine en `DBCKiOverlay`. |
 | `overlay/TechniqueBar` | Barra de técnicas de la derecha (Ctrl + rueda), carga y recarga. |
 | `anim/AnimState` | Decide la pose de cada jugador a partir de los datos sincronizados y de los `S2CAnimPacket`. |
 | `anim/DBPlayerModel` | Modelo de jugador que aplica las poses después de la animación vanilla. Se instala en todos los `PlayerRenderer` al arrancar (`ClientModEvents.swapModel`). |
@@ -105,6 +106,9 @@ Las texturas de `textures/entity` son en escala de grises y se tiñen en el jueg
 `tools/gen_race_skins.py` pinta, por raza, capas de 64x64 con el formato de skin de Minecraft: `base` (piel, gris que se multiplica por el tono), `accent` (shorts, gi, manchas, gemas), `detail` (colores fijos), `brows` y `scalp` (color de pelo) y `eyes.png` (iris). `RaceSkins` las compone con los colores de `PlayerDBCData` (paletas en `common/data/Appearance`) igual que la vista previa del script. Para verlas en 3D en Blender: `tools/preview_skin_blender.py` (define `SKIN` con la ruta de un PNG compuesto, por ejemplo los `sample_*.png` que genera el script con un segundo argumento).
 
 Los peinados base (*warrior*, *flame*, *scruffy*, *short*, *long*) están en `gen_hair_json.py` junto a los de forma. Los ojos de forma de `DBPlayerLayer.renderEyes` están alineados a los iris de esas caras (fila 5, columnas 2 y 5).
+
+## Escala de poder y choques
+`Technique.powerScale(data)` (1 en base, ~2,3 en las formas más altas) multiplica el tamaño de proyectiles, explosiones (tope 8) y la energía de carga. `KiBlastEntity` sincroniza `HALO` (color del aura del tirador) y `CLASH` (ticks de choque): dos técnicas que se tocan se congelan `CLASH_TICKS`, los dueños que mantienen la tecla suman `clashBoost`, y la de id menor resuelve (`resolveClash`). El oscurecimiento del cielo (`TransformFx.darkness`) es una cúpula translúcida dibujada después del mundo con test de profundidad más el color de la niebla.
 
 ## Probar
 ```

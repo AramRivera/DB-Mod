@@ -18,7 +18,7 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 ### Interfaz
 Estilo Dragon Ball sobrio: paneles azul noche, naranja de gi como acento, dorado de esfera del dragón para lo importante y la esfera de cuatro estrellas en los encabezados.
 * **Ficha (`V`)**: se abre con animación y muestra una **vista 3D de tu personaje** que sigue el ratón (con pelo, aura y cola). Pestañas **Atributos, Formas, Técnicas y Apariencia** con subrayado animado, barras que crecen al mejorar y tarjetas con descripción al pasar el ratón.
-* **Creación de personaje**: la primera vez que entras eliges raza y personalizas piel, ojos, peinado, color de pelo y ropa, viéndolo en 3D al momento. La apariencia se puede cambiar después en la pestaña *Apariencia*; la raza es permanente.
+* **Creación de personaje**: la primera vez que entras eliges raza y personalizas piel, ojos, peinado, color de pelo y ropa, viéndolo en 3D al momento. El visor se **gira arrastrando**, la **rueda hace zoom** hasta la cara y el clic derecho lo reinicia. Con **Probar forma** ves cómo te quedan las transformaciones de tu raza (pelo, ojos, aura) antes de jugar. La apariencia se puede cambiar después en la pestaña *Apariencia*; la raza es permanente.
 * **HUD**: barras que se mueven con suavidad, "fantasma" de daño en la vida, barra de Ki que brilla al cargar, anillo de carga en la mira, título al transformarte, TP ganados flotando y la **barra de técnicas** a la derecha.
 
 ### 2. Ficha de Personaje y Atributos (Tecla `V`)
@@ -114,6 +114,12 @@ Mantén `G` y vive la transformación por fases:
 4. **Implosión**: justo antes del final el aura se contrae un instante.
 5. **Estallido**: explosión de energía, los escombros salen despedidos, onda en el suelo, destello en pantalla y el **nombre de la forma** aparece en grande.
 
+**Formas poderosas, versión cinemática** (Super Saiyajin 2 en adelante, y las de tipo cataclismo, divina o gigante):
+* **Cámara de cine** (solo para quien se transforma): sale de tus ojos, te rodea despacio mientras cargas, se aleja con la carga y retrocede con la explosión; aparecen franjas negras de cine. Se apaga con `cinematicTransformations = false` en `config/dragonblock-client.toml`.
+* **El cielo se oscurece** para todos los que estén cerca, teñido del color del aura, y un retumbar que sube de tono acompaña la carga.
+* **Onda expansiva**: al completar, todo lo que esté cerca sale despedido (otros jugadores solo si el servidor permite PvP entre vosotros), con una pared de polvo y, desde SSJ3, un trueno.
+* **Sentir el ki**: los demás jugadores reciben un aviso tipo "Sientes un ki colosal al noreste (54 m)".
+
 La carga dura al menos 1,5 s y más en las formas poderosas (SSJ1 unos 3 s, SSJ3 unos 6 s, Blue unos 8 s); la maestría la acorta como mucho un 40%. Cada forma tiene su estilo: *Destello* (el pelo parpadea), *Oleada* (rayos), *Cataclismo* (larga, terremoto, el pelo crece), *Divina* (serena, columna de luz), *Gigante* (creces poco a poco), *Tensión* (llamarada roja). Con más maestría la carga es más corta.
 
 
@@ -136,6 +142,12 @@ Las formas tienen modelos propios: peinados procedurales que brillan, pelaje (Oz
 ---
 
 ### 5. Combate y técnicas de Ki
+**El poder se nota**: cuanto más fuerte es la forma (y tu poder de pelea), más **grandes** son las técnicas, más grande la explosión y más tiembla la pantalla de los que estén cerca; transformado, tus técnicas llevan un **halo del color de tu aura**. El daño ya crece con los atributos de la forma.
+
+**Choque de ondas**: si dos ondas o esferas de jugadores distintos se encuentran, se quedan trabadas unos segundos en un punto que crece y lanza rayos. Mientras dura, **mantener `X` empuja** (gasta Ki). Al terminar gana la más fuerte (con un poco de suerte): la otra explota y la ganadora sigue, más débil. Las ráfagas simples se anulan al chocar. El Makankosappo y el Kienzan atraviesan, no chocan.
+
+**Golpes con peso**: un puñetazo de alguien mucho más fuerte que tú te manda a volar, con estampido y sonido de impacto; cuanta más diferencia de poder, más lejos.
+
 Las técnicas se aprenden con TP en la pestaña **Técnicas** de la ficha y se equipan (hasta 8) en la **barra de la derecha**. Con **`Ctrl` + rueda** eliges cuál usar (mientras mantienes `Ctrl` se ven todos los nombres) y con **`X`** la usas: las de carga se cargan manteniendo y se disparan al soltar (una marca blanca indica la carga mínima). Cada una tiene su postura de carga, su forma de salir y su recarga, y todo se ve igual en primera y tercera persona y para los demás jugadores.
 
 | Técnica | Carga | Cómo se ve y qué hace |

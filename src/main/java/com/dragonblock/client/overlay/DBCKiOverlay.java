@@ -48,6 +48,7 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         long now = Util.getMillis();
         Font font = mc.font;
         trackChanges(data, now);
+        renderLetterbox(g, deltaTracker);
         renderTransformFlash(g, mc, data, deltaTracker);
         renderWhiteOut(g, now);
         if (mc.gameMode != null && mc.gameMode.canHurtPlayer()) renderHealthBar(g, mc, data, now);
@@ -226,6 +227,15 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
             g.drawString(font, "+" + p[0] + " TP", x, y - (int) (t * 12), alpha << 24 | UiTheme.GOOD, true);
             y += 10;
         }
+    }
+
+    /** Black cinema bars while the cinematic camera runs. */
+    private static void renderLetterbox(GuiGraphics g, DeltaTracker delta) {
+        float k = com.dragonblock.client.fx.CinematicCamera.amount(delta.getGameTimeDeltaPartialTick(false));
+        if (k <= 0) return;
+        int bar = (int) (g.guiHeight() * 0.11f * k);
+        g.fill(0, 0, g.guiWidth(), bar, 0xFF000000);
+        g.fill(0, g.guiHeight() - bar, g.guiWidth(), g.guiHeight(), 0xFF000000);
     }
 
     private static void renderWhiteOut(GuiGraphics g, long now) {

@@ -8,11 +8,14 @@ public final class ClientConfig {
 
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.EnumValue<AuraVisibility> AURA;
+    public static final ForgeConfigSpec.BooleanValue CINEMATIC;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         AURA = b.comment("Which ki auras are drawn. Cosmetic only, never affects gameplay.")
                 .defineEnum("auraVisibility", AuraVisibility.ALL);
+        CINEMATIC = b.comment("Orbit the camera around you while you power up into a strong form.")
+                .define("cinematicTransformations", true);
         SPEC = b.build();
     }
 
