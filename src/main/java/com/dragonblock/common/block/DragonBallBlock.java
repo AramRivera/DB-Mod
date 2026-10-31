@@ -19,16 +19,17 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A dragon ball set down in the world. Seven different ones close together (within 4 blocks of the one
- * you use) call the eternal dragon. Placed balls are remembered so the dragon radar finds them anywhere.
+ * A dragon ball set down in the world. The seven laid out in a circle call the eternal dragon. Placed
+ * balls can't be broken (only the ball capsule takes them back) and are remembered so the radar finds them.
  */
 public class DragonBallBlock extends Block {
     private static final VoxelShape SHAPE = Block.box(4, 0, 4, 12, 7, 12);
     private final int stars;
 
     public DragonBallBlock(int stars) {
-        // Explosions never destroy a dragon ball
-        super(BlockBehaviour.Properties.of().strength(0.3f, 3600000f).sound(SoundType.GLASS).lightLevel(s -> 9).noOcclusion());
+        // Once set down a ball can't be mined, blown up or pushed: only the ball capsule picks it up
+        super(BlockBehaviour.Properties.of().strength(-1f, 3600000f).sound(SoundType.GLASS).lightLevel(s -> 9).noOcclusion()
+                .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK));
         this.stars = stars;
     }
 

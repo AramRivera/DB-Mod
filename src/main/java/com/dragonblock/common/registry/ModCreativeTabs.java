@@ -19,6 +19,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.SENZU_BEAN.get());
                         output.accept(ModItems.SCOUTER.get());
                         output.accept(ModItems.DRAGON_RADAR.get());
+                        output.accept(ModItems.BALL_CAPSULE.get());
                         output.accept(ModItems.TRAINING_WEIGHTS.get());
                         output.accept(ModItems.WRIST_WEIGHTS.get());
                         output.accept(ModItems.COMBAT_BELT.get());

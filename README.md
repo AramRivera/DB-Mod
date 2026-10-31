@@ -199,8 +199,8 @@ Funcionan en primera y tercera persona y las ven todos los jugadores. En primera
 
 ---
 
-### 7. Accesorios (`K`)
-Un segundo inventario con cuatro casillas: **Visor, Torso, Muñecas y Cintura**. Lo que llevas se ve en tu personaje para todos.
+### 7. Accesorios (botón en el inventario o `K`)
+Un segundo inventario con cuatro casillas: **Visor, Torso, Muñecas y Cintura**, que se abre con el botón de la esfera junto al inventario normal (o con `K`). Los accesorios solo funcionan **puestos**: en la mano no hacen nada. Lo que llevas se ve en tu personaje para todos.
 
 | Accesorio | Casilla | Efecto |
 | :--- | :--- | :--- |
@@ -210,7 +210,7 @@ Un segundo inventario con cuatro casillas: **Visor, Torso, Muñecas y Cintura**.
 | **Cinturón de combate** | Cintura | El ki se regenera un 25% más rápido. Cinturón con hebilla dorada. |
 
 ### 8. Esferas del Dragón y el Dragón Eterno
-Las siete esferas se **colocan como bloques** (brillan, no las destruyen las explosiones). Con las siete a menos de 4 bloques entre sí, **usa una** y empieza el ritual:
+Las siete esferas se **colocan como bloques**, con sus estrellas a la vista. Una vez puestas **no se pueden romper** (ni minar, ni explotar, ni empujar): solo la **Cápsula de esferas** las recoge (se craftea con 4 lingotes de hierro en cruz y una perla de ender en el centro). El ritual exige colocarlas **en círculo**: las siete al mismo nivel, a entre 2 y 4 bloques de un centro y sin tocarse. Entonces **usa una** y empieza:
 1. Las esferas laten cada vez más fuerte, **el cielo se vuelve casi negro** para todos en 256 bloques y caen rayos alrededor.
 2. Un **pilar de luz** sale disparado de las esferas.
 3. El **Dragón Eterno** brota de la luz con la cabeza por delante y se enrosca hasta el cielo, ondulando, con astas, bigotes y ojos rojos que brillan, y **mira a quien lo invocó**.

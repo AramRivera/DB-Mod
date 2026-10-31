@@ -84,13 +84,13 @@ public class ShenlongEntity extends Entity {
     }
 
     public State getState() { return State.values()[Math.min(2, Math.max(0, entityData.get(STATE)))]; }
-    /** Ticks since the current phase began. */
-    public int stateAge() { return tickCount - entityData.get(STATE_START); }
+    /** Ticks since the current phase began, by world time so server and every client agree. */
+    public int stateAge() { return (int) level().getGameTime() - entityData.get(STATE_START); }
     public int getSummonerId() { return entityData.get(SUMMONER); }
 
     private void setState(State state) {
         entityData.set(STATE, state.ordinal());
-        entityData.set(STATE_START, tickCount);
+        entityData.set(STATE_START, (int) level().getGameTime());
     }
 
     /** The ritual is a one-time event: never written to the world (the balls stay where they are). */
@@ -121,6 +121,11 @@ public class ShenlongEntity extends Entity {
                     .withStyle(ChatFormatting.GOLD), true);
             return;
         }
+        if (!inCircle(found.values())) {
+            player.displayClientMessage(Component.literal("Las esferas deben formar un círculo: las siete al mismo nivel, a 2-4 bloques de un centro y sin tocarse.")
+                    .withStyle(ChatFormatting.GOLD), true);
+            return;
+        }
         Vec3 center = Vec3.ZERO;
         for (BlockPos p : found.values()) center = center.add(Vec3.atBottomCenterOf(p));
         center = center.scale(1 / 7.0);
@@ -129,8 +134,28 @@ public class ShenlongEntity extends Entity {
         dragon.summoner = player.getUUID();
         dragon.balls.putAll(found);
         dragon.entityData.set(SUMMONER, player.getId());
+        dragon.setState(State.RISING);
         level.addFreshEntity(dragon);
         dragon.say("Las siete esferas brillan al unísono...", ChatFormatting.GOLD);
+    }
+
+    /** The ritual layout: all seven on one level, ringed 2 to 4.5 blocks around their center, none touching. */
+    static boolean inCircle(java.util.Collection<BlockPos> balls) {
+        List<BlockPos> list = new ArrayList<>(balls);
+        double cx = 0, cz = 0;
+        for (BlockPos p : list) {
+            if (p.getY() != list.get(0).getY()) return false;
+            cx += p.getX() / 7.0;
+            cz += p.getZ() / 7.0;
+        }
+        for (BlockPos p : list) {
+            double r = Math.hypot(p.getX() - cx, p.getZ() - cz);
+            if (r < 2.0 || r > 4.6) return false;
+            for (BlockPos q : list) {
+                if (p != q && Math.hypot(p.getX() - q.getX(), p.getZ() - q.getZ()) < 1.5) return false;
+            }
+        }
+        return true;
     }
 
     @Override

@@ -32,7 +32,10 @@ import java.util.Map;
  */
 public class ShenlongRenderer extends EntityRenderer<ShenlongEntity> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "textures/entity/dragon.png");
-    private static final float SCALE = 3.4f / 16f;
+    /** Model pixels to blocks is 5/16; ModelPart already divides by 16, so the pose only scales by 5. */
+    private static final float SCALE = 5f;
+    /** The head is drawn a little larger than the body so it reads from far away. */
+    private static final float HEAD = 1.7f;
     private static final int SEGMENTS = 44;
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final Map<String, Integer> COLORS = Map.of(
@@ -53,9 +56,9 @@ public class ShenlongRenderer extends EntityRenderer<ShenlongEntity> {
 
     /** The coil (entity-relative, y up): s = 0 down at the balls, 1 high up where the head is. */
     static Vec3 path(float s, float t) {
-        float r = 7f + 3f * Mth.sin(Mth.PI * s);
+        float r = 10f + 4f * Mth.sin(Mth.PI * s);
         float th = Mth.TWO_PI * 2.2f * s + 0.15f * Mth.sin(t * 0.05f + s * 12f);
-        return new Vec3(r * Mth.cos(th), 2f + 34f * s + 0.6f * Mth.sin(t * 0.07f + s * 9f), r * Mth.sin(th));
+        return new Vec3(r * Mth.cos(th), 2f + 48f * s + 0.8f * Mth.sin(t * 0.07f + s * 9f), r * Mth.sin(th));
     }
 
     @Override
@@ -84,7 +87,7 @@ public class ShenlongRenderer extends EntityRenderer<ShenlongEntity> {
         renderBalls(pose, buffers, dragon, spheres, age, t);
         if (pillar > 0) {
             pose.pushPose();
-            EnergyRender.beam(pose, buffers, new Vec3(0, 70, 0), 0.4f + 2.2f * pillar, EnergyRender.scaleColor(0xFFF2B0, pillar) & 0xFFFFFF, t);
+            EnergyRender.beam(pose, buffers, new Vec3(0, 90, 0), 0.5f + 3f * pillar, EnergyRender.scaleColor(0xFFF2B0, pillar) & 0xFFFFFF, t);
             pose.popPose();
         }
         if (dragon.getState() == ShenlongEntity.State.RISING && age < 70) return; // only the light so far
@@ -99,7 +102,7 @@ public class ShenlongRenderer extends EntityRenderer<ShenlongEntity> {
                 // The light eating its way up the body
                 pose.pushPose();
                 pose.translate(at.x, at.y, at.z);
-                EnergyRender.sphere(pose, buffers, 2.2f, 0xFFF8D0, t);
+                EnergyRender.sphere(pose, buffers, 3f, 0xFFF8D0, t);
                 pose.popPose();
             }
             float size = 0.55f + 0.45f * Math.min(1f, i / 10f);
@@ -109,7 +112,7 @@ public class ShenlongRenderer extends EntityRenderer<ShenlongEntity> {
             if (i == SEGMENTS - 7 || i == SEGMENTS - 20) {
                 for (int side = -1; side <= 1; side += 2) {
                     pose.pushPose();
-                    pose.translate(side * 3.2f, 2.5f, -1f); // in model pixels: hang from the belly
+                    pose.translate(side * 3.2f / 16f, 2.5f / 16f, -1f / 16f); // pixels, in the part's 1/16 units: hang from the belly
                     pose.mulPose(Axis.ZP.rotation(-side * 0.6f + Mth.sin(t * 0.1f + i) * 0.15f));
                     draw(leg, pose, buffers);
                     pose.popPose();
@@ -124,7 +127,7 @@ public class ShenlongRenderer extends EntityRenderer<ShenlongEntity> {
         Entity summoner = dragon.level().getEntity(dragon.getSummonerId());
         Vec3 look = summoner != null ? summoner.getEyePosition(partial).subtract(dragon.getPosition(partial)) : path(Math.min(1f, emerge + ds), t).add(0, -2, 0);
         pose.pushPose();
-        place(pose, headAt, look, 1f);
+        place(pose, headAt, look, HEAD);
         draw(head, pose, buffers);
         pose.popPose();
     }

@@ -9,7 +9,8 @@ import math
 from mathutils import Matrix, Vector
 
 DRAGON = globals().get("DRAGON", "")
-SCALE = 3.4 / 16.0
+SCALE = 5.0 / 16.0
+HEAD = 1.7
 SEGMENTS = 44
 COLORS = {"scales": (0.22, 0.58, 0.28), "belly": (0.9, 0.84, 0.6), "horn": (0.78, 0.62, 0.4), "whisker": (0.15, 0.22, 0.15),
           "teeth": (0.96, 0.94, 0.9), "eye": (1.0, 0.1, 0.1), "fin": (0.88, 0.38, 0.16)}
@@ -21,10 +22,10 @@ FLIP = Matrix.Diagonal((-1, -1, 1, 1))
 
 def path(s, t=0.0):
     """Point on the coil in Minecraft world axes (x, y up, z), s = 0 at the balls, 1 at the head."""
-    turns, height = 2.2, 34.0
-    r = 7.0 + 3.0 * math.sin(math.pi * s)
+    turns, height = 2.2, 48.0
+    r = 10.0 + 4.0 * math.sin(math.pi * s)
     th = 2 * math.pi * turns * s + 0.15 * math.sin(t * 0.05 + s * 12)
-    return Vector((r * math.cos(th), 2.0 + height * s + 0.6 * math.sin(t * 0.07 + s * 9), r * math.sin(th)))
+    return Vector((r * math.cos(th), 2.0 + height * s + 0.8 * math.sin(t * 0.07 + s * 9), r * math.sin(th)))
 
 
 def material(name):
@@ -83,7 +84,7 @@ def build(emerge=1.0, t=0.0):
                 add_part(root, data["leg"], m @ Matrix.Translation((side * 3.2, 2.5, -1)) @ Matrix.Rotation(-side * 0.6, 4, "Z"))
     head_at = path(emerge, t)
     look = head_at + Vector((0, -6, 16))  # looking down toward the summoner in front
-    add_part(root, data["head"], orient(head_at, look) @ Matrix.Scale(SCALE, 4) @ FLIP)
+    add_part(root, data["head"], orient(head_at, look) @ Matrix.Scale(SCALE * HEAD, 4) @ FLIP)
     return root
 
 

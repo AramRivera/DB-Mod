@@ -236,18 +236,19 @@ public final class TransformFx {
     }
 
     /**
-     * A dark dome around the camera, drawn after the world with depth testing: terrain in front hides it,
-     * so only the sky (and the farthest land) darkens.
+     * A dark dome around the camera drawn right after the sky, so everything drawn later (terrain, the
+     * dragon, beams) stays on top and only the sky darkens.
      */
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
         float d = Mth.lerp(event.getPartialTick(), prevDarkness, darkness);
         if (d < 0.01f) return;
         Minecraft mc = Minecraft.getInstance();
         var buffers = mc.renderBuffers().bufferSource();
         VertexConsumer vc = buffers.getBuffer(DBRenderTypes.DIM);
-        Matrix4f m = new Matrix4f(); // the camera rotation is already on the model-view stack
+        // At this stage the camera rotation is not on the model-view stack yet; Forge hands it to us instead
+        Matrix4f m = new Matrix4f(event.getPoseStack());
         int r = (int) ((darkTint >> 16 & 255) * 0.1f), g = (int) ((darkTint >> 8 & 255) * 0.1f), b = (int) ((darkTint & 255) * 0.1f);
         int a = (int) (200 * d);
         final float radius = 140f;

@@ -32,7 +32,8 @@ public class DragonBallItem extends BlockItem {
         }
         tooltip.add(Component.literal(starsStr.toString().trim()).withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
         tooltip.add(Component.literal("Una de las 7 Esferas místicas de la Tierra.").withStyle(ChatFormatting.GOLD));
-        tooltip.add(Component.literal("Colócala junto a las otras seis y úsala para invocar al dragón.").withStyle(ChatFormatting.DARK_GREEN, ChatFormatting.ITALIC));
+        tooltip.add(Component.literal("Pon las siete en círculo, al mismo nivel y sin tocarse, y usa una.").withStyle(ChatFormatting.DARK_GREEN, ChatFormatting.ITALIC));
+        tooltip.add(Component.literal("Una vez puesta, solo la Cápsula de esferas la recoge.").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         super.appendHoverText(stack, context, tooltip, flag);
     }
 }

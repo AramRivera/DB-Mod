@@ -120,6 +120,13 @@ Los peinados base (*warrior*, *flame*, *scruffy*, *short*, *long*) están en `ge
 - `client/gui/WishScreen` + `S2COpenWishPacket` / `C2SWishPacket` (el servidor valida quién pide y en qué estado).
 - Cielo oscuro y rayos del ritual en `TransformFx` (`LightningStrikes.strikeAt`).
 
+## Prueba automática del ritual
+`client/DevAutotest` solo se activa con `-Ddragonblock.autotest=dragon`: abre (o crea) el mundo `autotest`, invoca al dragón de noche, pide un deseo y guarda capturas de cada fase en `run/screenshots/autotest_*.png`, y cierra el juego. Desde bash:
+```
+JAVA_TOOL_OPTIONS="-Ddragonblock.autotest=dragon" ./gradlew.bat runClient
+```
+Ojo: los `ModelPart` ya dividen sus medidas entre 16; la escala del `PoseStack` va en bloques por unidad de modelo (por eso `ShenlongRenderer.SCALE` es 5 y no 5/16).
+
 ## Probar
 ```
 ./gradlew.bat runClient
