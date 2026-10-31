@@ -23,8 +23,8 @@ import net.minecraftforge.fml.common.Mod;
 import java.lang.reflect.Method;
 
 /**
- * While you power up into a strong form the camera leaves your eyes and circles you: it starts close in
- * front, sweeps around and pulls back as the charge builds, holds on the explosion, then glides back.
+ * While you power up into a strong form the camera glides out of your eyes to a still shot in front of
+ * you, holds through the explosion, then glides back.
  * Only your own camera; other players see the transformation in their normal view.
  */
 @Mod.EventBusSubscriber(modid = DragonBlockMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
@@ -34,6 +34,8 @@ public final class CinematicCamera {
     private static CameraType restore = null;
     private static float blend = 0f, prevBlend = 0f;
     private static int activeTicks = 0;
+    /** Body yaw when the cinematic began; the camera stays put in front of it. */
+    private static float lockedYaw = 0f;
     private static Method setPosition;
     private static boolean broken = false;
 
@@ -68,6 +70,7 @@ public final class CinematicCamera {
         boolean afterBurst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, HOLD_AFTER, 0) >= 0 && worthy(data.getTransformation());
         boolean on = ClientConfig.CINEMATIC.get() && (charging || afterBurst) && mc.screen == null;
 
+        if (on && activeTicks == 0) lockedYaw = player.yBodyRot;
         activeTicks = on ? activeTicks + 1 : 0;
         blend = Mth.clamp(blend + (on ? 0.12f : -0.1f), 0f, 1f);
         if (blend > 0 && restore == null) {
@@ -87,22 +90,13 @@ public final class CinematicCamera {
         if (player == null || k <= 0 || restore == null) return;
         PlayerDBCData data = PlayerDBCData.get(player);
         float partial = (float) event.getPartialTick();
-        float t = activeTicks + partial;
-        float c = data.isTransformHeld() ? data.getTransformCharge() : 1f;
-        float burst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, HOLD_AFTER, partial);
 
-        // Orbit: start 30 degrees off the front, sweep around while charging, pull back with the charge
+        // A still shot straight at the face, framed on the whole body
         float scale = player.getScale();
-        float body = Mth.rotLerp(partial, player.yBodyRotO, player.yBodyRot);
-        float orbit = body + 30f + t * 1.6f;
-        float dist = (3.0f + 2.6f * c) * scale;
-        float height = (0.2f + 0.7f * c) * scale;
-        if (burst >= 0) {
-            // The blast throws the camera back, then it settles in
-            dist += 2.5f * scale * Mth.sin(Math.min(1f, burst * 2.5f) * Mth.PI) * (1f - burst);
-        }
-        Vec3 target = player.getPosition(partial).add(0, player.getBbHeight() * 0.62, 0);
-        double rad = Math.toRadians(orbit);
+        float dist = 3.6f * scale;
+        float height = 0.15f * scale;
+        Vec3 target = player.getPosition(partial).add(0, player.getBbHeight() * 0.58, 0);
+        double rad = Math.toRadians(lockedYaw);
         Vec3 wanted = target.add(-Math.sin(rad) * dist, height, Math.cos(rad) * dist);
         var hit = player.level().clip(new ClipContext(target, wanted, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, player));
         if (hit.getType() != HitResult.Type.MISS) wanted = hit.getLocation().add(target.subtract(hit.getLocation()).normalize().scale(0.3));

@@ -66,6 +66,12 @@ public class ClientModEvents {
     }
 
     @SubscribeEvent
+    public static void onClientSetup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
+        event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(
+                com.dragonblock.common.registry.ModMenus.ACCESSORIES.get(), com.dragonblock.client.gui.AccessoryScreen::new));
+    }
+
+    @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         for (var key : ModKeyBindings.ALL) event.register(key);
     }
@@ -79,6 +85,10 @@ public class ClientModEvents {
         event.getLayeredDraw().add(
                 ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "technique_bar"),
                 com.dragonblock.client.overlay.TechniqueBar.INSTANCE
+        );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "scouter"),
+                com.dragonblock.client.overlay.ScouterHud.INSTANCE
         );
     }
 }

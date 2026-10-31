@@ -46,7 +46,7 @@ def part_matrix(x, y, z, xrot, yrot, zrot):
 
 
 # Four tapering steps (fraction of length, fraction of width); the outer two follow the bend
-TIERS = [(0.38, 1.0), (0.28, 0.8), (0.2, 0.58), (0.14, 0.34)]
+TIERS = [(0.32, 1.0), (0.26, 0.78), (0.2, 0.54), (0.13, 0.32), (0.09, 0.14)]
 
 
 def spike(mat, s, mirror):

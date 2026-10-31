@@ -22,5 +22,8 @@
   "key.dragonblock.revert": "Revert to base form",
   "key.dragonblock.dash": "Dash",
   "key.dragonblock.guard": "Guard (hold)",
-  "key.dragonblock.toggle_aura": "Toggle aura visibility"
+  "key.dragonblock.toggle_aura": "Toggle aura visibility",
+  "key.dragonblock.accessories": "Accessories",
+  "item.dragonblock.wrist_weights": "Wrist Weights",
+  "item.dragonblock.combat_belt": "Combat Belt"
 }

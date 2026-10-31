@@ -13,7 +13,7 @@ import net.minecraftforge.event.network.CustomPayloadEvent;
 
 /** One-shot actions. {@code arg}: form ordinal, technique ordinal or bar slot, depending on the action. */
 public class C2SActionPacket {
-    public enum Action { REVERT, DASH, SELECT_FORM, TOGGLE_TAIL, SELECT_TECHNIQUE, LEARN_TECHNIQUE, TOGGLE_EQUIP }
+    public enum Action { REVERT, DASH, SELECT_FORM, TOGGLE_TAIL, SELECT_TECHNIQUE, LEARN_TECHNIQUE, TOGGLE_EQUIP, OPEN_ACCESSORIES }
 
     private final Action action;
     private final int arg;
@@ -72,6 +72,12 @@ public class C2SActionPacket {
                     data.learn(t);
                     if (data.getEquipped().size() < Technique.MAX_EQUIPPED) data.toggleEquipped(t);
                     player.displayClientMessage(Component.literal("Técnica aprendida: " + t.getDisplayName()), true);
+                }
+                case OPEN_ACCESSORIES -> {
+                    player.openMenu(new net.minecraft.world.SimpleMenuProvider(
+                            (id, inventory, p) -> com.dragonblock.common.menu.AccessoryMenu.open(id, inventory, player),
+                            Component.literal("Accesorios")));
+                    return;
                 }
                 case TOGGLE_EQUIP -> {
                     Technique t = technique(arg);

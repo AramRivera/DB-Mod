@@ -48,7 +48,7 @@ public final class RaceSkins {
 
     public static ResourceLocation texture(PlayerDBCData d) {
         boolean hair = d.getHairStyle() != Transformation.HairStyle.NONE;
-        String key = template(d.getRace()) + "_" + Integer.toHexString(d.getSkinColor()) + "_" + Integer.toHexString(d.getAccentColor())
+        String key = template(d.getRace()) + "_" + Integer.toHexString(d.getBodyColor()) + "_" + Integer.toHexString(d.getAccentColor())
                 + "_" + Integer.toHexString(d.getHairColor()) + "_" + Integer.toHexString(d.getEyeColor()) + (hair ? "_h" : "");
         return TEXTURES.computeIfAbsent(key, k -> {
             ResourceLocation id = ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "race_skin/" + k);
@@ -60,7 +60,7 @@ public final class RaceSkins {
     private static NativeImage compose(PlayerDBCData d, boolean hair) {
         String t = template(d.getRace());
         NativeImage out = new NativeImage(64, 64, true);
-        tint(out, layer(t + "_base"), d.getSkinColor(), true);
+        tint(out, layer(t + "_base"), d.getBodyColor(), true);
         if (hair) tint(out, layer(t + "_scalp"), d.getHairColor(), true);
         tint(out, layer(t + "_accent"), d.getAccentColor(), true);
         over(out, layer(t + "_detail"));

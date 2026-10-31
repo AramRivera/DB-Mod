@@ -8,7 +8,6 @@ import com.dragonblock.common.command.DevCommand;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Race;
 import com.dragonblock.common.data.Transformation;
-import com.dragonblock.common.item.TrainingWeightsItem;
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.registry.ModSounds;
 import net.minecraft.core.Holder;
@@ -109,6 +108,23 @@ public class DragonBlockEvents {
         }
     }
 
+    /**
+     * Nobody can interrupt a transformation: while a player is actually powering up into another form,
+     * hits from players, mobs and their techniques don't land (no damage, no knockback).
+     */
+    private static final String WEIGHTS = "dragonblock:training_weights";
+    private static final String WRIST_WEIGHTS = "dragonblock:wrist_weights";
+    private static final String BELT = "dragonblock:combat_belt";
+
+    @SubscribeEvent
+    public static void onAttacked(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || event.getSource().getEntity() == null) return;
+        PlayerDBCData data = PlayerDBCData.get(player);
+        if (data.isTransformHeld() && data.getSelectedForm() != data.getTransformation() && data.getTransformCharge() > 0f) {
+            event.setCanceled(true);
+        }
+    }
+
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         if (event.getEntity().level().isClientSide) return;
@@ -122,7 +138,8 @@ public class DragonBlockEvents {
 
             float tp = Math.max(1f, event.getAmount() * 0.4f + data.getMnd() / 5.0f);
             if (data.getRace() == Race.HALF_SAIYAN) tp *= 1.25f;
-            if (player.getInventory().items.stream().anyMatch(s -> s.getItem() instanceof TrainingWeightsItem)) tp *= 1.5f;
+            if (data.wears(WEIGHTS)) tp *= 1.5f;
+            if (data.wears(WRIST_WEIGHTS)) tp *= 1.2f;
             data.addTrainingPoints((int) tp);
             data.addMastery(data.getTransformation(), 0.15f);
             data.saveToPlayer(player);
@@ -261,10 +278,13 @@ public class DragonBlockEvents {
                         ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
             }
         } else if (!data.isTechHeld()) {
-            data.setCurrentKi(data.getCurrentKi() + 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f));
+            float regen = 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f);
+            if (data.wears(BELT)) regen *= 1.25f;
+            data.setCurrentKi(data.getCurrentKi() + regen);
         }
 
         FormController.tick(sp, data);
+        if (player.tickCount % 10 == 0) com.dragonblock.common.item.ScouterItem.tickWorn(sp, data);
         FormEffects.tick(sp, data);
         KiAttacks.tick(sp, data);
         tickFlight(sp, data);
@@ -354,10 +374,11 @@ public class DragonBlockEvents {
         return data.isTransformHeld() ? -0.85 : data.isGuarding() ? -0.5 : 0;
     }
 
-    /** Up to +35% walk speed. The FOV effect is cancelled client-side so it never looks like a speed potion. */
+    /** Up to +35% walk speed, less with training weights on. The FOV effect is cancelled client-side. */
     public static double dexSpeedBonus(PlayerDBCData data) {
         double dex = Math.min(0.35, Math.max(0, (data.getEffectiveDex() - 5) * 0.002));
-        return (1 + dex) * FormEffects.speedMultiplier(data) - 1;
+        double weights = (data.wears(WEIGHTS) ? 0.92 : 1) * (data.wears(WRIST_WEIGHTS) ? 0.97 : 1);
+        return (1 + dex) * FormEffects.speedMultiplier(data) * weights - 1;
     }
 
     /** Eases body scale toward the form's scale over ~2 seconds, so giant forms grow (and shrink) visibly. */

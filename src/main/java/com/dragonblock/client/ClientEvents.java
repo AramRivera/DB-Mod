@@ -39,6 +39,7 @@ public class ClientEvents {
             };
             mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal(label), true);
         }
+        if (ModKeyBindings.ACCESSORIES_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.OPEN_ACCESSORIES, 0));
         if (ModKeyBindings.DASH_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.DASH, 0));
     }
 

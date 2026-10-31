@@ -29,6 +29,7 @@ public class DragonBlockMod {
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
+        com.dragonblock.common.registry.ModMenus.MENUS.register(modEventBus);
 
         context.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 

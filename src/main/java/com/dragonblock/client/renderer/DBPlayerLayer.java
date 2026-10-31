@@ -46,6 +46,9 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
     private final ModelPart horns;
     private final ModelPart tendril;
     private final ModelPart apeHead;
+    private final ModelPart scouter;
+    private final ModelPart wristbands;
+    private final ModelPart belt;
     private final HumanoidModel<AbstractClientPlayer> fur;
 
     public DBPlayerLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> parent, EntityModelSet models) {
@@ -58,6 +61,9 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         horns = models.bakeLayer(DBModels.HORNS);
         tendril = models.bakeLayer(DBModels.TENDRIL);
         apeHead = models.bakeLayer(DBModels.APE_HEAD);
+        scouter = models.bakeLayer(DBModels.SCOUTER);
+        wristbands = models.bakeLayer(DBModels.WRISTBANDS);
+        belt = models.bakeLayer(DBModels.BELT);
         fur = new HumanoidModel<>(models.bakeLayer(DBModels.FUR));
     }
 
@@ -79,6 +85,7 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         renderRaceFeatures(pose, buffers, light, player, data, body, ageInTicks);
         renderHair(pose, buffers, light, player, data, body, partialTick);
         renderEyes(pose, buffers, body, form);
+        renderAccessories(pose, buffers, light, data, body);
         if (form.isOozaru()) renderApeHead(pose, buffers, light, body, form);
         renderEnergy(pose, buffers, player, data, ageInTicks, partialTick);
     }
@@ -116,7 +123,7 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
                                     PlayerDBCData data, PlayerModel<AbstractClientPlayer> body, float age) {
         Race race = data.getRace();
         Transformation form = data.getTransformation();
-        int color = 0xFF000000 | (race.hasSaiyanTail() ? race.getFeatureColor() : data.getSkinColor());
+        int color = 0xFF000000 | (race.hasSaiyanTail() ? race.getFeatureColor() : data.getBodyColor());
         boolean flying = AnimState.isFlying(player, data);
         switch (race.getBodyFeature()) {
             case TAIL -> {
@@ -141,6 +148,36 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
                 onPart(pose, buffers, light, body.head, tendril, color);
             }
             default -> {}
+        }
+    }
+
+    // ------------------------------------------------------------------ accessories
+
+    /** What the player wears in the accessory slots, visible to everyone. */
+    private void renderAccessories(PoseStack pose, MultiBufferSource buffers, int light, PlayerDBCData data,
+                                   PlayerModel<AbstractClientPlayer> body) {
+        if (data.wears("dragonblock:training_weights") && body.body.visible) {
+            // A dark weighted vest over the torso
+            body.copyPropertiesTo(fur);
+            fur.setAllVisible(false);
+            fur.body.visible = true;
+            fur.renderToBuffer(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(FEATURE_TEX)), light, OverlayTexture.NO_OVERLAY, 0xFF3A3E4A);
+        }
+        if (data.wears("dragonblock:wrist_weights")) {
+            onPart(pose, buffers, light, body.rightArm, wristbands.getChild("right"), 0xFFB02A2A);
+            onPart(pose, buffers, light, body.leftArm, wristbands.getChild("left"), 0xFFB02A2A);
+        }
+        if (data.wears("dragonblock:combat_belt")) {
+            onPart(pose, buffers, light, body.body, belt.getChild("strap"), 0xFF5A3A22);
+            onPart(pose, buffers, light, body.body, belt.getChild("buckle"), 0xFFE8C040);
+        }
+        if (data.wears(com.dragonblock.common.item.ScouterItem.ID) && body.head.visible) {
+            onPart(pose, buffers, light, body.head, scouter.getChild("frame"), 0xFF2E3138);
+            pose.pushPose();
+            body.head.translateAndRotate(pose);
+            scouter.getChild("lens").render(pose, buffers.getBuffer(RenderType.entityTranslucentEmissive(FEATURE_TEX)),
+                    FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0x9040FF70);
+            pose.popPose();
         }
     }
 

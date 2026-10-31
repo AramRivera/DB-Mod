@@ -34,7 +34,8 @@ public final class SpeedTrail {
     private SpeedTrail() {}
 
     public static boolean isBoosting(Player player) {
-        return AnimState.isFlying(player, PlayerDBCData.get(player)) && AnimState.horizontalSpeed(player) > BOOST_SPEED;
+        // Only the fast flight (sprinting in the air), cruising stays clean
+        return player.isSprinting() && AnimState.isFlying(player, PlayerDBCData.get(player)) && AnimState.horizontalSpeed(player) > BOOST_SPEED;
     }
 
     public static void tick() {

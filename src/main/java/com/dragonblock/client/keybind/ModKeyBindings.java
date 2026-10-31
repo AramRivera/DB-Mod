@@ -47,10 +47,11 @@ public class ModKeyBindings {
     public static final KeyMapping DASH_KEY = key("dash", GLFW.GLFW_KEY_R);
     public static final KeyMapping GUARD_KEY = key("guard", GLFW.GLFW_KEY_B);
     public static final KeyMapping TOGGLE_AURA_KEY = key("toggle_aura", GLFW.GLFW_KEY_J);
+    public static final KeyMapping ACCESSORIES_KEY = key("accessories", GLFW.GLFW_KEY_K);
 
     public static final KeyMapping[] ALL = {
             CHARGE_KI_KEY, TRANSFORM_KEY, CHARACTER_SHEET_KEY, FLY_KEY, TECHNIQUE_KEY,
-            REVERT_KEY, DASH_KEY, GUARD_KEY, TOGGLE_AURA_KEY
+            REVERT_KEY, DASH_KEY, GUARD_KEY, TOGGLE_AURA_KEY, ACCESSORIES_KEY
     };
 
     private static KeyMapping key(String name, int glfwKey) {

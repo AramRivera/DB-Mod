@@ -20,6 +20,8 @@ public class ModCreativeTabs {
                         output.accept(ModItems.SCOUTER.get());
                         output.accept(ModItems.DRAGON_RADAR.get());
                         output.accept(ModItems.TRAINING_WEIGHTS.get());
+                        output.accept(ModItems.WRIST_WEIGHTS.get());
+                        output.accept(ModItems.COMBAT_BELT.get());
                         output.accept(ModItems.KI_BLAST_ITEM.get());
 
                         output.accept(ModItems.DRAGON_BALL_1.get());

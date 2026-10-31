@@ -123,7 +123,7 @@ public final class TransformFx {
                 if (player.getRandom().nextFloat() < (0.25f + c) * power) {
                     Debris.spawn(player, 1 + (int) (power * c), 2.0f + power, 1.2f + 1.6f * c * power);
                 }
-                if (dist < 32) shake = Math.max(shake, (0.08f + 0.35f * power) * c * (float) (1 - dist / 32));
+                if (goal.isTopTier() && dist < 20) shake = Math.max(shake, (0.2f + 0.5f * c) * c * (float) (1 - dist / 20));
                 LightningStrikes.charging(player, goal, c);
                 // Strong power-ups darken the sky for everyone around and rumble louder as they build
                 if (CinematicCamera.worthy(goal) && goal.getSequence() != Transformation.Sequence.DIVINE) {
@@ -144,9 +144,8 @@ public final class TransformFx {
                 shake = Math.max(shake, (0.03f + 0.14f * power) * (float) (1 - dist / 16));
             }
             float burst = AnimState.progress(player, S2CAnimPacket.Anim.TRANSFORM, BURST_TICKS, 0);
-            if (burst >= 0 && burst < 0.4f && dist < 32) {
-                Transformation.Sequence seq = data.getTransformation().getSequence();
-                if (seq != Transformation.Sequence.DIVINE) shake = Math.max(shake, (seq == Transformation.Sequence.CATACLYSM ? 1.4f : 0.7f) * (float) (1 - dist / 32));
+            if (burst >= 0 && burst < 0.4f && dist < 20 && data.getTransformation().isTopTier()) {
+                shake = Math.max(shake, 1.3f * (float) (1 - dist / 20));
             }
         }
         prevDarkness = darkness;

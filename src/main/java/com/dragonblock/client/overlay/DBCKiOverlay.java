@@ -49,6 +49,7 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         Font font = mc.font;
         trackChanges(data, now);
         renderLetterbox(g, deltaTracker);
+        renderSpeedLines(g, data, now);
         renderTransformFlash(g, mc, data, deltaTracker);
         renderWhiteOut(g, now);
         if (mc.gameMode != null && mc.gameMode.canHurtPlayer()) renderHealthBar(g, mc, data, now);
@@ -75,62 +76,86 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
 
     // ------------------------------------------------------------------ top-left panel
 
+    /**
+     * Top-left panel, every piece on its own line so nothing overlaps: form name; the Ki bar with its
+     * numbers inside; battle power and current state; mastery when transformed.
+     */
     private void renderPanel(GuiGraphics g, Font font, PlayerDBCData data, long now) {
         Transformation form = data.getTransformation();
-        int accent = 0xFF000000 | form.getAuraColor();
+        int aura = form.getAuraColor();
+        int accent = 0xFF000000 | aura;
         int x = 8, y = 8;
         int h = panelHeight(data);
 
-        g.fill(x - 4, y - 4, x + BAR_W + 4, y + h, 0xA00A0F1E);
+        // Backing: night-blue card, form-colored edge, orange-gold rule at the bottom
+        g.fill(x - 4, y - 4, x + BAR_W + 4, y + h, 0xB00A0F1E);
         g.fill(x - 4, y - 4, x - 2, y + h, accent);
-        g.fill(x - 2, y + h - 1, x + BAR_W + 4, y + h, 0x60000000 | UiTheme.ORANGE);
+        for (int i = 0; i < BAR_W + 6; i += 4) {
+            g.fill(x - 2 + i, y + h - 1, x + Math.min(BAR_W + 4, i + 2), y + h, 0xA0000000 | UiTheme.mix(UiTheme.ORANGE, UiTheme.GOLD, i / (float) BAR_W));
+        }
+
+        // 1. Form name
         g.blit(UiTheme.EMBLEM, x, y - 1, 0, 0, 9, 9, 9, 9);
+        String name = font.plainSubstrByWidth(form.getDisplayName().toUpperCase(), BAR_W - 12);
+        g.drawString(font, name, x + 12, y, form == Transformation.BASE ? UiTheme.GOLD : aura, true);
+        y += 12;
 
-        g.drawString(font, form.getDisplayName().toUpperCase(), x + 12, y, form == Transformation.BASE ? UiTheme.GOLD : form.getAuraColor(), false);
-        String power = String.format("%,d", data.getBattlePower());
-        g.drawString(font, power, x + BAR_W - font.width(power), y, UiTheme.TEXT_HEADER, false);
-        y += 11;
-
-        // Ki bar: eases toward the real value, glows and shimmers while charging
+        // 2. Ki bar: eases toward the real value, glows and shimmers while charging, numbers inside
         float maxKi = Math.max(1f, data.getMaxKi());
         shownKi = ease(shownKi, data.getCurrentKi(), 0.2f);
         float ratio = Mth.clamp(shownKi / maxKi, 0f, 1f);
         boolean charging = data.isChargingKi() || data.isTransformHeld();
         if (charging) {
-            int glow = (int) (0x30 + 0x30 * (0.5f + 0.5f * Mth.sin(now / 120f)));
-            g.fill(x - 1, y - 1, x + BAR_W + 1, y + 6, glow << 24 | form.getAuraColor());
+            int glow = (int) (0x30 + 0x40 * (0.5f + 0.5f * Mth.sin(now / 120f)));
+            g.fill(x - 1, y - 1, x + BAR_W + 1, y + 10, glow << 24 | aura);
         }
-        g.fill(x, y, x + BAR_W, y + 5, UiTheme.TRACK);
+        g.fill(x, y, x + BAR_W, y + 9, UiTheme.TRACK);
         int fill = (int) (BAR_W * ratio);
-        g.fillGradient(x, y, x + fill, y + 5, accent, 0xFF000000 | darken(form.getAuraColor()));
+        g.fillGradient(x, y, x + fill, y + 9, accent, 0xFF000000 | darken(aura));
+        g.fill(x, y, x + fill, y + 1, 0x50FFFFFF);
         if (charging && fill > 6) {
             int shine = (int) ((now / 6) % (fill + 20)) - 10;
-            g.fill(Math.max(x, x + shine), y, Math.min(x + fill, x + shine + 6), y + 5, 0x70FFFFFF);
+            g.fill(Math.max(x, x + shine), y, Math.min(x + fill, x + shine + 6), y + 9, 0x60FFFFFF);
         }
-        for (int i = 1; i < 10; i++) g.fill(x + BAR_W * i / 10, y, x + BAR_W * i / 10 + 1, y + 5, 0x50000000);
-        y += 7;
-        g.drawString(font, String.format("KI  %.0f / %.0f", data.getCurrentKi(), maxKi), x, y, UiTheme.TEXT_DIM, false);
+        for (int i = 1; i < 10; i++) g.fill(x + BAR_W * i / 10, y, x + BAR_W * i / 10 + 1, y + 9, 0x40000000);
+        small(g, font, String.format("KI  %.0f / %.0f", data.getCurrentKi(), maxKi), x + BAR_W / 2f, y + 2f, 0xFFFFFF, true);
+        y += 12;
+
+        // 3. Battle power on the left, current state as a pill on the right
+        small(g, font, "PODER  " + String.format("%,d", data.getBattlePower()), x, y + 1f, UiTheme.TEXT_HEADER, false);
         String state = data.isTransformHeld() ? "CARGANDO" : data.isGuarding() ? "GUARDIA" : data.isChargingKi() ? "CONCENTRANDO"
                 : data.isFlying() ? "VUELO" : "";
-        g.drawString(font, state, x + BAR_W - font.width(state), y, UiTheme.TEXT, false);
+        if (!state.isEmpty()) {
+            int w = (int) (font.width(state) * 0.75f) + 6;
+            g.fill(x + BAR_W - w, y, x + BAR_W, y + 8, 0x80000000 | (charging ? aura : 0x2A3556));
+            small(g, font, state, x + BAR_W - w / 2f, y + 1.5f, 0xFFFFFF, true);
+        }
         y += 11;
 
-        if (form != Transformation.BASE) chargeBar(g, font, x, y, "Maestría", data.getMastery(form) / 100f, 0xFF000000 | UiTheme.GOLD);
+        // 4. Mastery of the current form
+        if (form != Transformation.BASE) {
+            float m = data.getMastery(form) / 100f;
+            small(g, font, "MAESTRÍA", x, y, UiTheme.TEXT_DIM, false);
+            String pct = (int) (m * 100) + "%";
+            small(g, font, pct, x + BAR_W - font.width(pct) * 0.75f, y, UiTheme.GOLD, false);
+            g.fill(x, y + 7, x + BAR_W, y + 9, UiTheme.TRACK);
+            g.fill(x, y + 7, x + (int) (BAR_W * m), y + 9, 0xFF000000 | UiTheme.GOLD);
+        }
     }
 
     private static int panelHeight(PlayerDBCData data) {
-        int h = 32;
-        if (data.getTransformation() != Transformation.BASE) h += 14;
+        int h = 38;
+        if (data.getTransformation() != Transformation.BASE) h += 12;
         return h;
     }
 
-    private static int chargeBar(GuiGraphics g, Font font, int x, int y, String label, float value, int color) {
-        g.drawString(font, label, x, y, UiTheme.TEXT_DIM, false);
-        String pct = (int) (value * 100) + "%";
-        g.drawString(font, pct, x + BAR_W - font.width(pct), y, UiTheme.TEXT, false);
-        g.fill(x, y + 9, x + BAR_W, y + 11, UiTheme.TRACK);
-        g.fill(x, y + 9, x + (int) (BAR_W * value), y + 11, color);
-        return y + 14;
+    /** Text at 3/4 size; centered on {@code x} when {@code center}. */
+    private static void small(GuiGraphics g, Font font, String text, float x, float y, int rgb, boolean center) {
+        g.pose().pushPose();
+        g.pose().translate(center ? x - font.width(text) * 0.375f : x, y, 0);
+        g.pose().scale(0.75f, 0.75f, 1f);
+        g.drawString(font, text, 0, 0, 0xFF000000 | rgb, true);
+        g.pose().popPose();
     }
 
     private static int darken(int rgb) {
@@ -169,12 +194,7 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         g.fillGradient(x + 1, y - 1, x + 1 + fill, y + 8, top, 0xFF8A1420);
         g.fill(x + 1, y - 1, x + 1 + fill, y, 0x50FFFFFF);
 
-        String text = String.format("%,.0f", body);
-        g.pose().pushPose();
-        g.pose().translate(x + w / 2f, y + 0.5f, 0);
-        g.pose().scale(0.75f, 0.75f, 1f);
-        g.drawString(mc.font, text, -mc.font.width(text) / 2, 0, 0xFFFFFFFF, true);
-        g.pose().popPose();
+        small(g, mc.font, String.format("%,.0f / %,.0f", body, max), x + w / 2f, y + 0.5f, 0xFFFFFF, true);
     }
 
     // ------------------------------------------------------------------ transformation feedback
@@ -229,6 +249,43 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         }
     }
 
+    /**
+     * Anime focus lines rushing toward the center as your own power-up nears its peak, thicker and more
+     * frantic the closer it is to bursting.
+     */
+    private static void renderSpeedLines(GuiGraphics g, PlayerDBCData data, long now) {
+        if (!data.isTransformHeld() || data.getTransformCharge() < 0.55f) return;
+        float k = (data.getTransformCharge() - 0.55f) / 0.45f;
+        int cx = g.guiWidth() / 2, cy = g.guiHeight() / 2;
+        float reach = Math.max(cx, cy) * 1.5f;
+        java.util.Random rnd = new java.util.Random(now / 50); // re-rolled 20 times a second
+        int count = 24 + (int) (36 * k);
+        int rgb = data.getSelectedForm().getAuraColor();
+        var vc = g.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.gui());
+        for (int i = 0; i < count; i++) {
+            double a = rnd.nextDouble() * Math.PI * 2;
+            float inner = reach * (0.45f + 0.35f * rnd.nextFloat() - 0.15f * k);
+            int alpha = (int) ((60 + rnd.nextInt(90)) * k);
+            int color = alpha << 24 | (rnd.nextInt(3) == 0 ? rgb : 0xFFFFFF);
+            float width = 1f + rnd.nextFloat() * 2.5f * k;
+            float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+            // One tapered quad per line: a point near the center widening toward the edge
+            float ox = cx + cos * reach, oy = cy + sin * reach, ix = cx + cos * inner, iy = cy + sin * inner;
+            float nx = -sin * width, ny = cos * width;
+            org.joml.Matrix4f m = g.pose().last().pose();
+            vc.addVertex(m, ix, iy, 0).setColor(color);
+            vc.addVertex(m, ix, iy, 0).setColor(color);
+            vc.addVertex(m, ox + nx, oy + ny, 0).setColor(color);
+            vc.addVertex(m, ox - nx, oy - ny, 0).setColor(color);
+            // and wound the other way, in case the gui type culls back faces
+            vc.addVertex(m, ox - nx, oy - ny, 0).setColor(color);
+            vc.addVertex(m, ox + nx, oy + ny, 0).setColor(color);
+            vc.addVertex(m, ix, iy, 0).setColor(color);
+            vc.addVertex(m, ix, iy, 0).setColor(color);
+        }
+        g.flush();
+    }
+
     /** Black cinema bars while the cinematic camera runs. */
     private static void renderLetterbox(GuiGraphics g, DeltaTracker delta) {
         float k = com.dragonblock.client.fx.CinematicCamera.amount(delta.getGameTimeDeltaPartialTick(false));
@@ -257,6 +314,11 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
             case STRAIN -> 0.35f;
             default -> 0.6f;
         };
+        if (t < 0.06f && form.getSequence() != Transformation.Sequence.DIVINE) {
+            // Impact frame: a split second of white then ink, like an anime hit
+            g.fill(0, 0, g.guiWidth(), g.guiHeight(), t < 0.03f ? 0xF0FFFFFF : 0xC0000000);
+            return;
+        }
         int alpha = (int) (255 * strength * (1f - t / 0.5f));
         int rgb = form.getSequence() == Transformation.Sequence.DIVINE ? 0xFFFFFF : form.getAuraColor();
         g.fill(0, 0, g.guiWidth(), g.guiHeight(), alpha << 24 | rgb);

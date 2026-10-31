@@ -22,5 +22,8 @@
   "key.dragonblock.revert": "Volver a forma base",
   "key.dragonblock.dash": "Impulso",
   "key.dragonblock.guard": "Guardia (mantener)",
-  "key.dragonblock.toggle_aura": "Mostrar/ocultar aura"
+  "key.dragonblock.toggle_aura": "Mostrar/ocultar aura",
+  "key.dragonblock.accessories": "Accesorios",
+  "item.dragonblock.wrist_weights": "Muñequeras de peso",
+  "item.dragonblock.combat_belt": "Cinturón de combate"
 }

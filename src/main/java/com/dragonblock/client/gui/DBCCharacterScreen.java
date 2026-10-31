@@ -64,9 +64,6 @@ public class DBCCharacterScreen extends Screen {
     private Race savedRace;
     private HairStyle savedStyle;
     private boolean saved = false;
-    /** "Try a form" in the look editor: shown on the local player only, put back on close. */
-    private Transformation previewForm = null;
-    private Transformation savedForm;
 
     // 3D viewer: drag to turn, wheel to zoom toward the face, right click to reset
     private float viewYaw = 0f, viewPitch = 8f, zoom = 1f, shownZoom = 1f;
@@ -99,7 +96,6 @@ public class DBCCharacterScreen extends Screen {
         int[] base = baseStats(d);
         for (int i = 0; i < 5; i++) shownStats[i] = base[i];
         if (savedLook == null) {
-            savedForm = d.getTransformation();
             savedRace = d.getRace();
             savedStyle = d.getHairStyle();
             savedLook = new int[]{d.getSkinColor(), d.getEyeColor(), d.getHairColor(), d.getAccentColor()};
@@ -122,7 +118,6 @@ public class DBCCharacterScreen extends Screen {
         PlayerDBCData d = data();
         if (creating()) d.setRace(pendingRace);
         d.setLook(skin, eyes, hair, accent, hairStyle);
-        if (previewForm != null) d.setTransformation(previewForm);
     }
 
     private void pickRace(Race race) {
@@ -152,8 +147,6 @@ public class DBCCharacterScreen extends Screen {
                     Component.literal(creating() ? "Crear personaje" : "Guardar apariencia"), accentRgb, b -> {
                 ModMessages.sendToServer(new C2SSelectRacePacket(pendingRace.name(), skin, eyes, hair, accent, hairStyle.name()));
                 saved = true;
-                if (previewForm != null) data().setTransformation(savedForm);
-                previewForm = null;
                 if (creating()) onClose();
             }));
             if (creating()) return;
@@ -175,6 +168,9 @@ public class DBCCharacterScreen extends Screen {
                 y += 26;
             }
         }
+        int accessoriesY = t + H - (data.getRace().hasSaiyanTail() ? 44 : 26);
+        addRenderableWidget(new FlatButton(left() + 10, accessoriesY, PREVIEW_W - 20, 16, Component.literal("Accesorios [K]"), accentRgb,
+                b -> ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.OPEN_ACCESSORIES, 0))));
         if (data.getRace().hasSaiyanTail()) {
             addRenderableWidget(new FlatButton(left() + 10, t + H - 26, PREVIEW_W - 20, 16,
                     Component.literal(data.isTailOut() ? "Enrollar cola" : "Soltar cola"), accentRgb,
@@ -194,8 +190,6 @@ public class DBCCharacterScreen extends Screen {
 
     private void restoreLook() {
         PlayerDBCData d = data();
-        if (previewForm != null) d.setTransformation(savedForm);
-        previewForm = null;
         if (!d.isRaceChosen()) d.setRace(savedRace);
         d.setLook(savedLook[0], savedLook[1], savedLook[2], savedLook[3], savedStyle);
     }
@@ -204,7 +198,6 @@ public class DBCCharacterScreen extends Screen {
     public void removed() {
         // Leaving without saving puts the old look back (the server never heard of the preview)
         if (!saved && (creating() || tab == Tab.LOOK)) restoreLook();
-        else if (previewForm != null) data().setTransformation(savedForm);
         super.removed();
     }
 
@@ -265,7 +258,7 @@ public class DBCCharacterScreen extends Screen {
     // ------------------------------------------------------------------ 3D preview
 
     private void renderPreview(GuiGraphics g, PlayerDBCData data, int mouseX, int mouseY, int l, int t, int accent) {
-        int px = l + 8, py = t + 24, pw = PREVIEW_W - 6, ph = H - 56;
+        int px = l + 8, py = t + 24, pw = PREVIEW_W - 6, ph = previewHeight();
         g.fill(px, py, px + pw, py + ph, UiTheme.PANEL_ALT);
         // Soft orange floor glow under the character
         for (int i = 0; i < 6; i++) {
@@ -310,8 +303,13 @@ public class DBCCharacterScreen extends Screen {
         e.yHeadRot = head;
     }
 
+    /** Shorter once the race is chosen, to make room for the accessory and tail buttons below. */
+    private int previewHeight() {
+        return H - (creating() ? 56 : 80);
+    }
+
     private boolean overViewer(double mx, double my) {
-        return inside(mx, my, left() + 8, top() + 24, PREVIEW_W - 6, H - 56);
+        return inside(mx, my, left() + 8, top() + 24, PREVIEW_W - 6, previewHeight());
     }
 
     @Override
@@ -373,9 +371,7 @@ public class DBCCharacterScreen extends Screen {
         for (LookRow row : lookRows(cl, y)) {
             g.drawString(font, row.label, cl, row.y + 3, UiTheme.TEXT, false);
             if (row.styles) {
-                String value = row.kind == 5 ? (previewForm == null ? "Ninguna" : previewForm.getDisplayName())
-                        : Appearance.hairStyleName(hairStyle);
-                String text = "‹  " + font.plainSubstrByWidth(value, 84) + "  ›";
+                String text = "‹  " + Appearance.hairStyleName(hairStyle) + "  ›";
                 boolean hover = inside(mouseX, mouseY, row.x, row.y, 110, SWATCH);
                 g.fill(row.x, row.y, row.x + 110, row.y + SWATCH, hover ? UiTheme.BUTTON_HOVER : UiTheme.BUTTON);
                 g.drawCenteredString(font, text, row.x + 55, row.y + 3, UiTheme.TEXT_HEADER);
@@ -408,22 +404,7 @@ public class DBCCharacterScreen extends Screen {
             y += SWATCH + 5;
         }
         rows.add(new LookRow(accentLabel(), x, y, Appearance.accentPalette(pendingRace), accent, 4, false));
-        y += SWATCH + 5;
-        rows.add(new LookRow("Probar forma", x, y, null, 0, 5, true));
         return rows;
-    }
-
-    /** Steps through the forms of the race (none = your normal look). */
-    private void cyclePreviewForm(int step) {
-        List<Transformation> forms = new java.util.ArrayList<>();
-        forms.add(null);
-        for (Transformation f : Transformation.values()) {
-            if (f != Transformation.BASE && f.isAvailableTo(pendingRace) && !f.isOozaru()) forms.add(f);
-        }
-        int i = forms.indexOf(previewForm);
-        previewForm = forms.get(Math.floorMod(i + step, forms.size()));
-        if (previewForm == null) data().setTransformation(savedForm);
-        previewLook();
     }
 
     private String skinLabel() {
@@ -444,10 +425,6 @@ public class DBCCharacterScreen extends Screen {
         for (LookRow row : lookRows(cl, y)) {
             if (row.styles) {
                 if (!inside(mouseX, mouseY, row.x, row.y, 110, SWATCH)) continue;
-                if (row.kind == 5) {
-                    cyclePreviewForm(mouseX < row.x + 55 ? -1 : 1);
-                    return true;
-                }
                 List<HairStyle> styles = Appearance.hairStyles(pendingRace);
                 int step = mouseX < row.x + 55 ? -1 : 1;
                 hairStyle = styles.get(Math.floorMod(styles.indexOf(hairStyle) + step, styles.size()));

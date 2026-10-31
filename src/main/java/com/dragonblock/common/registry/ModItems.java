@@ -23,6 +23,12 @@ public class ModItems {
     public static final RegistryObject<Item> TRAINING_WEIGHTS =
             ITEMS.register("training_weights", TrainingWeightsItem::new);
 
+    public static final RegistryObject<Item> WRIST_WEIGHTS = ITEMS.register("wrist_weights",
+            () -> new AccessoryItem(AccessoryItem.Slot.WRISTS, "Puestas: +20% de TP en combate, golpes un poco más lentos."));
+
+    public static final RegistryObject<Item> COMBAT_BELT = ITEMS.register("combat_belt",
+            () -> new AccessoryItem(AccessoryItem.Slot.BELT, "Puesto: el ki se regenera un 25% más rápido."));
+
     public static final RegistryObject<Item> KI_BLAST_ITEM =
             ITEMS.register("ki_blast", KiAttackItem::new);
 

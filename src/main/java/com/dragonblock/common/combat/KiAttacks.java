@@ -127,8 +127,8 @@ public final class KiAttacks {
 
     private static void spawn(ServerPlayer player, Technique tech, float damage, float explosion, int color,
                               float size, float speed, float inaccuracy, float scale, int halo) {
-        // Stronger fighters throw bigger, heavier techniques; past ~8 explosions mostly cause lag and crater builds
-        KiBlastEntity blast = new KiBlastEntity(player.level(), player, damage, Math.min(8f, explosion * (0.75f + 0.25f * scale)),
+        // Stronger fighters throw bigger, heavier techniques; past ~9 explosions mostly cause lag and crater builds
+        KiBlastEntity blast = new KiBlastEntity(player.level(), player, damage, Math.min(9f, explosion * 1.25f * (0.75f + 0.25f * scale)),
                 color, size * scale, tech);
         blast.setHalo(halo);
         blast.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, speed, inaccuracy);

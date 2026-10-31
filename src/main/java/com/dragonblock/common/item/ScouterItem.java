@@ -22,9 +22,9 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
-public class ScouterItem extends Item {
+public class ScouterItem extends AccessoryItem {
     public ScouterItem() {
-        super(new Item.Properties().stacksTo(1));
+        super(Slot.VISOR, "Puesto: mide el poder de lo que miras, sigue el ki más fuerte cerca y estalla si lee un poder abrumador.");
     }
 
     @Override
@@ -95,10 +95,46 @@ public class ScouterItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.literal("Dispositivo de rastreo y medición de Ki del Ejército de Freezer.")
-                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
-        tooltip.add(Component.literal("Click derecho: Escanea el nivel de poder del objetivo al que apuntas.")
+        tooltip.add(Component.literal("Click derecho: escanea el poder del objetivo al que apuntas.")
                 .withStyle(ChatFormatting.GREEN));
         super.appendHoverText(stack, context, tooltip, flag);
+    }
+
+    public static final String ID = "dragonblock:scouter";
+
+    /** What a scouter reads: a fighter's battle power, or an estimate from a creature's toughness. */
+    public static long readPower(LivingEntity target) {
+        if (target instanceof Player p) return PlayerDBCData.get(p).getBattlePower();
+        return (long) (target.getMaxHealth() * 10 + target.getArmorValue() * 20);
+    }
+
+    /** The living thing the wearer is looking at, up to {@code range} blocks, or null. */
+    public static LivingEntity lookedAt(Player player, double range) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getViewVector(1.0F);
+        EntityHitResult hit = ProjectileUtil.getEntityHitResult(player, eye, eye.add(look.scale(range)),
+                player.getBoundingBox().expandTowards(look.scale(range)).inflate(1.5), e -> e instanceof LivingEntity && e.isAlive() && e != player,
+                range * range);
+        return hit != null && hit.getEntity() instanceof LivingEntity l && player.hasLineOfSight(l) ? l : null;
+    }
+
+    /**
+     * Server, twice a second while worn: reading a power far beyond the wearer's overloads the scouter,
+     * which bursts and is gone.
+     */
+    public static void tickWorn(net.minecraft.server.level.ServerPlayer player, PlayerDBCData data) {
+        if (!data.wears(ID)) return;
+        LivingEntity target = lookedAt(player, 64);
+        if (target == null) return;
+        long power = readPower(target);
+        if (power < Math.max(20000L, data.getBattlePower() * 25L)) return;
+        for (int i = 0; i < 4; i++) if (ID.equals(data.getAccessory(i))) data.setAccessory(i, "");
+        data.saveToPlayer(player);
+        com.dragonblock.common.network.ModMessages.syncToTracking(player);
+        com.dragonblock.common.network.ModMessages.broadcastAnim(player, com.dragonblock.common.network.packet.S2CAnimPacket.Anim.SCOUTER_BREAK, 0);
+        player.level().playSound(null, player.getX(), player.getEyeY(), player.getZ(), SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.2f, 1.4f);
+        player.level().playSound(null, player.getX(), player.getEyeY(), player.getZ(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 0.4f, 2.0f);
+        player.displayClientMessage(Component.literal("¡El scouter no soportó semejante poder: " + String.format("%,d", power) + "!")
+                .withStyle(ChatFormatting.RED), true);
     }
 }

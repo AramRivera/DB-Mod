@@ -27,6 +27,9 @@ public class PlayerDBCData {
     private final List<Technique> equipped = new ArrayList<>(List.of(Technique.KI_BLAST));
     private int selectedSlot = 0;
 
+    /** Worn accessories by slot (VISOR, TORSO, WRISTS, BELT): item ids, "" when empty. */
+    private final String[] accessories = {"", "", "", ""};
+
     // Appearance from the character creator (the race decides the body, these personalize it)
     private int skinColor = -1, eyeColor = -1, hairColor = -1, accentColor = -1;
     private Transformation.HairStyle hairStyle = null;
@@ -156,6 +159,7 @@ public class PlayerDBCData {
         tag.putString("Learned", String.join(",", learned.stream().map(Enum::name).toList()));
         tag.putString("Equipped", String.join(",", equipped.stream().map(Enum::name).toList()));
         tag.putInt("SelectedSlot", selectedSlot);
+        tag.putString("Accessories", String.join(",", accessories));
 
         CompoundTag look = new CompoundTag();
         look.putInt("Skin", getSkinColor());
@@ -216,6 +220,9 @@ public class PlayerDBCData {
             }
             selectedSlot = tag.getInt("SelectedSlot");
         }
+
+        String[] worn = tag.getString("Accessories").split(",", -1);
+        for (int i = 0; i < accessories.length; i++) accessories[i] = i < worn.length ? worn[i] : "";
 
         CompoundTag look = tag.getCompound("Look");
         skinColor = look.contains("Skin") ? look.getInt("Skin") : -1;
@@ -368,9 +375,26 @@ public class PlayerDBCData {
     /** The technique the key fires, or null with nothing equipped. */
     public Technique getSelectedTechnique() { return equipped.isEmpty() ? null : equipped.get(getSelectedSlot()); }
 
+    // ---------------------------------------------------------------- accessories
+
+    /** Item id worn in a slot (AccessoryItem.Slot ordinal), "" when empty. */
+    public String getAccessory(int slot) { return accessories[slot]; }
+    public void setAccessory(int slot, String itemId) { accessories[slot] = itemId == null ? "" : itemId; }
+
+    /** True when the item with this id is worn in any slot. */
+    public boolean wears(String itemId) {
+        for (String a : accessories) if (a.equals(itemId)) return true;
+        return false;
+    }
+
     // ---------------------------------------------------------------- appearance
 
     public int getSkinColor() { return skinColor >= 0 ? skinColor : Appearance.defaultSkin(race); }
+    /** Skin as drawn right now: some forms recolor the body, reverting brings the chosen color back. */
+    public int getBodyColor() {
+        int form = transformation.getBodyColor();
+        return form != 0 ? form : getSkinColor();
+    }
     public int getEyeColor() { return eyeColor >= 0 ? eyeColor : Appearance.defaultEyes(race); }
     public int getHairColor() { return hairColor >= 0 ? hairColor : Appearance.defaultHair(race); }
     public int getAccentColor() { return accentColor >= 0 ? accentColor : Appearance.defaultAccent(race); }

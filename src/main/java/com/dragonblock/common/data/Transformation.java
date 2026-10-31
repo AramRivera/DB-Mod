@@ -119,6 +119,22 @@ public enum Transformation {
     /** 0 = no fur. Ozaru forms cover the whole body, SSJ4 only the torso and arms. */
     public int getFurColor() { return furColor; }
 
+    /** The very top forms: only these shake everyone's camera around them. */
+    public boolean isTopTier() {
+        return this == SSJ_BLUE_EVOLVED || this == ULTRA_EGO || this == UI_SIGN || this == UI_MASTERED || this == BEAST;
+    }
+
+    /** Forms that recolor the whole body (skin, tail, antennae); 0 keeps the character's own skin. */
+    public int getBodyColor() {
+        return switch (this) {
+            case ARCOSIAN_GOLDEN -> 0xF2C230;
+            case ARCOSIAN_BLACK -> 0x24202C;
+            case NAMEKIAN_ORANGE -> 0xF0882E;
+            case MAJIN_PURE -> 0xF8B8D8;
+            default -> 0;
+        };
+    }
+
     public boolean isAvailableTo(Race race) { return races.contains(race); }
     public boolean isKaioken() { return this == KAIOKEN || this == KAIOKEN_X10 || this == KAIOKEN_X20; }
     public boolean isOozaru() { return this == OOZARU || this == GOLDEN_OOZARU; }
@@ -220,7 +236,7 @@ public enum Transformation {
 
     /** Seconds the power-up takes untrained; mastery cuts it to a quarter. Bigger forms take longer. */
     public float getBaseTransformSeconds() {
-        float base = 2.4f + minLevel / 80f;
+        float base = (2.4f + minLevel / 80f) * 1.35f; // long enough for the build-up to land
         return switch (getSequence()) {
             case CATACLYSM -> base * 1.3f;
             case STRAIN -> Math.max(1.5f, base * 0.45f);

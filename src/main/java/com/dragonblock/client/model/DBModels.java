@@ -37,6 +37,9 @@ public final class DBModels {
     public static final ModelLayerLocation TENDRIL = layer("tendril");
     public static final ModelLayerLocation FUR = layer("fur");
     public static final ModelLayerLocation APE_HEAD = layer("ape_head");
+    public static final ModelLayerLocation SCOUTER = layer("scouter");
+    public static final ModelLayerLocation WRISTBANDS = layer("wristbands");
+    public static final ModelLayerLocation BELT = layer("belt");
 
     /** Segments in a tail chain, named seg0..segN-1, each a child of the previous. */
     public static final int TAIL_SEGMENTS = 7;
@@ -63,13 +66,16 @@ public final class DBModels {
         event.registerLayerDefinition(HORNS, DBModels::horns);
         event.registerLayerDefinition(TENDRIL, DBModels::tendril);
         event.registerLayerDefinition(APE_HEAD, DBModels::apeHead);
+        event.registerLayerDefinition(SCOUTER, DBModels::scouter);
+        event.registerLayerDefinition(WRISTBANDS, DBModels::wristbands);
+        event.registerLayerDefinition(BELT, DBModels::belt);
         event.registerLayerDefinition(FUR, () -> LayerDefinition.create(HumanoidModel.createMesh(new CubeDeformation(0.45f), 0), 64, 64));
     }
 
     // ------------------------------------------------------------------ hair
 
-    /** Four tapering steps (fraction of length, fraction of width); the outer two follow the bend. */
-    private static final float[][] TIERS = {{0.38f, 1.0f}, {0.28f, 0.8f}, {0.2f, 0.58f}, {0.14f, 0.34f}};
+    /** Five tapering steps (fraction of length, fraction of width) down to a sharp point; all but the first two follow the bend. */
+    private static final float[][] TIERS = {{0.32f, 1.0f}, {0.26f, 0.78f}, {0.2f, 0.54f}, {0.13f, 0.32f}, {0.09f, 0.14f}};
 
     /**
      * Hair is data-driven: assets/dragonblock/hair/<style>.json holds a volume block ("mass") and spikes.
@@ -230,6 +236,42 @@ public final class DBModels {
             v += 6;
         }
         return LayerDefinition.create(mesh, 64, 32);
+    }
+
+    // ------------------------------------------------------------------ accessories
+
+    /** Scouter over the left eye: glass lens, rim, bar back to the ear piece, little antenna. */
+    private static LayerDefinition scouter() {
+        MeshDefinition mesh = new MeshDefinition();
+        PartDefinition root = mesh.getRoot();
+        root.addOrReplaceChild("frame", CubeListBuilder.create().texOffs(0, 0)
+                .addBox(0.4f, -4.9f, -4.95f, 4.0f, 0.4f, 0.5f)    // rim over the lens
+                .addBox(4.2f, -4.4f, -4.9f, 0.6f, 0.9f, 3.9f)     // bar along the temple
+                .addBox(4.0f, -5.2f, -1.4f, 1.0f, 3.4f, 2.8f)     // ear piece
+                .addBox(4.35f, -7.4f, 0.2f, 0.4f, 2.4f, 0.4f),    // antenna
+                PartPose.ZERO);
+        root.addOrReplaceChild("lens", CubeListBuilder.create().texOffs(0, 8)
+                .addBox(0.5f, -4.6f, -4.8f, 3.8f, 3.0f, 0.2f), PartPose.ZERO);
+        return LayerDefinition.create(mesh, 32, 32);
+    }
+
+    /** One band per forearm (the player's right arm box sits 2 px further out than the left). */
+    private static LayerDefinition wristbands() {
+        MeshDefinition mesh = new MeshDefinition();
+        mesh.getRoot().addOrReplaceChild("right", CubeListBuilder.create().texOffs(0, 0)
+                .addBox(-3.35f, 6.6f, -2.35f, 4.7f, 2.6f, 4.7f), PartPose.ZERO);
+        mesh.getRoot().addOrReplaceChild("left", CubeListBuilder.create().texOffs(0, 0)
+                .addBox(-1.35f, 6.6f, -2.35f, 4.7f, 2.6f, 4.7f), PartPose.ZERO);
+        return LayerDefinition.create(mesh, 32, 32);
+    }
+
+    private static LayerDefinition belt() {
+        MeshDefinition mesh = new MeshDefinition();
+        mesh.getRoot().addOrReplaceChild("strap", CubeListBuilder.create().texOffs(0, 0)
+                .addBox(-4.35f, 9.0f, -2.35f, 8.7f, 1.7f, 4.7f), PartPose.ZERO);
+        mesh.getRoot().addOrReplaceChild("buckle", CubeListBuilder.create().texOffs(0, 8)
+                .addBox(-1.1f, 8.8f, -2.7f, 2.2f, 2.1f, 0.5f), PartPose.ZERO);
+        return LayerDefinition.create(mesh, 32, 32);
     }
 
     private static LayerDefinition tendril() {
