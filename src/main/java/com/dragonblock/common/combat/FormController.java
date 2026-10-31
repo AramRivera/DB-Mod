@@ -16,6 +16,7 @@ public final class FormController {
 
     /** Called every server tick. */
     public static void tick(ServerPlayer player, PlayerDBCData data) {
+        checkFullMoon(player, data);
         Transformation target = data.getSelectedForm();
 
         if (data.isTransformHeld() && target != data.getTransformation()) {
@@ -24,10 +25,10 @@ public final class FormController {
                 data.setTransformHeld(false);
                 data.setTransformCharge(0f);
                 player.displayClientMessage(Component.literal(target.getDisplayName() + ": " + lock), true);
-            } else if (target.isOozaru() && !canBecomeOozaru(player)) {
+            } else if (target.isOozaru() && !isNightSky(player)) {
                 data.setTransformHeld(false);
                 data.setTransformCharge(0f);
-                player.displayClientMessage(Component.literal("Necesitas ver la luna llena de noche."), true);
+                player.displayClientMessage(Component.literal("El Ozaru solo despierta de noche y a cielo abierto."), true);
             } else {
                 // Powering up drains a little Ki and shakes the ground
                 data.setCurrentKi(data.getCurrentKi() - 0.15f);
@@ -44,8 +45,9 @@ public final class FormController {
         if (form == Transformation.BASE) return;
 
         // Forced reverts
-        if (form.isOozaru() && !canBecomeOozaru(player)) {
+        if (form.isOozaru() && !data.forcedForm && (!isNightSky(player) || !data.isTailOut())) {
             revert(player, data);
+            player.displayClientMessage(Component.literal("La luz del día te devuelve a tu forma normal."), true);
             return;
         }
 
@@ -71,6 +73,7 @@ public final class FormController {
     }
 
     public static void transform(ServerPlayer player, PlayerDBCData data, Transformation target) {
+        data.forcedForm = false;
         data.setTransformation(target);
         data.setTransformCharge(0f);
         data.setTransformHeld(false);
@@ -91,18 +94,31 @@ public final class FormController {
         if (data.getTransformation() == Transformation.BASE) return;
         data.setTransformation(Transformation.BASE);
         data.setTransformCharge(0f);
+        data.forcedForm = false;
         data.saveToPlayer(player);
         ModMessages.syncToTracking(player);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 ModSounds.TRANSFORM.get(), SoundSource.PLAYERS, 0.6f, 0.6f);
     }
 
-    /** Ozaru needs a full moon in the sky (night, moon phase 0) and the overworld sky above. */
-    private static boolean canBecomeOozaru(ServerPlayer player) {
+    /**
+     * Classic trigger: a Saiyan with the tail out who looks up at the full moon turns Ozaru on the spot,
+     * regardless of the selected form or level.
+     */
+    private static void checkFullMoon(ServerPlayer player, PlayerDBCData data) {
+        if (player.tickCount % 10 != 0 || !data.getRace().hasSaiyanTail() || !data.isTailOut()) return;
+        if (data.getTransformation().isOozaru() || player.getXRot() > -25f) return;
+        if (isNightSky(player) && player.serverLevel().getMoonPhase() == 0) {
+            Transformation form = data.isUnlocked(Transformation.GOLDEN_OOZARU) ? Transformation.GOLDEN_OOZARU : Transformation.OOZARU;
+            player.displayClientMessage(Component.literal("La luna llena despierta al Ozaru."), true);
+            transform(player, data, form);
+        }
+    }
+
+    private static boolean isNightSky(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
         return level.dimensionType().hasSkyLight()
                 && level.isNight()
-                && level.getMoonPhase() == 0
                 && level.canSeeSky(player.blockPosition().above());
     }
 }

@@ -2,6 +2,8 @@ package com.dragonblock.common.combat;
 
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.entity.KiBlastEntity;
+import com.dragonblock.common.network.ModMessages;
+import com.dragonblock.common.network.packet.S2CAnimPacket;
 import com.dragonblock.common.registry.ModSounds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,6 +47,7 @@ public final class KiAttacks {
         float damage = 6.0f + data.getEffectiveWil() * 0.6f;
         float explosion = 0.8f + Math.min(2.0f, data.getEffectiveWil() * 0.02f);
         spawn(player, data, damage, explosion, 0.35f, false, 2.0f);
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.BLAST);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 ModSounds.KI_BLAST.get(), SoundSource.PLAYERS, 1.0f, 1.1f);
     }
@@ -58,6 +61,7 @@ public final class KiAttacks {
         float damage = (10.0f + data.getEffectiveWil() * 1.1f) * (0.5f + 1.5f * charge);
         float explosion = 1.5f + Math.min(4.0f, data.getEffectiveWil() * 0.03f) * charge;
         spawn(player, data, damage, explosion, 0.5f + 1.1f * charge, true, 2.6f);
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.WAVE_RELEASE);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 ModSounds.KI_BLAST.get(), SoundSource.PLAYERS, 1.8f, 0.6f);
     }
@@ -72,6 +76,7 @@ public final class KiAttacks {
         double strength = 1.1 + Math.min(1.2, data.getEffectiveDex() * 0.004);
         player.setDeltaMovement(dir.scale(strength).add(0, data.isFlying() ? 0 : 0.15, 0));
         player.hurtMarked = true; // pushes the velocity to the client
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.DASH);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.BREEZE_JUMP, SoundSource.PLAYERS, 0.8f, 1.3f);
     }

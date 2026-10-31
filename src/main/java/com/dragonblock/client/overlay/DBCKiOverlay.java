@@ -21,6 +21,7 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
 
         PlayerDBCData data = PlayerDBCData.get(mc.player);
         Font font = mc.font;
+        if (mc.gameMode != null && mc.gameMode.canHurtPlayer()) renderHealthBar(g, mc, data);
         Transformation form = data.getTransformation();
         int accent = 0xFF000000 | form.getAuraColor();
         int x = 8, y = 8;
@@ -54,6 +55,32 @@ public class DBCKiOverlay implements LayeredDraw.Layer {
         if (form != Transformation.BASE) {
             chargeBar(g, font, x, y, "Maestría", data.getMastery(form) / 100f, 0xFF8090A0);
         }
+    }
+
+    /**
+     * Body pool bar drawn over the vanilla heart row (vanilla health only mirrors the pool, so the hearts
+     * are always a single row and this panel fully covers them, including their low-health jiggle).
+     */
+    private static void renderHealthBar(GuiGraphics g, Minecraft mc, PlayerDBCData data) {
+        int x = g.guiWidth() / 2 - 91;
+        int y = g.guiHeight() - 39;
+        int w = 81;
+        float ratio = Math.min(1f, data.getBody() / Math.max(1f, data.getMaxBody()));
+        boolean hurt = mc.player.hurtTime > 0;
+
+        g.fill(x - 1, y - 3, x + w + 1, y + 10, 0xFF0C0D10);
+        g.renderOutline(x - 1, y - 3, w + 2, 13, hurt ? 0xFFE04040 : UiTheme.BORDER);
+        g.fill(x + 1, y - 1, x + w - 1, y + 8, UiTheme.TRACK);
+        int fill = (int) ((w - 2) * ratio);
+        g.fillGradient(x + 1, y - 1, x + 1 + fill, y + 8, ratio < 0.25f ? 0xFFFF4A3A : 0xFFE0383A, 0xFF8A1420);
+        g.fill(x + 1, y - 1, x + 1 + fill, y, 0x50FFFFFF); // top highlight
+
+        String text = String.format("%,.0f", data.getBody());
+        g.pose().pushPose();
+        g.pose().translate(x + w / 2f, y + 0.5f, 0);
+        g.pose().scale(0.75f, 0.75f, 1f);
+        g.drawString(mc.font, text, -mc.font.width(text) / 2, 0, 0xFFFFFFFF, true);
+        g.pose().popPose();
     }
 
     private static int panelHeight(PlayerDBCData data) {

@@ -3,7 +3,12 @@ package com.dragonblock.client;
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.keybind.ModKeyBindings;
 import com.dragonblock.client.overlay.DBCKiOverlay;
+import com.dragonblock.client.anim.DBPlayerModel;
 import com.dragonblock.client.model.DBModels;
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import java.lang.reflect.Field;
 import com.dragonblock.client.renderer.DBPlayerLayer;
 import com.dragonblock.client.renderer.KiBlastRenderer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
@@ -34,7 +39,28 @@ public class ClientModEvents {
     public static void onAddLayers(EntityRenderersEvent.AddLayers event) {
         for (PlayerSkin.Model skin : event.getSkins()) {
             if (event.getPlayerSkin(skin) instanceof PlayerRenderer renderer) {
+                boolean slim = skin == PlayerSkin.Model.SLIM;
+                swapModel(renderer, new DBPlayerModel(
+                        event.getContext().bakeLayer(slim ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER), slim));
                 renderer.addLayer(new DBPlayerLayer(renderer, event.getEntityModels()));
+            }
+        }
+    }
+
+    /**
+     * Replaces LivingEntityRenderer.model so our setupAnim poses every player. Looked up by type
+     * instead of name so it works in dev and in obfuscated production builds alike.
+     */
+    private static void swapModel(PlayerRenderer renderer, DBPlayerModel model) {
+        for (Field field : LivingEntityRenderer.class.getDeclaredFields()) {
+            if (EntityModel.class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    field.set(renderer, model);
+                    return;
+                } catch (ReflectiveOperationException e) {
+                    DragonBlockMod.LOGGER.error("Could not install Dragon Block player model, poses disabled", e);
+                }
             }
         }
     }

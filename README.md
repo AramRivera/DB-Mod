@@ -6,12 +6,12 @@ Mod de Dragon Ball para **Minecraft Java 1.21.1** desarrollado sobre **Minecraft
 
 ## ⚡ Características Principales
 
-### 1. Sistema de Ki & Energía
-* **Reserva de Ki**: Ki máximo dinámico determinado por el atributo de Voluntad (WIL) y multiplicadores de raza.
-* **Carga de Ki (Tecla `C`)**: Concentración de Ki con partículas de aura eléctrica y efectos de sonido en tiempo real.
-* **Regeneración Pasiva**: Recuperación continua de Ki dependiente de la raza y el descanso.
-* **Vuelo Bukujutsu (Tecla `F`)**: Capacidad de volar por el aire consumiendo Ki paulatinamente, emitiendo una estela visual de condensación.
-* **HUD Overlay**: Barra de Ki en pantalla con porcentaje, estado de carga, transformación activa y nivel de poder (BP).
+### 1. Ki, vida y aura
+* **Ki**: máximo según Voluntad (WIL) y raza. Se carga manteniendo `C` y se regenera solo.
+* **Vida (cuerpo)**: reserva propia que crece con la Constitución (CON) efectiva, así que transformarte te hace más resistente. Se muestra en una **barra roja** en lugar de los corazones; los corazones vanilla solo reflejan el porcentaje, por eso nunca se apilan. La comida, pociones y regeneración siguen funcionando.
+* **Aura**: llamas que suben con lenguas, chispas que se desprenden y un anillo de presión en el suelo al cargar. **Crece con el poder de pelea y el multiplicador de la forma**, y las formas altas suman rayos.
+* **Vuelo (`F`)**: velocidad cercana a la de creativo; corriendo en el aire vas más rápido y gastas más Ki. El cuerpo se inclina hacia delante según la velocidad.
+* **Velocidad**: la Destreza da hasta +35% al caminar, **sin el efecto de "poción de velocidad"** en el campo de visión.
 
 ---
 
@@ -49,6 +49,8 @@ Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para t
 * **Requisitos**: nivel (suma de atributos) y, para formas avanzadas, **25% de maestría** en la forma anterior.
 * **Maestría (0-100%)**: sube estando transformado y combatiendo. Reduce hasta un 60% el consumo de Ki.
 * **Agotamiento**: sin Ki vuelves a la forma base.
+* **Ozaru**: si eres Saiyajin con la cola suelta y **miras la luna llena** de noche, te transformas solo. También puedes elegirlo y mantener `G` cualquier noche a cielo abierto. Al salir el sol (o al enrollar la cola) vuelves a la normalidad. `/dev form oozaru` lo fuerza de día para pruebas.
+* **Peinados**: diseños propios por nivel de poder (no copias del pelo de personajes concretos): *Flare* (dorados), *Ridge* (más alto y afilado), *Mane* (melena hasta la cintura), *Wild* (oscuro y salvaje), *Sleek* (peinado hacia atrás) y *Spire* (cresta alta). Brillan en las formas de energía.
 
 | Línea | Formas |
 | :--- | :--- |
@@ -72,6 +74,21 @@ Las formas tienen modelos propios: peinados procedurales que brillan, pelaje (Oz
 * **Guardia (mantener `B`)**: bloquea el 65% del daño pagando Ki.
 * **Vuelo (`F`)**: corre en el aire para ir más rápido a cambio de más Ki.
 * **Zenkai**: Saiyajins e Híbridos ganan TP y se curan al borde de la muerte (una vez cada 10 min).
+
+---
+
+### Animaciones
+Funcionan igual en primera y tercera persona y las ven todos los jugadores:
+
+| Acción | Pose |
+| :--- | :--- |
+| Cargar Ki | Puños apretados a los lados, piernas abiertas |
+| Transformarse | Brazos tensos hacia abajo, cabeza hacia atrás, temblor |
+| Ráfaga | Brazo derecho lanzado hacia delante |
+| Cargar onda | Manos juntas en la cadera con la esfera creciendo (visible en primera persona) |
+| Soltar onda | Ambas palmas al frente |
+| Guardia | Antebrazos cruzados delante de la cara |
+| Volar | Cuerpo inclinado según la velocidad, brazos pegados; en el sitio, piernas flotando |
 
 ---
 

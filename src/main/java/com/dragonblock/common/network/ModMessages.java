@@ -13,7 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
 public class ModMessages {
-    private static final int PROTOCOL_VERSION = 2;
+    private static final int PROTOCOL_VERSION = 3;
     public static final SimpleChannel INSTANCE = ChannelBuilder.named(
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "messages"))
             .networkProtocolVersion(PROTOCOL_VERSION)
@@ -60,6 +60,12 @@ public class ModMessages {
                 .consumerMainThread(C2SSelectRacePacket::handle)
                 .add();
 
+        INSTANCE.messageBuilder(S2CAnimPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(S2CAnimPacket::toBytes)
+                .decoder(S2CAnimPacket::new)
+                .consumerMainThread(S2CAnimPacket::handle)
+                .add();
+
         INSTANCE.messageBuilder(S2CSyncDBCDataPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(S2CSyncDBCDataPacket::toBytes)
                 .decoder(S2CSyncDBCDataPacket::new)
@@ -82,6 +88,10 @@ public class ModMessages {
     /** Sync to the player and everyone tracking them, so auras, hair and tails render for others. */
     public static void syncToTracking(ServerPlayer player) {
         INSTANCE.send(createSync(player), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+    }
+
+    public static void broadcastAnim(ServerPlayer player, S2CAnimPacket.Anim anim) {
+        INSTANCE.send(new S2CAnimPacket(player.getId(), anim), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
     }
 
     public static S2CSyncDBCDataPacket createSync(ServerPlayer player) {

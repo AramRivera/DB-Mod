@@ -26,6 +26,8 @@ public class PlayerDBCData {
     private int mnd = 5;
 
     private float currentKi = 50.0f;
+    /** Real health pool. Vanilla health only mirrors body / maxBody so hearts never overflow. */
+    private float body = -1f;
     private int trainingPoints = 100;
     private long lastZenkaiTime = -100000L;
 
@@ -40,7 +42,13 @@ public class PlayerDBCData {
     private float transformCharge = 0f;
     private float waveCharge = 0f;
 
-    // Server-only timers in ticks
+    // Server-only state
+    /** Set by /dev form so sky checks (Ozaru) don't revert a forced form. */
+    public boolean forcedForm = false;
+    /** Vanilla health we last wrote; any other difference came from vanilla healing or damage. */
+    public float lastMirroredHealth = -1f;
+    public float lastMaxBody = -1f;
+
     public int blastCooldown = 0;
     public int dashCooldown = 0;
     public int dashIframes = 0;
@@ -93,6 +101,8 @@ public class PlayerDBCData {
         tag.putInt("WIL", wil);
         tag.putInt("MND", mnd);
         tag.putFloat("CurrentKi", currentKi);
+        tag.putFloat("Body", getBody());
+        tag.putFloat("MaxBody", getMaxBody());
         tag.putInt("TP", trainingPoints);
         tag.putLong("LastZenkai", lastZenkaiTime);
         tag.putBoolean("IsCharging", isChargingKi);
@@ -126,6 +136,7 @@ public class PlayerDBCData {
                 ? Math.min(getMaxKi(), Math.max(0.0f, tag.getFloat("CurrentKi")))
                 : getMaxKi();
 
+        this.body = tag.contains("Body") ? tag.getFloat("Body") : -1f;
         this.isChargingKi = tag.getBoolean("IsCharging");
         this.isFlying = tag.getBoolean("IsFlying");
         this.tailOut = !tag.contains("TailOut") || tag.getBoolean("TailOut");
@@ -153,6 +164,19 @@ public class PlayerDBCData {
 
     public int getLevel() {
         return str + dex + con + wil + mnd;
+    }
+
+    /** Health pool: 20 at base CON, grows with effective CON (so transformations make you tankier). */
+    public float getMaxBody() {
+        return 20f + Math.max(0, getEffectiveCon() - 5) * 4f;
+    }
+
+    public float getBody() {
+        return body < 0 ? getMaxBody() : Math.min(body, getMaxBody());
+    }
+
+    public void setBody(float body) {
+        this.body = Math.max(0f, Math.min(getMaxBody(), body));
     }
 
     public float getMaxKi() {

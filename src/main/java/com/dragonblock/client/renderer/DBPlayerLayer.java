@@ -132,8 +132,10 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
 
         if (intensity > 0f) {
             boolean silver = shown.getAuraStyle() == Transformation.AuraStyle.SILVER;
-            float width = silver ? 0.8f : 1f + (data.isTransformHeld() ? 0.25f * data.getTransformCharge() : 0f);
-            EnergyRender.aura(pose, buffers, time, shown.getAuraColor(), silver ? intensity * 0.6f : intensity, width);
+            float size = EnergyRender.auraSize(data.getBattlePower(), shown.getStatMultiplier())
+                    * (silver ? 0.85f : 1f) * (1f + (data.isTransformHeld() ? 0.3f * data.getTransformCharge() : 0f));
+            EnergyRender.aura(pose, buffers, time, shown.getAuraColor(), silver ? intensity * 0.6f : intensity, size,
+                    powering && player.onGround());
         }
 
         // Lightning: storm-type forms always, anything else while forcing a transformation
@@ -148,7 +150,7 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         // Ki wave gathering between the hands
         if (data.isWaveHeld() && data.getWaveCharge() > 0f) {
             pose.pushPose();
-            pose.translate(0f, 0.55f, -0.55f);
+            pose.translate(-0.45f, 0.62f, -0.15f); // cupped hands at the right hip
             EnergyRender.sphere(pose, buffers, 0.08f + 0.22f * data.getWaveCharge(), form.getAuraColor(), time);
             pose.popPose();
         }

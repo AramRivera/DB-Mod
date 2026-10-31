@@ -226,6 +226,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setTransformation(target);
         data.setSelectedForm(target);
+        data.forcedForm = true;
         data.saveToPlayer(player);
         ModMessages.syncToPlayer(player);
 

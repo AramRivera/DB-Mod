@@ -7,11 +7,11 @@ import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Random;
 
 /**
  * Code-defined models attached to the player's model parts. All coordinates are in model pixels,
@@ -57,96 +57,111 @@ public final class DBModels {
     // ------------------------------------------------------------------ hair
 
     /**
-     * Hair is a cap over the skull plus tapered spikes. Each spike is two boxes (wide root, thin tip)
-     * pointing along local -Y, then rotated into place. A seeded RNG keeps every style stable but organic.
+     * Hair = a cap hugging the skull plus chunky stepped spikes. Spikes are laid out by hand per style
+     * (mirrored left/right) so each reads as one hairstyle. Angles: {@code back} > 0 sweeps a spike toward
+     * the back of the head (PI/2 = straight back, PI = straight down), {@code side} > 0 tilts it outward.
      */
     private static LayerDefinition hair(HairStyle style) {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot().addOrReplaceChild("root", CubeListBuilder.create(), PartPose.ZERO);
-        root.addOrReplaceChild("cap", CubeListBuilder.create().texOffs(0, 0)
-                .addBox(-4.3f, -8.6f, -4.3f, 8.6f, 3.2f, 8.6f)
-                .texOffs(0, 12).addBox(-4.3f, -6.0f, 0.5f, 8.6f, 5.0f, 3.8f), PartPose.ZERO);
+        root.addOrReplaceChild("cap", CubeListBuilder.create()
+                .texOffs(0, 0).addBox(-4.4f, -8.8f, -4.4f, 8.8f, 3.4f, 8.8f)
+                .texOffs(0, 12).addBox(-4.4f, -6.2f, 0.6f, 8.8f, 5.4f, 3.8f)
+                .texOffs(26, 12).addBox(-4.45f, -6.0f, -3.6f, 0.9f, 2.6f, 4.4f)
+                .texOffs(26, 12).addBox(3.55f, -6.0f, -3.6f, 0.9f, 2.6f, 4.4f), PartPose.ZERO);
 
-        Random rnd = new Random(style.ordinal() * 7919L);
-        int[] index = {0};
+        Spikes h = new Spikes(root);
         switch (style) {
-            case FLARE -> {
-                crown(root, rnd, index, 11, 7f, 10f, -0.55f, 0.9f, 2.4f);
-                back(root, rnd, index, 6, 5f, 8f, 1.9f);
-                fringe(root, rnd, index, 3, 4f, 5.5f);
+            case FLARE -> { // upswept golden-tier style
+                h.add(0f, -8.4f, -1.6f, 0.35f, 0f, 3.8f, 10f);
+                h.add(0f, -8.4f, 1.6f, 0.75f, 0f, 3.8f, 10.5f);
+                h.mirror(2.5f, -8.2f, -1.0f, 0.3f, 0.35f, 3.4f, 9f);
+                h.mirror(2.5f, -8.0f, 2.0f, 0.85f, 0.3f, 3.4f, 9.5f);
+                h.mirror(3.9f, -6.6f, 0.2f, 0.25f, 1.0f, 3.0f, 7f);
+                h.add(0f, -4.2f, 3.8f, 1.95f, 0f, 3.4f, 6.5f);
+                h.mirror(2.6f, -4.4f, 3.6f, 1.85f, 0.35f, 3.0f, 6f);
+                bangs(h, 3, 4.5f);
             }
-            case RIDGE -> {
-                crown(root, rnd, index, 13, 8f, 12f, -0.35f, 0.7f, 2.0f);
-                back(root, rnd, index, 6, 6f, 9f, 2.0f);
-                fringe(root, rnd, index, 1, 6f, 6f);
+            case RIDGE -> { // taller, sharper, more vertical
+                h.add(0f, -8.4f, -1.2f, 0.12f, 0f, 3.4f, 13f);
+                h.add(0f, -8.4f, 1.8f, 0.45f, 0f, 3.4f, 12.5f);
+                h.mirror(2.4f, -8.2f, -0.8f, 0.1f, 0.25f, 3.0f, 11.5f);
+                h.mirror(2.5f, -8.0f, 2.2f, 0.55f, 0.22f, 3.0f, 11.5f);
+                h.mirror(3.9f, -6.6f, 0.0f, 0.15f, 0.8f, 2.8f, 8.5f);
+                h.add(0f, -4.0f, 3.8f, 1.8f, 0f, 3.2f, 7f);
+                h.mirror(2.6f, -4.2f, 3.6f, 1.7f, 0.3f, 2.8f, 6.5f);
+                h.add(-1.2f, -7.8f, -4.0f, Mth.PI - 0.35f, -0.15f, 2.4f, 6.5f); // single loose bang
             }
-            case MANE -> {
-                crown(root, rnd, index, 8, 6f, 8f, -0.4f, 0.8f, 2.6f);
-                back(root, rnd, index, 14, 20f, 30f, 2.8f);
-                fringe(root, rnd, index, 2, 4f, 5f);
+            case MANE -> { // waist-length mane
+                h.add(0f, -8.4f, -1.0f, 0.5f, 0f, 3.6f, 7f);
+                h.mirror(2.4f, -8.2f, -0.6f, 0.45f, 0.4f, 3.2f, 6.5f);
+                h.mirror(1.2f, -5.2f, 3.9f, Mth.PI - 0.22f, 0.06f, 4.2f, 30f);
+                h.mirror(3.2f, -5.0f, 3.6f, Mth.PI - 0.25f, 0.16f, 3.8f, 26f);
+                h.add(0f, -7.4f, 3.4f, Mth.PI - 0.3f, 0f, 4.2f, 28f);
+                h.mirror(4.2f, -4.2f, 1.2f, Mth.PI - 0.18f, 0.22f, 3.2f, 18f);
+                bangs(h, 2, 5f);
             }
-            case WILD -> {
-                crown(root, rnd, index, 12, 5f, 9f, -0.9f, 1.4f, 2.4f);
-                back(root, rnd, index, 10, 10f, 16f, 2.4f);
-                fringe(root, rnd, index, 4, 3f, 5f);
+            case WILD -> { // untamed dark style with a long back
+                for (int i = 0; i < 5; i++) {
+                    float a = -0.9f + i * 0.45f;
+                    h.add(Mth.sin(a) * 3f, -8.3f, -1.5f + Mth.cos(a) * 1.5f, 0.45f + Math.abs(a) * 0.3f, a * 0.9f, 3.4f, 8f + (i % 2) * 1.5f);
+                }
+                h.mirror(3.9f, -6.4f, 0.8f, 0.6f, 1.15f, 3.2f, 8f);
+                h.add(0f, -5.0f, 3.9f, 2.55f, 0f, 3.8f, 15f);
+                h.mirror(2.2f, -5.0f, 3.8f, 2.45f, 0.25f, 3.6f, 13.5f);
+                h.mirror(3.8f, -4.0f, 3.0f, 2.35f, 0.45f, 3.0f, 11f);
+                bangs(h, 3, 4f);
             }
-            case SLEEK -> {
-                crown(root, rnd, index, 10, 5f, 7f, -1.25f, 0.5f, 2.2f);
-                back(root, rnd, index, 5, 4f, 6f, 1.7f);
-                fringe(root, rnd, index, 2, 3f, 4f);
+            case SLEEK -> { // slicked back, flatter spikes
+                h.add(0f, -8.6f, -2.2f, 1.25f, 0f, 3.6f, 8f);
+                h.mirror(2.3f, -8.4f, -2.0f, 1.2f, 0.2f, 3.2f, 7.5f);
+                h.add(0f, -8.0f, 1.0f, 1.45f, 0f, 3.6f, 7.5f);
+                h.mirror(2.4f, -7.8f, 1.2f, 1.4f, 0.25f, 3.2f, 7f);
+                h.mirror(3.9f, -6.4f, 0.4f, 1.0f, 0.55f, 2.8f, 5.5f);
+                bangs(h, 2, 3.5f);
             }
-            case SPIRE -> {
-                spike(root, index, 0f, -8f, 0.5f, -0.15f, 0f, 3.0f, 16f);
-                crown(root, rnd, index, 10, 7f, 11f, -0.3f, 0.6f, 2.2f);
-                back(root, rnd, index, 6, 7f, 11f, 2.0f);
-                fringe(root, rnd, index, 1, 5f, 5f);
+            case SPIRE -> { // tall central crest
+                h.add(0f, -8.6f, 0f, 0.05f, 0f, 4.2f, 17f);
+                h.mirror(2.2f, -8.4f, -0.4f, 0.15f, 0.25f, 3.4f, 12.5f);
+                h.mirror(2.4f, -8.2f, 2.2f, 0.55f, 0.3f, 3.2f, 10f);
+                h.mirror(3.9f, -6.6f, 0.2f, 0.2f, 0.9f, 2.8f, 7.5f);
+                h.add(0f, -4.2f, 3.8f, 1.9f, 0f, 3.4f, 7f);
+                bangs(h, 1, 5f);
             }
             default -> {}
         }
         return LayerDefinition.create(mesh, 64, 64);
     }
 
-    /** Spikes rising from the top of the skull, fanned around the head. */
-    private static void crown(PartDefinition root, Random rnd, int[] index, int count, float minLen, float maxLen,
-                              float tiltBack, float spread, float width) {
-        for (int i = 0; i < count; i++) {
-            float a = (float) (Math.PI * 2 * i / count + rnd.nextFloat() * 0.4f);
-            float x = (float) Math.sin(a) * 2.6f;
-            float z = (float) Math.cos(a) * 2.6f;
-            float xRot = tiltBack + (float) Math.cos(a) * -spread * 0.6f + (rnd.nextFloat() - 0.5f) * 0.3f;
-            float zRot = (float) Math.sin(a) * -spread + (rnd.nextFloat() - 0.5f) * 0.3f;
-            spike(root, index, x, -8.2f, z, xRot, zRot, width, minLen + rnd.nextFloat() * (maxLen - minLen));
+    /** Strands falling over the forehead. */
+    private static void bangs(Spikes h, int count, float length) {
+        float[][] layouts = {{0f}, {-1.6f, 1.4f}, {-2.0f, 0.1f, 1.9f}};
+        for (float x : layouts[count - 1]) {
+            h.add(x, -7.8f, -4.0f, Mth.PI - 0.4f, x * -0.06f, 2.6f, length - Math.abs(x) * 0.3f);
         }
     }
 
-    /** Spikes from the back of the head; {@code angle} ~1.6 points backwards, ~3 straight down the spine. */
-    private static void back(PartDefinition root, Random rnd, int[] index, int count, float minLen, float maxLen, float angle) {
-        for (int i = 0; i < count; i++) {
-            float x = -3.4f + 6.8f * i / Math.max(1, count - 1);
-            float y = -7.0f + rnd.nextFloat() * 4f;
-            float zRot = x * -0.06f + (rnd.nextFloat() - 0.5f) * 0.3f;
-            spike(root, index, x, y, 3.8f, angle + (rnd.nextFloat() - 0.5f) * 0.3f, zRot, 2.6f,
-                    minLen + rnd.nextFloat() * (maxLen - minLen));
-        }
-    }
+    /** Builds three-step tapered spikes (root, middle, tip) pointing along local -Y. */
+    private static final class Spikes {
+        private final PartDefinition root;
+        private int index;
 
-    /** Strands over the forehead, angled down and slightly out. */
-    private static void fringe(PartDefinition root, Random rnd, int[] index, int count, float minLen, float maxLen) {
-        for (int i = 0; i < count; i++) {
-            float x = count == 1 ? 1.2f : -2.4f + 4.8f * i / (count - 1);
-            spike(root, index, x, -7.6f, -3.9f, -2.5f + (rnd.nextFloat() - 0.5f) * 0.3f, x * 0.08f, 1.6f,
-                    minLen + rnd.nextFloat() * (maxLen - minLen));
-        }
-    }
+        Spikes(PartDefinition root) { this.root = root; }
 
-    private static void spike(PartDefinition root, int[] index, float x, float y, float z, float xRot, float zRot,
-                              float width, float length) {
-        float root1 = length * 0.55f;
-        float tipW = width * 0.45f;
-        root.addOrReplaceChild("spike" + index[0]++, CubeListBuilder.create()
-                        .texOffs(0, 24).addBox(-width / 2, -root1, -width / 2, width, root1, width)
-                        .texOffs(16, 24).addBox(-tipW / 2, -length, -tipW / 2, tipW, length - root1 + 0.2f, tipW),
-                PartPose.offsetAndRotation(x, y, z, xRot, 0f, zRot));
+        void mirror(float x, float y, float z, float back, float side, float width, float length) {
+            add(x, y, z, back, side, width, length);
+            add(-x, y, z, back, -side, width, length);
+        }
+
+        void add(float x, float y, float z, float back, float side, float width, float length) {
+            float l1 = length * 0.45f, l2 = length * 0.33f, l3 = length - l1 - l2;
+            float w2 = width * 0.66f, w3 = width * 0.34f;
+            root.addOrReplaceChild("spike" + index++, CubeListBuilder.create()
+                            .texOffs(0, 24).addBox(-width / 2, -l1, -width / 2, width, l1, width)
+                            .texOffs(18, 24).addBox(-w2 / 2, -l1 - l2 - 0.2f, -w2 / 2, w2, l2 + 0.4f, w2)
+                            .texOffs(32, 24).addBox(-w3 / 2, -length, -w3 / 2, w3, l3 + 0.3f, w3),
+                    PartPose.offsetAndRotation(x, y, z, -back, 0f, side));
+        }
     }
 
     // ------------------------------------------------------------------ body features
@@ -198,7 +213,7 @@ public final class DBModels {
         for (int side = -1; side <= 1; side += 2) {
             PartDefinition base = root.addOrReplaceChild("horn" + (side < 0 ? "L" : "R"), CubeListBuilder.create()
                             .texOffs(0, 0).addBox(-1.1f, -1.1f, -1.1f, 2.2f, 2.2f, 3f),
-                    PartPose.offsetAndRotation(side * 4.2f, -6.5f, 0f, 0f, side * -1.57f, 0f));
+                    PartPose.offsetAndRotation(side * 4.2f, -6.5f, 0f, 0f, side * 1.57f, 0f)); // +Z box turned to point outward
             PartDefinition mid = base.addOrReplaceChild("mid", CubeListBuilder.create()
                             .texOffs(0, 6).addBox(-0.8f, -3.2f, -0.8f, 1.6f, 3.4f, 1.6f),
                     PartPose.offsetAndRotation(0f, 0f, 2.6f, 0.35f, 0f, 0f));
@@ -217,7 +232,7 @@ public final class DBModels {
         for (int i = 0; i < TENDRIL_SEGMENTS; i++) {
             parent = parent.addOrReplaceChild("seg" + i, CubeListBuilder.create().texOffs(0, 0)
                             .addBox(-t / 2, -3.2f, -t / 2, t, 3.4f, t),
-                    PartPose.offsetAndRotation(0f, i == 0 ? 0f : -3.2f, 0f, 0.45f, 0f, 0f));
+                    PartPose.offsetAndRotation(0f, i == 0 ? 0f : -3.2f, 0f, -0.45f, 0f, 0f)); // curls toward the back
             t *= 0.78f;
         }
         return LayerDefinition.create(mesh, 32, 32);

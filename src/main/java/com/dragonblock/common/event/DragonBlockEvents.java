@@ -24,7 +24,9 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -77,6 +79,9 @@ public class DragonBlockEvents {
             PlayerDBCData data = PlayerDBCData.get(player);
             data.setCurrentKi(data.getMaxKi());
             data.setTransformation(Transformation.BASE);
+            data.setBody(data.getMaxBody());
+            data.lastMirroredHealth = -1f;
+            data.forcedForm = false;
             data.setFlying(false);
             data.setChargingKi(false);
             data.saveToPlayer(player);
@@ -141,16 +146,60 @@ public class DragonBlockEvents {
             event.setAmount(amount);
 
             long now = player.level().getGameTime();
-            boolean nearDeath = player.getHealth() - amount <= player.getMaxHealth() * 0.15f;
+            boolean nearDeath = data.getBody() - amount <= data.getMaxBody() * 0.15f;
             if (data.getRace().hasSaiyanTail() && nearDeath && now - data.getLastZenkaiTime() > ZENKAI_COOLDOWN_TICKS) {
                 data.setLastZenkaiTime(now);
                 int bonus = 50 + data.getLevel() * 2;
                 data.addTrainingPoints(bonus);
-                player.heal(player.getMaxHealth() * 0.3f);
+                data.setBody(data.getBody() + data.getMaxBody() * 0.3f);
                 player.displayClientMessage(Component.literal("Zenkai: tu cuerpo se sobrepone al límite (+" + bonus + " TP)"), true);
             }
             data.saveToPlayer(player);
         }
+    }
+
+    /**
+     * After armor, convert vanilla damage into the body pool, then set the vanilla damage so the
+     * hearts keep showing body / maxBody. Lowest priority so other mods' changes are already in.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onLivingDamage(LivingDamageEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        PlayerDBCData data = PlayerDBCData.get(player);
+        syncBodyWithVanilla(player, data);
+
+        float before = player.getHealth();
+        data.setBody(data.getBody() - event.getAmount());
+        float target = data.getBody() <= 0 ? 0f : mirroredHealth(player, data);
+        float amount = data.getBody() <= 0 ? before + 1000f : Math.max(0f, before - target);
+        event.setAmount(amount);
+        data.lastMirroredHealth = Math.max(0f, before - amount);
+        data.saveToPlayer(player);
+        ModMessages.syncToPlayer(player);
+    }
+
+    private static float mirroredHealth(Player player, PlayerDBCData data) {
+        // Never show 0 hearts while the body pool is still alive
+        return Math.max(0.5f, player.getMaxHealth() * data.getBody() / data.getMaxBody());
+    }
+
+    /** Folds vanilla health changes (food regen, potions, /kill) into the pool, then rewrites vanilla health. */
+    private static void syncBodyWithVanilla(Player player, PlayerDBCData data) {
+        float maxBody = data.getMaxBody();
+        // Transforming changes maxBody: keep the same fill ratio instead of the same absolute value
+        if (data.lastMaxBody > 0 && Math.abs(maxBody - data.lastMaxBody) > 0.01f) {
+            data.setBody(data.getBody() * maxBody / data.lastMaxBody);
+        }
+        data.lastMaxBody = maxBody;
+
+        if (data.lastMirroredHealth >= 0) {
+            float delta = player.getHealth() - data.lastMirroredHealth;
+            if (Math.abs(delta) > 0.001f) data.setBody(data.getBody() + delta / player.getMaxHealth() * maxBody);
+        }
+        if (player.isDeadOrDying()) return;
+        float mirrored = mirroredHealth(player, data);
+        if (Math.abs(player.getHealth() - mirrored) > 0.001f) player.setHealth(mirrored);
+        data.lastMirroredHealth = player.getHealth();
     }
 
     @SubscribeEvent
@@ -179,9 +228,10 @@ public class DragonBlockEvents {
         KiAttacks.tick(sp, data);
         tickFlight(sp, data);
 
-        if (data.getRace() == Race.NAMEKIAN && player.getHealth() < player.getMaxHealth() && player.tickCount % 40 == 0) {
-            player.heal(1.0f);
+        if (data.getRace() == Race.NAMEKIAN && player.tickCount % 40 == 0) {
+            data.setBody(data.getBody() + data.getMaxBody() * 0.02f);
         }
+        syncBodyWithVanilla(player, data);
 
         data.saveToPlayer(player);
 
@@ -198,8 +248,9 @@ public class DragonBlockEvents {
 
         if (data.consumeKi(cost)) {
             // Faster flight with DEX, much faster while sprinting
-            float speed = 0.05f + Math.min(0.1f, data.getEffectiveDex() * 0.0004f);
-            if (player.isSprinting()) speed *= 1.8f;
+            // Vanilla creative flight is 0.05; stay close to it so flying feels normal
+            float speed = 0.05f + Math.min(0.03f, data.getEffectiveDex() * 0.00015f);
+            if (player.isSprinting()) speed *= 1.6f;
             if (Math.abs(player.getAbilities().getFlyingSpeed() - speed) > 0.001f) {
                 player.getAbilities().setFlyingSpeed(speed);
                 player.onUpdateAbilities();
@@ -231,15 +282,19 @@ public class DragonBlockEvents {
     }
 
     private static void updatePlayerAttributes(Player player, PlayerDBCData data) {
-        setModifier(player, Attributes.MAX_HEALTH, CON_HEALTH_MODIFIER,
-                Math.max(0, (data.getEffectiveCon() - 5) * 2.0), AttributeModifier.Operation.ADD_VALUE);
+        // Old saves had a CON health bonus; health now lives in the body pool
+        setModifier(player, Attributes.MAX_HEALTH, CON_HEALTH_MODIFIER, 0, AttributeModifier.Operation.ADD_VALUE);
         setModifier(player, Attributes.MOVEMENT_SPEED, DEX_SPEED_MODIFIER,
-                Math.min(0.15, Math.max(0, (data.getEffectiveDex() - 5) * 0.003)), AttributeModifier.Operation.ADD_VALUE);
+                dexSpeedBonus(data), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         setModifier(player, Attributes.SCALE, FORM_SCALE_MODIFIER,
                 data.getTransformation().getScale() - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
         setModifier(player, Attributes.MOVEMENT_SPEED, GUARD_SLOW_MODIFIER,
                 data.isGuarding() ? -0.5 : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
-        if (player.getHealth() > player.getMaxHealth()) player.setHealth(player.getMaxHealth());
+    }
+
+    /** Up to +35% walk speed. The FOV effect is cancelled client-side so it never looks like a speed potion. */
+    public static double dexSpeedBonus(PlayerDBCData data) {
+        return Math.min(0.35, Math.max(0, (data.getEffectiveDex() - 5) * 0.002));
     }
 
     private static void setModifier(Player player, Holder<Attribute> attribute, ResourceLocation id, double value,

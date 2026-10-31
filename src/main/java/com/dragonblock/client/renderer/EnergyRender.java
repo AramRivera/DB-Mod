@@ -25,45 +25,99 @@ public final class EnergyRender {
     }
 
     /**
-     * Teardrop-shaped flame shell around a standing body, in model space (y down, feet at y=1.5).
-     * The texture scrolls upward so the flames rise.
+     * Flame aura around a standing body, in model space (y down, feet at y=1.5). {@code size} scales it with
+     * the player's power: three nested shells with rising flame tongues, loose wisps, and a ground ring.
      */
-    public static void aura(PoseStack pose, MultiBufferSource buffers, float time, int rgb, float intensity, float width) {
-        float scroll = (time * 0.035f) % 1f;
-        VertexConsumer vc = buffers.getBuffer(RenderType.energySwirl(AURA_TEX, time * 0.004f % 1f, -scroll));
-        shell(pose, vc, time, rgb, intensity, 0.62f * width, 0f);
-        shell(pose, vc, time, rgb, intensity * 0.55f, 0.82f * width, 0.37f);
+    public static void aura(PoseStack pose, MultiBufferSource buffers, float time, int rgb, float intensity,
+                            float size, boolean groundRing) {
+        float scroll = (time * 0.05f) % 1f;
+        VertexConsumer vc = buffers.getBuffer(RenderType.energySwirl(AURA_TEX, time * 0.006f % 1f, -scroll));
+        PoseStack.Pose p = pose.last();
+        shell(p, vc, time, scaleColor(rgb, intensity * 0.38f), 1.05f * size, size, 0.0f, 0.55f);
+        shell(p, vc, time, scaleColor(rgb, intensity * 0.65f), 0.82f * size, size, 0.37f, 0.4f);
+        shell(p, vc, time, scaleColor(mix(rgb, 0xFFFFFF, 0.45f), intensity * 0.55f), 0.58f * size, size * 0.92f, 0.71f, 0.25f);
+        wisps(p, vc, time, rgb, intensity, size);
+        if (groundRing) groundRing(p, vc, time, rgb, intensity, size);
     }
 
-    private static void shell(PoseStack pose, VertexConsumer vc, float time, int rgb, float intensity, float radius, float uShift) {
-        final int sides = 16;
-        final int rings = 10;
-        PoseStack.Pose p = pose.last();
-        int color = scaleColor(rgb, intensity);
+    private static void shell(PoseStack.Pose p, VertexConsumer vc, float time, int color, float radius, float size,
+                              float uShift, float tongueAmount) {
+        final int sides = 24;
+        final int rings = 14;
         for (int r = 0; r < rings; r++) {
             float t0 = (float) r / rings;
             float t1 = (float) (r + 1) / rings;
             for (int s = 0; s < sides; s++) {
                 float a0 = Mth.TWO_PI * s / sides;
                 float a1 = Mth.TWO_PI * (s + 1) / sides;
-                float u0 = (float) s / sides * 2f + uShift;
-                float u1 = (float) (s + 1) / sides * 2f + uShift;
-                // Bottom ring fades out so the aura doesn't look cut at the feet
-                int c0 = r == 0 ? 0 : color;
-                quad(vc, p, ring(a0, t0, radius, time), ring(a1, t0, radius, time),
-                        ring(a1, t1, radius, time), ring(a0, t1, radius, time),
-                        u0, u1, t0, t1, c0, color);
+                float u0 = (float) s / sides * 3f + uShift;
+                float u1 = (float) (s + 1) / sides * 3f + uShift;
+                int low = r == 0 ? 0xFF000000 : color; // fade in at the feet
+                quad(vc, p, flame(a0, t0, radius, size, time, tongueAmount), flame(a1, t0, radius, size, time, tongueAmount),
+                        flame(a1, t1, radius, size, time, tongueAmount), flame(a0, t1, radius, size, time, tongueAmount),
+                        u0, u1, t0 * 1.5f, t1 * 1.5f, low, r == rings - 1 ? 0xFF000000 : color);
             }
         }
     }
 
-    /** Point on the aura surface; t=0 at the feet, t=1 at the flame tip above the head. */
-    private static Vec3 ring(float angle, float t, float radius, float time) {
-        float profile = (float) (Math.sin(Math.PI * Math.min(1f, t * 1.15f)) * 0.85 + 0.25) * (1f - t * t * t * 0.95f);
-        float wobble = 1f + 0.08f * Mth.sin(time * 0.6f + angle * 3f + t * 5f);
-        float r = radius * profile * wobble;
-        float y = 1.55f - t * 2.75f;
+    /**
+     * Point on a flame shell. t=0 at the feet, t=1 at the tip. The silhouette bulges around the chest and
+     * breaks into moving tongues toward the top, which also stretch the tip upward.
+     */
+    private static Vec3 flame(float angle, float t, float radius, float size, float time, float tongueAmount) {
+        float bulge = (float) Math.sin(Math.PI * Math.min(1f, 0.15f + t * 1.05f));
+        float profile = (0.42f + 0.68f * bulge) * (1f - t * t * 0.9f);
+        float tongue = tongueAmount * (float) (
+                Math.pow(Math.max(0, Math.sin(angle * 5 + time * 0.31f + t * 4f)), 4) * Math.pow(t, 1.4)
+                + 0.6 * Math.pow(Math.max(0, Math.sin(angle * 9 - time * 0.47f + t * 7f)), 6) * t);
+        float flicker = 1f + 0.06f * Mth.sin(time * 0.9f + angle * 4f + t * 9f);
+        float r = radius * profile * flicker * (1f + tongue * 0.5f);
+        float height = 2.6f * (0.8f + 0.2f * size);
+        float y = 1.6f - t * height - tongue * 0.9f * t * size;
         return new Vec3(Mth.cos(angle) * r, y, Mth.sin(angle) * r);
+    }
+
+    /** Loose flame wisps that peel off the aura and rise above the head before fading. */
+    private static void wisps(PoseStack.Pose p, VertexConsumer vc, float time, int rgb, float intensity, float size) {
+        for (int i = 0; i < 12; i++) {
+            float life = (time * 0.035f + i * 0.137f) % 1f;
+            float angle = i * 2.39996f + Mth.sin(time * 0.02f + i) * 0.4f;
+            float rad = 0.62f * size * (1f - life * 0.5f);
+            float x = Mth.cos(angle) * rad, z = Mth.sin(angle) * rad;
+            float y = 1.0f - life * 2.9f * size;
+            float h = 0.75f * size * (1f - life);
+            float w = 0.14f * size * (1f - life * 0.6f);
+            int c = scaleColor(rgb, intensity * 0.7f * (1f - life));
+            int tip = 0xFF000000;
+            quad(vc, p, new Vec3(x - w, y, z), new Vec3(x + w, y, z), new Vec3(x, y - h, z), new Vec3(x, y - h, z),
+                    0f, 1f, 0f, 1f, c, tip);
+            quad(vc, p, new Vec3(x, y, z - w), new Vec3(x, y, z + w), new Vec3(x, y - h, z), new Vec3(x, y - h, z),
+                    0f, 1f, 0f, 1f, c, tip);
+        }
+    }
+
+    /** Pressure ring rolling outward on the ground while powering up. */
+    private static void groundRing(PoseStack.Pose p, VertexConsumer vc, float time, int rgb, float intensity, float size) {
+        final int sides = 32;
+        for (int k = 0; k < 2; k++) {
+            float life = (time * 0.05f + k * 0.5f) % 1f;
+            float inner = (0.5f + life * 2.2f) * size;
+            float outer = inner + 0.25f * size;
+            int c = scaleColor(rgb, intensity * 0.6f * (1f - life));
+            for (int s = 0; s < sides; s++) {
+                float a0 = Mth.TWO_PI * s / sides, a1 = Mth.TWO_PI * (s + 1) / sides;
+                quad(vc, p,
+                        new Vec3(Mth.cos(a0) * inner, 1.48f, Mth.sin(a0) * inner), new Vec3(Mth.cos(a1) * inner, 1.48f, Mth.sin(a1) * inner),
+                        new Vec3(Mth.cos(a1) * outer, 1.48f, Mth.sin(a1) * outer), new Vec3(Mth.cos(a0) * outer, 1.48f, Mth.sin(a0) * outer),
+                        0f, 1f, 0f, 0.3f, c, 0xFF000000);
+            }
+        }
+    }
+
+    /** Aura size from power: grows with the logarithm of battle power and with the form multiplier. */
+    public static float auraSize(long battlePower, float formMultiplier) {
+        float fromPower = 0.16f * (float) Math.log10(Math.max(1.0, battlePower / 100.0));
+        return Mth.clamp(1.0f + fromPower + 0.05f * (formMultiplier - 1f), 1.0f, 2.4f);
     }
 
     /** Jagged bolts crackling around the body. Re-rolled every 2 ticks. */
