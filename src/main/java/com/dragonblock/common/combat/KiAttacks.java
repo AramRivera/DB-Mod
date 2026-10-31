@@ -171,6 +171,16 @@ public final class KiAttacks {
         return !(target instanceof net.minecraft.world.entity.player.Player other) || caster.canHarmPlayer(other);
     }
 
+    /** True when nothing solid stands between the target and {@code spot}, at knee and at eye height. */
+    private static boolean openFrom(Entity target, Vec3 spot) {
+        for (double h : new double[]{0.5, target.getEyeHeight()}) {
+            BlockHitResult wall = target.level().clip(new ClipContext(target.position().add(0, h, 0), spot.add(0, h, 0),
+                    ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, target));
+            if (wall.getType() != HitResult.Type.MISS) return false;
+        }
+        return true;
+    }
+
     /** Instant transmission: behind the creature you look at, or onto the block you point at. */
     private static void teleport(ServerPlayer player) {
         Vec3 eye = player.getEyePosition();
@@ -184,11 +194,13 @@ public final class KiAttacks {
         if (hit != null) {
             Entity target = hit.getEntity();
             Vec3 behind = target.getLookAngle().multiply(1, 0, 1).normalize().scale(-1.6);
-            dest = target.position().add(behind);
-            // Never land on the far side of a wall from the target
-            BlockHitResult wall = player.level().clip(new ClipContext(target.position().add(0, 0.5, 0), dest.add(0, 0.5, 0),
-                    ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, target));
-            if (wall.getType() != HitResult.Type.MISS) dest = target.position().subtract(behind); // in front instead
+            // Behind the target, else in front; never on the far side of a wall from it
+            Vec3 back = target.position().add(behind), front = target.position().subtract(behind);
+            dest = openFrom(target, back) ? back : openFrom(target, front) ? front : null;
+            if (dest == null) {
+                player.displayClientMessage(Component.literal("No hay espacio para aparecer ahí."), true);
+                return;
+            }
         } else if (block.getType() == HitResult.Type.BLOCK) {
             dest = Vec3.atBottomCenterOf(block.getBlockPos().relative(block.getDirection()));
         } else {
