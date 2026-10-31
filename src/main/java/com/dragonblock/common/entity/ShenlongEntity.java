@@ -171,6 +171,14 @@ public class ShenlongEntity extends Entity {
     /** From the wish screen; only the summoner, only while the dragon waits. */
     public void grant(ServerPlayer player, Wish wish) {
         if (getState() != State.WAITING || !player.getUUID().equals(summoner) || player.distanceTo(this) > 160) return;
+        // The seven must still be where they were: taking one back during the ritual voids the wish
+        for (Map.Entry<Integer, BlockPos> e : balls.entrySet()) {
+            if (!(level().getBlockState(e.getValue()).getBlock() instanceof DragonBallBlock b) || b.getStars() != e.getKey()) {
+                say("Alguien ha tocado las esferas... el deseo se pierde.", ChatFormatting.RED);
+                leave();
+                return;
+            }
+        }
         PlayerDBCData data = PlayerDBCData.get(player);
         switch (wish) {
             case STRENGTH -> data.addTrainingPoints(1500 + data.getLevel() * 25);
