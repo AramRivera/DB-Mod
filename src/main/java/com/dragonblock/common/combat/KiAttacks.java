@@ -134,13 +134,15 @@ public final class KiAttacks {
     /** Kiai: everything around is shoved away and roughed up. */
     private static void shockwave(ServerPlayer player, float damage, float radius) {
         AABB box = player.getBoundingBox().inflate(radius);
-        for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, box, e -> e != player && e.isAlive())) {
+        for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, box,
+                e -> e != player && e.isAlive() && mayAffect(player, e) && e.hasLineOfSight(player))) {
             Vec3 away = e.position().subtract(player.position());
             double dist = away.length();
             if (dist > radius) continue;
             double strength = 1.6 * (1 - dist / radius) + 0.4;
             Vec3 dir = dist < 1e-3 ? player.getLookAngle() : away.scale(1 / dist);
-            e.hurt(player.damageSources().playerAttack(player), damage * (float) (1 - dist / radius * 0.6));
+            // Only shove what the hit actually landed on (respects invulnerability and protections)
+            if (!e.hurt(player.damageSources().playerAttack(player), damage * (float) (1 - dist / radius * 0.6))) continue;
             e.push(dir.x * strength, 0.35 + strength * 0.2, dir.z * strength);
             e.hurtMarked = true;
         }
@@ -153,7 +155,7 @@ public final class KiAttacks {
     private static void solarFlare(ServerPlayer player) {
         Vec3 eye = player.getEyePosition();
         for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(14),
-                e -> e != player && e.isAlive())) {
+                e -> e != player && e.isAlive() && mayAffect(player, e))) {
             Vec3 toCaster = eye.subtract(e.getEyePosition()).normalize();
             if (e.getLookAngle().dot(toCaster) < 0.35 || !e.hasLineOfSight(player)) continue;
             e.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 100, 0));
@@ -162,6 +164,11 @@ public final class KiAttacks {
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.2f, 2.0f);
+    }
+
+    /** Other players are only affected when this server allows PvP between the two (teams included). */
+    private static boolean mayAffect(ServerPlayer caster, LivingEntity target) {
+        return !(target instanceof net.minecraft.world.entity.player.Player other) || caster.canHarmPlayer(other);
     }
 
     /** Instant transmission: behind the creature you look at, or onto the block you point at. */
@@ -178,6 +185,10 @@ public final class KiAttacks {
             Entity target = hit.getEntity();
             Vec3 behind = target.getLookAngle().multiply(1, 0, 1).normalize().scale(-1.6);
             dest = target.position().add(behind);
+            // Never land on the far side of a wall from the target
+            BlockHitResult wall = player.level().clip(new ClipContext(target.position().add(0, 0.5, 0), dest.add(0, 0.5, 0),
+                    ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, target));
+            if (wall.getType() != HitResult.Type.MISS) dest = target.position().subtract(behind); // in front instead
         } else if (block.getType() == HitResult.Type.BLOCK) {
             dest = Vec3.atBottomCenterOf(block.getBlockPos().relative(block.getDirection()));
         } else {
