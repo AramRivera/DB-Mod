@@ -211,10 +211,12 @@ public class DragonBlockEvents {
             player.heal(1.0f);
         }
 
+        // get() rebuilds data from NBT on the server, so every tick's Ki change must be written back
+        if (!player.level().isClientSide) data.saveToPlayer(player);
+
         // Update attribute modifiers every 20 ticks (1s) on server
         if (!player.level().isClientSide && player.tickCount % 20 == 0) {
             updatePlayerAttributes(player, data);
-            data.saveToPlayer(player);
             if (player instanceof ServerPlayer sp) {
                 ModMessages.syncToPlayer(sp);
             }
