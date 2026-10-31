@@ -2,6 +2,7 @@ package com.dragonblock.common.network.packet;
 
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Race;
+import com.dragonblock.common.data.Transformation;
 import com.dragonblock.common.network.ModMessages;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.FriendlyByteBuf;
@@ -31,20 +32,21 @@ public class C2SSelectRacePacket {
             ServerPlayer player = context.getSender();
             if (player == null) return;
 
+            PlayerDBCData data = PlayerDBCData.get(player);
+            if (data.isRaceChosen()) return; // race is permanent, /dev race to change it
+
             try {
                 Race newRace = Race.valueOf(raceName);
-                PlayerDBCData data = PlayerDBCData.get(player);
                 data.setRace(newRace);
+                data.setRaceChosen(true);
+                data.setTransformation(Transformation.BASE);
+                data.setSelectedForm(Transformation.BASE);
                 data.saveToPlayer(player);
-                ModMessages.syncToPlayer(player);
+                ModMessages.syncToTracking(player);
 
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                         SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.0f);
-
-                player.displayClientMessage(
-                        Component.literal("§6¡Has elegido la raza: §e" + newRace.getDisplayName() + "§6!"),
-                        false
-                );
+                player.displayClientMessage(Component.literal("Raza elegida: " + newRace.getDisplayName()), false);
             } catch (IllegalArgumentException ignored) {}
         });
         context.setPacketHandled(true);

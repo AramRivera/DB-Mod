@@ -15,8 +15,12 @@
   "entity.dragonblock.ki_blast": "Ki Blast",
   "key.categories.dragonblock": "Dragon Block",
   "key.dragonblock.charge_ki": "Charge Ki",
-  "key.dragonblock.transform": "Transform / Revert",
-  "key.dragonblock.character_sheet": "Character Sheet (Stats)",
-  "key.dragonblock.fly": "Fly (Bukujutsu)",
-  "key.dragonblock.ki_blast": "Fire Ki Blast"
+  "key.dragonblock.transform": "Transform (hold)",
+  "key.dragonblock.character_sheet": "Character Sheet",
+  "key.dragonblock.fly": "Fly",
+  "key.dragonblock.ki_blast": "Ki Blast",
+  "key.dragonblock.revert": "Revert to base form",
+  "key.dragonblock.ki_wave": "Ki Wave (hold)",
+  "key.dragonblock.dash": "Dash",
+  "key.dragonblock.guard": "Guard (hold)"
 }

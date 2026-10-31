@@ -14,9 +14,13 @@
   "item.dragonblock.dragon_ball_7": "Esfera del Dragón (7 Estrellas)",
   "entity.dragonblock.ki_blast": "Ráfaga de Ki",
   "key.categories.dragonblock": "Dragon Block",
-  "key.dragonblock.charge_ki": "Cargar Ki",
-  "key.dragonblock.transform": "Transformarse / Revertir",
-  "key.dragonblock.character_sheet": "Ficha de Personaje (Stats)",
-  "key.dragonblock.fly": "Volar (Bukujutsu)",
-  "key.dragonblock.ki_blast": "Disparar Ráfaga de Ki"
+  "key.dragonblock.charge_ki": "Cargar ki",
+  "key.dragonblock.transform": "Transformarse (mantener)",
+  "key.dragonblock.character_sheet": "Ficha de personaje",
+  "key.dragonblock.fly": "Volar",
+  "key.dragonblock.ki_blast": "Ráfaga de ki",
+  "key.dragonblock.revert": "Volver a forma base",
+  "key.dragonblock.ki_wave": "Onda de ki (mantener)",
+  "key.dragonblock.dash": "Impulso",
+  "key.dragonblock.guard": "Guardia (mantener)"
 }

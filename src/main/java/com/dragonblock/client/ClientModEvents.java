@@ -3,7 +3,11 @@ package com.dragonblock.client;
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.keybind.ModKeyBindings;
 import com.dragonblock.client.overlay.DBCKiOverlay;
+import com.dragonblock.client.model.DBModels;
+import com.dragonblock.client.renderer.DBPlayerLayer;
 import com.dragonblock.client.renderer.KiBlastRenderer;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.resources.PlayerSkin;
 import com.dragonblock.common.registry.ModEntities;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -22,12 +26,22 @@ public class ClientModEvents {
     }
 
     @SubscribeEvent
+    public static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        DBModels.register(event);
+    }
+
+    @SubscribeEvent
+    public static void onAddLayers(EntityRenderersEvent.AddLayers event) {
+        for (PlayerSkin.Model skin : event.getSkins()) {
+            if (event.getPlayerSkin(skin) instanceof PlayerRenderer renderer) {
+                renderer.addLayer(new DBPlayerLayer(renderer, event.getEntityModels()));
+            }
+        }
+    }
+
+    @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(ModKeyBindings.CHARGE_KI_KEY);
-        event.register(ModKeyBindings.TRANSFORM_KEY);
-        event.register(ModKeyBindings.CHARACTER_SHEET_KEY);
-        event.register(ModKeyBindings.FLY_KEY);
-        event.register(ModKeyBindings.KI_BLAST_KEY);
+        for (var key : ModKeyBindings.ALL) event.register(key);
     }
 
     @SubscribeEvent

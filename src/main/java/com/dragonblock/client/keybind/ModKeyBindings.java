@@ -47,4 +47,19 @@ public class ModKeyBindings {
             GLFW.GLFW_KEY_X,
             KEY_CATEGORY
     );
+
+    public static final KeyMapping REVERT_KEY = key("revert", GLFW.GLFW_KEY_H);
+    public static final KeyMapping KI_WAVE_KEY = key("ki_wave", GLFW.GLFW_KEY_Z);
+    public static final KeyMapping DASH_KEY = key("dash", GLFW.GLFW_KEY_R);
+    public static final KeyMapping GUARD_KEY = key("guard", GLFW.GLFW_KEY_B);
+
+    public static final KeyMapping[] ALL = {
+            CHARGE_KI_KEY, TRANSFORM_KEY, CHARACTER_SHEET_KEY, FLY_KEY, KI_BLAST_KEY,
+            REVERT_KEY, KI_WAVE_KEY, DASH_KEY, GUARD_KEY
+    };
+
+    private static KeyMapping key(String name, int glfwKey) {
+        return new KeyMapping("key.dragonblock." + name, KeyConflictContext.IN_GAME,
+                InputConstants.Type.KEYSYM, glfwKey, KEY_CATEGORY);
+    }
 }

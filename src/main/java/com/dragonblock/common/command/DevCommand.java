@@ -11,6 +11,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -71,7 +72,14 @@ public class DevCommand {
                 // /dev form <formName>
                 .then(Commands.literal("form")
                         .then(Commands.argument("form", StringArgumentType.word())
+                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(
+                                        java.util.Arrays.stream(Transformation.values()).map(f -> f.name().toLowerCase()), b))
                                 .executes(ctx -> setForm(ctx.getSource(), StringArgumentType.getString(ctx, "form")))))
+
+                // /dev mastery <0-100> (all forms)
+                .then(Commands.literal("mastery")
+                        .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
+                                .executes(ctx -> setAllMastery(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "value")))))
 
                 // /dev max (sets 100 stats, 50,000 TP, full Ki)
                 .then(Commands.literal("max").executes(ctx -> setMax(ctx.getSource())))
@@ -88,7 +96,8 @@ public class DevCommand {
         source.sendSuccess(() -> Component.literal("§a/dev ki <cantidad> §7- Establece tu Ki actual"), false);
         source.sendSuccess(() -> Component.literal("§a/dev stat <str|dex|con|wil|mnd|all> <valor> §7- Fija un atributo"), false);
         source.sendSuccess(() -> Component.literal("§a/dev race <human|saiyan|half_saiyan|namekian|arcosian|majin>"), false);
-        source.sendSuccess(() -> Component.literal("§a/dev form <base|kaioken|ssj> §7- Cambia de transformación"), false);
+        source.sendSuccess(() -> Component.literal("§a/dev form <forma> §7- Cambia de transformación (autocompleta)"), false);
+        source.sendSuccess(() -> Component.literal("§a/dev mastery <0-100> §7- Fija la maestría de todas las formas"), false);
         source.sendSuccess(() -> Component.literal("§a/dev max §7- Estadísticas a 100, 50k TP y Ki al máximo"), false);
         source.sendSuccess(() -> Component.literal("§a/dev reset §7- Restaura estadísticas al valor inicial"), false);
         return 1;
@@ -188,6 +197,9 @@ public class DevCommand {
             Race race = Race.valueOf(raceStr.toUpperCase());
             PlayerDBCData data = PlayerDBCData.get(player);
             data.setRace(race);
+            data.setRaceChosen(true);
+            data.setTransformation(Transformation.BASE);
+            data.setSelectedForm(Transformation.BASE);
             data.saveToPlayer(player);
             ModMessages.syncToPlayer(player);
 
@@ -204,24 +216,31 @@ public class DevCommand {
         if (player == null) return 0;
 
         Transformation target;
-        String upper = formStr.toUpperCase();
-        if (upper.equals("SSJ") || upper.equals("SUPER_SAIYAN")) {
-            target = Transformation.SUPER_SAIYAN;
-        } else if (upper.equals("KAIOKEN") || upper.equals("KAIO_KEN")) {
-            target = Transformation.KAIOKEN;
-        } else if (upper.equals("BASE")) {
-            target = Transformation.BASE;
-        } else {
-            source.sendFailure(Component.literal("§cForma no válida. Opciones: BASE, KAIOKEN, SSJ"));
+        try {
+            target = Transformation.valueOf(formStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal("Forma no válida. Usa el nombre interno, p. ej. SUPER_SAIYAN_2, KAIOKEN_X10."));
             return 0;
         }
 
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setTransformation(target);
+        data.setSelectedForm(target);
         data.saveToPlayer(player);
         ModMessages.syncToPlayer(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aTransformación cambiada a: §e" + target.getDisplayName()), false);
+        return 1;
+    }
+
+    private static int setAllMastery(CommandSourceStack source, int value) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) return 0;
+        PlayerDBCData data = PlayerDBCData.get(player);
+        for (Transformation form : Transformation.values()) data.setMastery(form, value);
+        data.saveToPlayer(player);
+        ModMessages.syncToPlayer(player);
+        source.sendSuccess(() -> Component.literal("[DEV] Maestría de todas las formas: " + value + "%"), false);
         return 1;
     }
 
@@ -250,7 +269,10 @@ public class DevCommand {
 
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setRace(Race.HUMAN);
+        data.setRaceChosen(false);
         data.setTransformation(Transformation.BASE);
+        data.setSelectedForm(Transformation.BASE);
+        for (Transformation form : Transformation.values()) data.setMastery(form, 0);
         data.setStr(5);
         data.setDex(5);
         data.setCon(5);

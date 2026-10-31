@@ -1,6 +1,8 @@
 package com.dragonblock.common.event;
 
 import com.dragonblock.DragonBlockMod;
+import com.dragonblock.common.combat.FormController;
+import com.dragonblock.common.combat.KiAttacks;
 import com.dragonblock.common.command.DevCommand;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Race;
@@ -8,14 +10,14 @@ import com.dragonblock.common.data.Transformation;
 import com.dragonblock.common.item.TrainingWeightsItem;
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.registry.ModSounds;
-import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -29,10 +31,15 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = DragonBlockMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class DragonBlockEvents {
-    private static final ResourceLocation CON_HEALTH_MODIFIER =
-            ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "con_health_bonus");
-    private static final ResourceLocation DEX_SPEED_MODIFIER =
-            ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "dex_speed_bonus");
+    private static final ResourceLocation CON_HEALTH_MODIFIER = id("con_health_bonus");
+    private static final ResourceLocation DEX_SPEED_MODIFIER = id("dex_speed_bonus");
+    private static final ResourceLocation FORM_SCALE_MODIFIER = id("form_scale");
+    private static final ResourceLocation GUARD_SLOW_MODIFIER = id("guard_slow");
+    private static final long ZENKAI_COOLDOWN_TICKS = 20L * 60 * 10;
+
+    private static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, path);
+    }
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -44,16 +51,23 @@ public class DragonBlockEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
             data.saveToPlayer(player);
-            ModMessages.syncToPlayer(player);
+            ModMessages.syncToTracking(player);
         }
     }
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            PlayerDBCData data = PlayerDBCData.get(player);
-            data.saveToPlayer(player);
+            PlayerDBCData.get(player).saveToPlayer(player);
             PlayerDBCData.removePlayer(player.getUUID());
+        }
+    }
+
+    /** A player coming into view needs the other player's data to render their aura, hair and tail. */
+    @SubscribeEvent
+    public static void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getTarget() instanceof ServerPlayer target && event.getEntity() instanceof ServerPlayer viewer) {
+            ModMessages.sendToPlayer(ModMessages.createSync(target), viewer);
         }
     }
 
@@ -66,7 +80,7 @@ public class DragonBlockEvents {
             data.setFlying(false);
             data.setChargingKi(false);
             data.saveToPlayer(player);
-            ModMessages.syncToPlayer(player);
+            ModMessages.syncToTracking(player);
         }
     }
 
@@ -81,60 +95,61 @@ public class DragonBlockEvents {
         if (newPlayer instanceof ServerPlayer serverPlayer) {
             PlayerDBCData data = PlayerDBCData.get(serverPlayer);
             data.saveToPlayer(serverPlayer);
-            ModMessages.syncToPlayer(serverPlayer);
+            ModMessages.syncToTracking(serverPlayer);
         }
     }
 
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
-        // Player attacking
-        if (event.getSource().getEntity() instanceof Player player) {
+        if (event.getEntity().level().isClientSide) return;
+
+        // Attacker
+        if (event.getSource().getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            float bonusDamage = data.getEffectiveStr() * 0.4f;
-            event.setAmount(event.getAmount() + bonusDamage);
-
-            // Award TP for combat
-            if (!player.level().isClientSide) {
-                int baseTp = (int) Math.max(1, (event.getAmount() * 0.4f) + (data.getMnd() / 5.0f));
-                if (data.getRace() == Race.HALF_SAIYAN) {
-                    baseTp = (int) (baseTp * 1.25f);
-                }
-
-                // Check for training weights in inventory
-                boolean hasWeights = player.getInventory().items.stream()
-                        .anyMatch(stack -> stack.getItem() instanceof TrainingWeightsItem);
-                if (hasWeights) {
-                    baseTp = (int) (baseTp * 1.5f);
-                }
-
-                data.addTrainingPoints(baseTp);
-                data.saveToPlayer(player);
-                if (player instanceof ServerPlayer serverPlayer) {
-                    ModMessages.syncToPlayer(serverPlayer);
-                }
+            if (event.getSource().getDirectEntity() == player) {
+                event.setAmount(event.getAmount() + data.getEffectiveStr() * 0.4f);
             }
+
+            float tp = Math.max(1f, event.getAmount() * 0.4f + data.getMnd() / 5.0f);
+            if (data.getRace() == Race.HALF_SAIYAN) tp *= 1.25f;
+            if (player.getInventory().items.stream().anyMatch(s -> s.getItem() instanceof TrainingWeightsItem)) tp *= 1.5f;
+            data.addTrainingPoints((int) tp);
+            data.addMastery(data.getTransformation(), 0.15f);
+            data.saveToPlayer(player);
+            ModMessages.syncToPlayer(player);
         }
 
-        // Player taking damage
-        if (event.getEntity() instanceof Player player) {
+        // Defender
+        if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            float reduction = Math.min(0.6f, data.getEffectiveDex() * 0.012f);
-            if (reduction > 0) {
-                event.setAmount(event.getAmount() * (1.0f - reduction));
+
+            if (data.dashIframes > 0) {
+                event.setCanceled(true);
+                return;
             }
 
-            // Saiyan Zenkai boost when low HP
-            if (data.getRace() == Race.SAIYAN && player.getHealth() - event.getAmount() <= 5.0f) {
-                if (!player.level().isClientSide) {
-                    data.addTrainingPoints(50);
-                    data.saveToPlayer(player);
-                    player.displayClientMessage(
-                            Component.literal("§c¡¡Zenkai activado!! Tu sangre Saiyajin se fortalece ante el peligro mortal! (+50 TP)")
-                                    .withStyle(ChatFormatting.RED, ChatFormatting.BOLD),
-                            true
-                    );
-                }
+            float amount = event.getAmount();
+            amount *= 1f - Math.min(0.6f, data.getEffectiveDex() * 0.012f);
+            if (data.getRace() == Race.MAJIN) amount *= 0.85f;
+
+            // Guard: 65% blocked, paid with Ki
+            if (data.isGuarding() && data.consumeKi(amount * 1.5f)) {
+                amount *= 0.35f;
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.8f, 0.8f);
             }
+            event.setAmount(amount);
+
+            long now = player.level().getGameTime();
+            boolean nearDeath = player.getHealth() - amount <= player.getMaxHealth() * 0.15f;
+            if (data.getRace().hasSaiyanTail() && nearDeath && now - data.getLastZenkaiTime() > ZENKAI_COOLDOWN_TICKS) {
+                data.setLastZenkaiTime(now);
+                int bonus = 50 + data.getLevel() * 2;
+                data.addTrainingPoints(bonus);
+                player.heal(player.getMaxHealth() * 0.3f);
+                player.displayClientMessage(Component.literal("Zenkai: tu cuerpo se sobrepone al límite (+" + bonus + " TP)"), true);
+            }
+            data.saveToPlayer(player);
         }
     }
 
@@ -144,127 +159,97 @@ public class DragonBlockEvents {
         Player player = event.player;
         PlayerDBCData data = PlayerDBCData.get(player);
 
-        // Ki Charging logic
+        if (player.level().isClientSide) {
+            clientParticles(player, data);
+            return;
+        }
+        ServerPlayer sp = (ServerPlayer) player;
+
         if (data.isChargingKi()) {
-            float chargeRate = 1.2f + (data.getEffectiveWil() * 0.1f);
-            data.setCurrentKi(data.getCurrentKi() + chargeRate);
-
-            if (player.level().isClientSide) {
-                // Client particles around player
-                for (int i = 0; i < 4; i++) {
-                    double px = player.getX() + (player.getRandom().nextDouble() - 0.5) * 1.2;
-                    double py = player.getY() + player.getRandom().nextDouble() * 1.8;
-                    double pz = player.getZ() + (player.getRandom().nextDouble() - 0.5) * 1.2;
-                    player.level().addParticle(ParticleTypes.ELECTRIC_SPARK, px, py, pz, 0, 0.15, 0);
-                }
-            } else {
-                if (player.tickCount % 20 == 0) {
-                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                            ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
-                }
-                // Sync rapidly while charging so the HUD is completely smooth
-                if (player.tickCount % 4 == 0 && player instanceof ServerPlayer sp) {
-                    ModMessages.syncToPlayer(sp);
-                }
+            data.setCurrentKi(data.getCurrentKi() + 1.2f + data.getEffectiveWil() * 0.1f);
+            if (player.tickCount % 20 == 0) {
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
             }
-        } else {
-            // Passive Ki regeneration (replenishes fully over time)
-            float passiveRegen = 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f);
-            data.setCurrentKi(data.getCurrentKi() + passiveRegen);
+        } else if (!data.isWaveHeld()) {
+            data.setCurrentKi(data.getCurrentKi() + 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f));
         }
 
-        // Transformation Ki drain
-        Transformation form = data.getTransformation();
-        if (form != Transformation.BASE) {
-            float drain = form.getKiDrainPerSecond() / 20.0f;
-            if (data.getCurrentKi() > drain) {
-                data.setCurrentKi(data.getCurrentKi() - drain);
+        FormController.tick(sp, data);
+        KiAttacks.tick(sp, data);
+        tickFlight(sp, data);
 
-                if (player.level().isClientSide && player.tickCount % 3 == 0) {
-                    double px = player.getX() + (player.getRandom().nextDouble() - 0.5) * 1.0;
-                    double py = player.getY() + player.getRandom().nextDouble() * 1.8;
-                    double pz = player.getZ() + (player.getRandom().nextDouble() - 0.5) * 1.0;
-                    player.level().addParticle(
-                            form == Transformation.SUPER_SAIYAN ? ParticleTypes.WAX_OFF : ParticleTypes.FLAME,
-                            px, py, pz, 0, 0.1, 0
-                    );
-                }
-            } else {
-                data.setCurrentKi(0);
-                data.setTransformation(Transformation.BASE);
-                if (!player.level().isClientSide) {
-                    data.saveToPlayer(player);
-                    if (player instanceof ServerPlayer sp) ModMessages.syncToPlayer(sp);
-                    player.displayClientMessage(
-                            Component.literal("§c¡Te has quedado sin Ki! Tu transformación se ha desactivado por agotamiento."),
-                            true
-                    );
-                }
-            }
-        }
-
-        // Flight (Bukujutsu) Ki drain
-        if (data.isFlying()) {
-            float flightCost = (data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f);
-            if (data.getCurrentKi() > flightCost) {
-                data.setCurrentKi(data.getCurrentKi() - flightCost);
-                if (player.level().isClientSide && player.tickCount % 4 == 0) {
-                    player.level().addParticle(ParticleTypes.CLOUD,
-                            player.getX(), player.getY() - 0.2, player.getZ(),
-                            0, -0.05, 0);
-                }
-            } else {
-                data.setFlying(false);
-                if (!player.isCreative() && !player.isSpectator()) {
-                    player.getAbilities().mayfly = false;
-                    player.getAbilities().flying = false;
-                    player.onUpdateAbilities();
-                }
-                if (!player.level().isClientSide) {
-                    data.saveToPlayer(player);
-                    if (player instanceof ServerPlayer sp) ModMessages.syncToPlayer(sp);
-                    player.displayClientMessage(
-                            Component.literal("§c¡Ki insuficiente para mantener el vuelo!"),
-                            true
-                    );
-                }
-            }
-        }
-
-        // Namekian passive HP regen
         if (data.getRace() == Race.NAMEKIAN && player.getHealth() < player.getMaxHealth() && player.tickCount % 40 == 0) {
             player.heal(1.0f);
         }
 
-        // get() rebuilds data from NBT on the server, so every tick's Ki change must be written back
-        if (!player.level().isClientSide) data.saveToPlayer(player);
+        data.saveToPlayer(player);
 
-        // Update attribute modifiers every 20 ticks (1s) on server
-        if (!player.level().isClientSide && player.tickCount % 20 == 0) {
-            updatePlayerAttributes(player, data);
-            if (player instanceof ServerPlayer sp) {
-                ModMessages.syncToPlayer(sp);
+        if (player.tickCount % 20 == 0) updatePlayerAttributes(player, data);
+
+        boolean active = data.isChargingKi() || data.isTransformHeld() || data.isWaveHeld();
+        if (player.tickCount % (active ? 4 : 20) == 0) ModMessages.syncToTracking(sp);
+    }
+
+    private static void tickFlight(ServerPlayer player, PlayerDBCData data) {
+        if (!data.isFlying()) return;
+        float cost = data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f;
+        if (player.isSprinting()) cost *= 2.5f;
+
+        if (data.consumeKi(cost)) {
+            // Faster flight with DEX, much faster while sprinting
+            float speed = 0.05f + Math.min(0.1f, data.getEffectiveDex() * 0.0004f);
+            if (player.isSprinting()) speed *= 1.8f;
+            if (Math.abs(player.getAbilities().getFlyingSpeed() - speed) > 0.001f) {
+                player.getAbilities().setFlyingSpeed(speed);
+                player.onUpdateAbilities();
             }
+            return;
+        }
+
+        data.setFlying(false);
+        if (!player.isCreative() && !player.isSpectator()) {
+            player.getAbilities().mayfly = false;
+            player.getAbilities().flying = false;
+        }
+        player.getAbilities().setFlyingSpeed(0.05f);
+        player.onUpdateAbilities();
+        ModMessages.syncToTracking(player);
+        player.displayClientMessage(Component.literal("Ki insuficiente para mantener el vuelo."), true);
+    }
+
+    private static void clientParticles(Player player, PlayerDBCData data) {
+        if (data.isFlying() && player.tickCount % 4 == 0 && player.getAbilities().flying) {
+            player.level().addParticle(ParticleTypes.CLOUD, player.getX(), player.getY() - 0.2, player.getZ(), 0, -0.05, 0);
+        }
+        if ((data.isChargingKi() || data.isTransformHeld()) && player.onGround() && player.tickCount % 3 == 0) {
+            // Debris kicked up by the aura
+            double a = player.getRandom().nextDouble() * Math.PI * 2;
+            player.level().addParticle(ParticleTypes.POOF, player.getX() + Math.cos(a) * 1.2, player.getY() + 0.05,
+                    player.getZ() + Math.sin(a) * 1.2, Math.cos(a) * 0.1, 0.02, Math.sin(a) * 0.1);
         }
     }
 
     private static void updatePlayerAttributes(Player player, PlayerDBCData data) {
-        AttributeInstance maxHp = player.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHp != null) {
-            double bonusHealth = Math.max(0, (data.getEffectiveCon() - 5) * 2.0);
-            AttributeModifier mod = new AttributeModifier(
-                    CON_HEALTH_MODIFIER, bonusHealth, AttributeModifier.Operation.ADD_VALUE
-            );
-            maxHp.addOrUpdateTransientModifier(mod);
-        }
+        setModifier(player, Attributes.MAX_HEALTH, CON_HEALTH_MODIFIER,
+                Math.max(0, (data.getEffectiveCon() - 5) * 2.0), AttributeModifier.Operation.ADD_VALUE);
+        setModifier(player, Attributes.MOVEMENT_SPEED, DEX_SPEED_MODIFIER,
+                Math.min(0.15, Math.max(0, (data.getEffectiveDex() - 5) * 0.003)), AttributeModifier.Operation.ADD_VALUE);
+        setModifier(player, Attributes.SCALE, FORM_SCALE_MODIFIER,
+                data.getTransformation().getScale() - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+        setModifier(player, Attributes.MOVEMENT_SPEED, GUARD_SLOW_MODIFIER,
+                data.isGuarding() ? -0.5 : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        if (player.getHealth() > player.getMaxHealth()) player.setHealth(player.getMaxHealth());
+    }
 
-        AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (speed != null) {
-            double bonusSpeed = Math.max(0, (data.getEffectiveDex() - 5) * 0.003);
-            AttributeModifier mod = new AttributeModifier(
-                    DEX_SPEED_MODIFIER, bonusSpeed, AttributeModifier.Operation.ADD_VALUE
-            );
-            speed.addOrUpdateTransientModifier(mod);
+    private static void setModifier(Player player, Holder<Attribute> attribute, ResourceLocation id, double value,
+                                    AttributeModifier.Operation op) {
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance == null) return;
+        if (value == 0) {
+            instance.removeModifier(id);
+        } else {
+            instance.addOrUpdateTransientModifier(new AttributeModifier(id, value, op));
         }
     }
 }

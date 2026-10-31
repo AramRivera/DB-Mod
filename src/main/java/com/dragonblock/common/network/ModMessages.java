@@ -13,7 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
 public class ModMessages {
-    private static final int PROTOCOL_VERSION = 1;
+    private static final int PROTOCOL_VERSION = 2;
     public static final SimpleChannel INSTANCE = ChannelBuilder.named(
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "messages"))
             .networkProtocolVersion(PROTOCOL_VERSION)
@@ -24,16 +24,16 @@ public class ModMessages {
     public static void register() {
         int id = 0;
 
-        INSTANCE.messageBuilder(C2SChargeKiPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(C2SChargeKiPacket::toBytes)
-                .decoder(C2SChargeKiPacket::new)
-                .consumerMainThread(C2SChargeKiPacket::handle)
+        INSTANCE.messageBuilder(C2SInputStatePacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2SInputStatePacket::toBytes)
+                .decoder(C2SInputStatePacket::new)
+                .consumerMainThread(C2SInputStatePacket::handle)
                 .add();
 
-        INSTANCE.messageBuilder(C2STransformPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(C2STransformPacket::toBytes)
-                .decoder(C2STransformPacket::new)
-                .consumerMainThread(C2STransformPacket::handle)
+        INSTANCE.messageBuilder(C2SActionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2SActionPacket::toBytes)
+                .decoder(C2SActionPacket::new)
+                .consumerMainThread(C2SActionPacket::handle)
                 .add();
 
         INSTANCE.messageBuilder(C2SFlyPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
@@ -76,9 +76,17 @@ public class ModMessages {
     }
 
     public static void syncToPlayer(ServerPlayer player) {
-        PlayerDBCData data = PlayerDBCData.get(player);
+        sendToPlayer(createSync(player), player);
+    }
+
+    /** Sync to the player and everyone tracking them, so auras, hair and tails render for others. */
+    public static void syncToTracking(ServerPlayer player) {
+        INSTANCE.send(createSync(player), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+    }
+
+    public static S2CSyncDBCDataPacket createSync(ServerPlayer player) {
         CompoundTag tag = new CompoundTag();
-        data.saveToNBT(tag);
-        sendToPlayer(new S2CSyncDBCDataPacket(player.getUUID(), tag), player);
+        PlayerDBCData.get(player).saveToNBT(tag);
+        return new S2CSyncDBCDataPacket(player.getUUID(), tag);
     }
 }

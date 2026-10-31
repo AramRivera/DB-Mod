@@ -43,15 +43,35 @@ El jugador puede seleccionar su raza en cualquier momento desde la interfaz:
 
 ---
 
-### 4. Transformaciones (Tecla `G`)
-* **Kaio-ken**: Accesible para todas las razas (requiere 10 STR y 10 WIL). Multiplica las estadísticas por **x1.5** con aura roja a cambio de un drenaje constante de Ki.
-* **Super Saiyajin (SSJ1)**: Exclusivo de Saiyajins e Híbridos (requiere 20 STR y 20 WIL). Multiplica las estadísticas por **x2.5** con aura dorada resplandeciente y explosión de energía.
-* Si el Ki se agota durante una transformación, el jugador vuelve a la forma base por agotamiento.
+### 4. Transformaciones (mantener `G`, volver con `H`)
+Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para transformarte. El tiempo de carga baja de 3 s a 0,5 s con la maestría.
+
+* **Requisitos**: nivel (suma de atributos) y, para formas avanzadas, **25% de maestría** en la forma anterior.
+* **Maestría (0-100%)**: sube estando transformado y combatiendo. Reduce hasta un 60% el consumo de Ki.
+* **Agotamiento**: sin Ki vuelves a la forma base.
+
+| Línea | Formas |
+| :--- | :--- |
+| Universal | Kaio-ken (x1, x10, x20, drenan vida), Instinto Superior (Presagio / Dominado) |
+| Humano / Namekiano / Híbrido | Potencial Liberado |
+| Saiyajin / Híbrido | SSJ, Grado 2, Grado 3, SSJ Pleno, SSJ2, SSJ3, Dios, Blue, Blue Evolución |
+| Saiyajin (con cola) | Ozaru (luna llena), Ozaru Dorado, SSJ4, Ultra Ego |
+| Híbrido | Bestia |
+| Arcosiano | Segunda, Tercera, Final, Final 100%, Dorada, Negra |
+| Namekiano | Gigante, Fusión Namekiana, Namekiano Naranja |
+| Majin | Majin Superior, Majin Puro |
+
+Las formas tienen modelos propios: peinados procedurales que brillan, pelaje (Ozaru / SSJ4), cambio de tamaño (Ozaru x4, Gigante x3), aura animada y rayos en las formas más altas. Las razas tienen cola animada, antenas, cuernos o tentáculo. Todo se sincroniza con los demás jugadores.
 
 ---
 
-### 5. Técnicas de Energía
-* **Ráfaga de Ki (Tecla `X` o Ítem de Técnica)**: Dispara un proyectil de energía Ki concentrada en la dirección de la mirada. Al colisionar con bloques o entidades, detona provocando daño de área proporcional a la Voluntad (WIL) del usuario. (Coste: 15 Ki).
+### 5. Combate y técnicas de Ki
+* **Ráfaga (`X`)**: proyectil rápido, 15 Ki, enfriamiento corto.
+* **Onda (mantener `Z`)**: carga hasta 2,5 s y suelta un rayo; tamaño y daño escalan con la carga.
+* **Impulso (`R`)**: dash con 6 ticks de invulnerabilidad.
+* **Guardia (mantener `B`)**: bloquea el 65% del daño pagando Ki.
+* **Vuelo (`F`)**: corre en el aire para ir más rápido a cambio de más Ki.
+* **Zenkai**: Saiyajins e Híbridos ganan TP y se curan al borde de la muerte (una vez cada 10 min).
 
 ---
 
@@ -68,13 +88,17 @@ El jugador puede seleccionar su raza en cualquier momento desde la interfaz:
 
 | Tecla | Acción |
 | :---: | :--- |
-| **`C`** *(Mantener)* | Cargar energía Ki |
-| **`G`** | Activar transformación / Revertir a forma base |
-| **`V`** | Abrir la Ficha de Personaje (Estadísticas y mejoras) |
-| **`F`** | Activar / Desactivar vuelo (Bukujutsu) |
-| **`X`** | Disparar Ráfaga de Ki |
+| `C` *(mantener)* | Cargar Ki |
+| `G` *(mantener)* | Transformarse en la forma seleccionada |
+| `H` | Volver a la forma base |
+| `V` | Ficha de personaje (atributos, formas, raza) |
+| `F` | Volar |
+| `X` | Ráfaga de Ki |
+| `Z` *(mantener)* | Cargar y soltar onda de Ki |
+| `R` | Impulso |
+| `B` *(mantener)* | Guardia |
 
-> *Los atajos pueden reasignarse en cualquier momento desde **Opciones -> Controles -> Dragon Block**.*
+> *Reasignables en **Opciones -> Controles -> Dragon Block**.*
 
 ---
 
@@ -90,7 +114,7 @@ Para facilitar el testeo y depuración de mecánicas, se incluye un conjunto de 
 | `/dev ki <cantidad>` | Establece tu Ki actual a un valor exacto. | `/dev ki 500` |
 | `/dev stat <atributo> <valor>` | Fija un atributo (`STR`, `DEX`, `CON`, `WIL`, `MND` o `ALL`). | `/dev stat str 50` o `/dev stat all 100` |
 | `/dev race <raza>` | Cambia tu raza de inmediato (`HUMAN`, `SAIYAN`, etc.). | `/dev race saiyan` |
-| `/dev form <forma>` | Fuerza una transformación (`BASE`, `KAIOKEN`, `SSJ`). | `/dev form ssj` |
+| `/dev form <forma>` | Fuerza una transformación (autocompleta todas). | `/dev form super_saiyan_2` |
 | `/dev max` | Atributos a 100, 50,000 TP y Ki al 100% para pruebas rápidas. | `/dev max` |
 | `/dev reset` | Restaura todos los atributos y datos a los valores iniciales. | `/dev reset` |
 | `/dev help` | Muestra la lista de comandos disponibles en el chat. | `/dev help` |

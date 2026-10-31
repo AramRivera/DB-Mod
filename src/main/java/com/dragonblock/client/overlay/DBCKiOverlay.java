@@ -1,69 +1,75 @@
 package com.dragonblock.client.overlay;
 
+import com.dragonblock.client.gui.UiTheme;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Transformation;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 
+/** Compact top-left HUD: form, Ki bar, power level and contextual charge bars. */
 public class DBCKiOverlay implements LayeredDraw.Layer {
     public static final DBCKiOverlay INSTANCE = new DBCKiOverlay();
+    private static final int BAR_W = 128;
 
     @Override
-    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+    public void render(GuiGraphics g, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
 
         PlayerDBCData data = PlayerDBCData.get(mc.player);
-        float currentKi = data.getCurrentKi();
-        float maxKi = Math.max(1.0f, data.getMaxKi());
-        float ratio = Math.min(1.0f, Math.max(0.0f, currentKi / maxKi));
+        Font font = mc.font;
+        Transformation form = data.getTransformation();
+        int accent = 0xFF000000 | form.getAuraColor();
+        int x = 8, y = 8;
 
-        int x = 10;
-        int y = 10;
-        int barWidth = 115;
-        int barHeight = 11;
+        g.fill(x - 4, y - 4, x + BAR_W + 4, y + panelHeight(data), 0x90000000);
+        g.fill(x - 4, y - 4, x - 2, y + panelHeight(data), accent);
 
-        // Outer Dark Container
-        guiGraphics.fill(x - 3, y - 3, x + barWidth + 3, y + barHeight + 25, 0xCC101015);
-        // Subtle Border
-        guiGraphics.renderOutline(x - 3, y - 3, barWidth + 6, barHeight + 28, 0xFF4080B0);
+        g.drawString(font, form.getDisplayName().toUpperCase(), x, y, form.getAuraColor(), false);
+        String power = String.format("%,d", data.getBattlePower());
+        g.drawString(font, power, x + BAR_W - font.width(power), y, UiTheme.TEXT_HEADER, false);
+        y += 11;
 
-        // Ki Bar Background (Dark track)
-        guiGraphics.fill(x, y, x + barWidth, y + barHeight, 0xFF1C1C24);
+        // Ki bar with 10% ticks
+        float ratio = Math.min(1f, data.getCurrentKi() / Math.max(1f, data.getMaxKi()));
+        g.fill(x, y, x + BAR_W, y + 5, UiTheme.TRACK);
+        g.fill(x, y, x + (int) (BAR_W * ratio), y + 5, data.isChargingKi() ? 0xFFFFFFFF : accent);
+        for (int i = 1; i < 10; i++) g.fill(x + BAR_W * i / 10, y, x + BAR_W * i / 10 + 1, y + 5, 0x60000000);
+        y += 7;
+        g.drawString(font, String.format("KI  %.0f / %.0f", data.getCurrentKi(), data.getMaxKi()), x, y, UiTheme.TEXT_DIM, false);
+        String state = data.isGuarding() ? "GUARDIA" : data.isChargingKi() ? "CARGANDO" : data.isFlying() ? "VUELO" : "";
+        g.drawString(font, state, x + BAR_W - font.width(state), y, UiTheme.TEXT, false);
+        y += 11;
 
-        // Dynamic Ki Bar Color
-        int kiColor = data.isChargingKi() ? 0xFF00FFFF : 0xFF0099FF;
-        if (data.getTransformation() == Transformation.SUPER_SAIYAN) {
-            kiColor = 0xFFFFD700; // Gold
-        } else if (data.getTransformation() == Transformation.KAIOKEN) {
-            kiColor = 0xFFFF2233; // Red
+        if (data.isTransformHeld()) {
+            Transformation target = data.getSelectedForm();
+            y = chargeBar(g, font, x, y, target.getDisplayName(), data.getTransformCharge(), 0xFF000000 | target.getAuraColor());
         }
-
-        int fillWidth = (int) (barWidth * ratio);
-        if (fillWidth > 0) {
-            guiGraphics.fill(x, y, x + fillWidth, y + barHeight, kiColor);
+        if (data.isWaveHeld()) {
+            y = chargeBar(g, font, x, y, "Onda de ki", data.getWaveCharge(), accent);
         }
-
-        // Ki Text inside or over the bar
-        String kiText = String.format("Ki: %.0f/%.0f (%.0f%%)", currentKi, maxKi, ratio * 100.0f);
-        guiGraphics.drawString(mc.font, kiText, x + 3, y + 2, 0xFFFFFF, true);
-
-        // Battle Power (BP)
-        String bpText = String.format("BP: %,d", data.getBattlePower());
-        if (data.getTransformation() != Transformation.BASE) {
-            bpText += " [" + data.getTransformation().getDisplayName() + "]";
+        if (form != Transformation.BASE) {
+            chargeBar(g, font, x, y, "Maestría", data.getMastery(form) / 100f, 0xFF8090A0);
         }
-        guiGraphics.drawString(mc.font, bpText, x, y + barHeight + 4, 0xFFE040, true);
+    }
 
-        // Race & Status
-        String raceText = "Raza: §b" + data.getRace().getDisplayName();
-        if (data.isChargingKi()) {
-            raceText += " §a[Cargando]";
-        } else if (data.isFlying()) {
-            raceText += " §e[Volando]";
-        }
-        guiGraphics.drawString(mc.font, raceText, x, y + barHeight + 15, 0xDDDDDD, true);
+    private static int panelHeight(PlayerDBCData data) {
+        int h = 32;
+        if (data.isTransformHeld()) h += 14;
+        if (data.isWaveHeld()) h += 14;
+        if (data.getTransformation() != Transformation.BASE) h += 14;
+        return h;
+    }
+
+    private static int chargeBar(GuiGraphics g, Font font, int x, int y, String label, float value, int color) {
+        g.drawString(font, label, x, y, UiTheme.TEXT_DIM, false);
+        String pct = (int) (value * 100) + "%";
+        g.drawString(font, pct, x + BAR_W - font.width(pct), y, UiTheme.TEXT, false);
+        g.fill(x, y + 9, x + BAR_W, y + 11, UiTheme.TRACK);
+        g.fill(x, y + 9, x + (int) (BAR_W * value), y + 11, color);
+        return y + 14;
     }
 }
