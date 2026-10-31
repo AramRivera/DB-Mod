@@ -44,6 +44,8 @@ public class KiBlastEntity extends ThrowableItemProjectile {
     /** Ticks left in a clash with another technique, 0 when flying freely. */
     private static final EntityDataAccessor<Integer> CLASH = SynchedEntityData.defineId(KiBlastEntity.class, EntityDataSerializers.INT);
     public static final int CLASH_TICKS = 50;
+    /** Largest size a technique can reach (a full Genkidama in the top forms is about 7.3). */
+    public static final float MAX_SIZE = 8f;
 
     /** Client-only: tail end of the beam. Held at the shooter's hands while they fire, then it catches up. */
     public Vec3 origin;
@@ -66,7 +68,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         this.damage = damage;
         this.explosionPower = explosionPower;
         this.entityData.set(COLOR, color);
-        this.entityData.set(SIZE, size);
+        this.entityData.set(SIZE, Math.min(MAX_SIZE, size));
         this.entityData.set(TECH, tech.ordinal());
     }
 
@@ -125,7 +127,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         damage = tag.getFloat("Damage");
         explosionPower = tag.getFloat("Explosion");
         entityData.set(COLOR, tag.getInt("Color"));
-        entityData.set(SIZE, tag.getFloat("Size"));
+        entityData.set(SIZE, Math.max(0.05f, Math.min(MAX_SIZE, tag.getFloat("Size"))));
         entityData.set(HALO, tag.getInt("Halo"));
         try {
             entityData.set(TECH, Technique.valueOf(tag.getString("Technique")).ordinal());
@@ -249,7 +251,7 @@ public class KiBlastEntity extends ThrowableItemProjectile {
         KiBlastEntity loser = winner == this ? other : this;
         float ratio = Math.min(mine, theirs) / Math.max(1e-3f, Math.max(mine, theirs));
         winner.damage *= Math.max(0.3f, 1f - ratio * 0.6f);
-        winner.entityData.set(SIZE, winner.getSize() * 1.15f);
+        winner.entityData.set(SIZE, Math.min(MAX_SIZE, winner.getSize() * 1.15f));
         winner.release();
         if (level() instanceof ServerLevel sl) {
             Vec3 mid = position().add(other.position()).scale(0.5);
