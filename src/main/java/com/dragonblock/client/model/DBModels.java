@@ -37,6 +37,7 @@ public final class DBModels {
     public static final ModelLayerLocation TENDRIL = layer("tendril");
     public static final ModelLayerLocation FUR = layer("fur");
     public static final ModelLayerLocation APE_HEAD = layer("ape_head");
+    public static final ModelLayerLocation SHENLONG = layer("shenlong");
 
     /** Segments in a tail chain, named seg0..segN-1, each a child of the previous. */
     public static final int TAIL_SEGMENTS = 7;
@@ -63,6 +64,7 @@ public final class DBModels {
         event.registerLayerDefinition(HORNS, DBModels::horns);
         event.registerLayerDefinition(TENDRIL, DBModels::tendril);
         event.registerLayerDefinition(APE_HEAD, DBModels::apeHead);
+        event.registerLayerDefinition(SHENLONG, ShenlongModel::createBodyLayer);
         event.registerLayerDefinition(FUR, () -> LayerDefinition.create(HumanoidModel.createMesh(new CubeDeformation(0.45f), 0), 64, 64));
     }
 
