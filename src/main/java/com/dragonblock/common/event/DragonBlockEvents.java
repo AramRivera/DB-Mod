@@ -140,6 +140,7 @@ public class DragonBlockEvents {
             if (data.getRace() == Race.HALF_SAIYAN) tp *= 1.25f;
             if (data.wears(WEIGHTS)) tp *= 1.5f;
             if (data.wears(WRIST_WEIGHTS)) tp *= 1.2f;
+            if (WorldEvents.onHeavyPlanet(player)) tp *= 2f;
             data.addTrainingPoints((int) tp);
             data.addMastery(data.getTransformation(), 0.15f);
             data.saveToPlayer(player);

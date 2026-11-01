@@ -27,6 +27,16 @@ public class PlayerDBCData {
     private final List<Technique> equipped = new ArrayList<>(List.of(Technique.KI_BLAST));
     private int selectedSlot = 0;
 
+    // Afterlife: dead players wander the Other World with a halo until they come back
+    private boolean dead = false;
+    private String deathDim = "minecraft:overworld";
+    private long deathPos = 0L;
+    private long deathTime = 0L;
+    // Story: one active quest with its progress, and one-time rewards already collected
+    private String quest = "";
+    private int questProgress = 0;
+    private final java.util.Set<String> flags = new java.util.HashSet<>();
+
     /** Worn accessories by slot (VISOR, TORSO, WRISTS, BELT): item ids, "" when empty. */
     private final String[] accessories = {"", "", "", ""};
 
@@ -162,6 +172,13 @@ public class PlayerDBCData {
         tag.putString("Equipped", String.join(",", equipped.stream().map(Enum::name).toList()));
         tag.putInt("SelectedSlot", selectedSlot);
         tag.putString("Accessories", String.join(",", accessories));
+        tag.putBoolean("Dead", dead);
+        tag.putString("DeathDim", deathDim);
+        tag.putLong("DeathPos", deathPos);
+        tag.putLong("DeathTime", deathTime);
+        tag.putString("Quest", quest);
+        tag.putInt("QuestProgress", questProgress);
+        tag.putString("Flags", String.join(",", flags));
 
         CompoundTag look = new CompoundTag();
         look.putInt("Skin", getSkinColor());
@@ -222,6 +239,15 @@ public class PlayerDBCData {
             }
             selectedSlot = tag.getInt("SelectedSlot");
         }
+
+        dead = tag.getBoolean("Dead");
+        deathDim = tag.contains("DeathDim") ? tag.getString("DeathDim") : "minecraft:overworld";
+        deathPos = tag.getLong("DeathPos");
+        deathTime = tag.getLong("DeathTime");
+        quest = tag.getString("Quest");
+        questProgress = tag.getInt("QuestProgress");
+        flags.clear();
+        for (String f : tag.getString("Flags").split(",")) if (!f.isEmpty()) flags.add(f);
 
         String[] worn = tag.getString("Accessories").split(",", -1);
         for (int i = 0; i < accessories.length; i++) accessories[i] = i < worn.length ? worn[i] : "";
@@ -376,6 +402,29 @@ public class PlayerDBCData {
     public void setSelectedSlot(int slot) { this.selectedSlot = equipped.isEmpty() ? 0 : Math.floorMod(slot, equipped.size()); }
     /** The technique the key fires, or null with nothing equipped. */
     public Technique getSelectedTechnique() { return equipped.isEmpty() ? null : equipped.get(getSelectedSlot()); }
+
+    // ---------------------------------------------------------------- afterlife and story
+
+    public boolean isDead() { return dead; }
+    public String getDeathDim() { return deathDim; }
+    public net.minecraft.core.BlockPos getDeathPos() { return net.minecraft.core.BlockPos.of(deathPos); }
+    public long getDeathTime() { return deathTime; }
+
+    public void die(String dimension, net.minecraft.core.BlockPos pos, long gameTime) {
+        dead = true;
+        deathDim = dimension;
+        deathPos = pos.asLong();
+        deathTime = gameTime;
+    }
+
+    public void revive() { dead = false; }
+
+    public String getQuest() { return quest; }
+    public int getQuestProgress() { return questProgress; }
+    public void setQuest(String id) { quest = id == null ? "" : id; questProgress = 0; }
+    public void addQuestProgress(int n) { questProgress += n; }
+    public boolean hasFlag(String f) { return flags.contains(f); }
+    public void setFlag(String f) { flags.add(f); }
 
     // ---------------------------------------------------------------- accessories
 

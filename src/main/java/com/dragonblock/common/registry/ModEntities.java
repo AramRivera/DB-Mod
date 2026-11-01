@@ -30,4 +30,12 @@ public class ModEntities {
                             .noSave()
                             .build("shenlong")
             );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.NpcEntity>> NPC =
+            ENTITY_TYPES.register("npc", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.NpcEntity>of(com.dragonblock.common.entity.NpcEntity::new, MobCategory.MISC)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("npc")
+            );
 }

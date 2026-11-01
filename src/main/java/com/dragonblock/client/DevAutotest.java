@@ -34,7 +34,8 @@ import net.minecraftforge.fml.common.Mod;
  */
 @Mod.EventBusSubscriber(modid = DragonBlockMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class DevAutotest {
-    private static final boolean ON = "dragon".equals(System.getProperty("dragonblock.autotest"));
+    private static final String MODE = System.getProperty("dragonblock.autotest", "");
+    private static final boolean ON = !MODE.isEmpty();
     private static final int[] SHOTS = {100, 160, 230, 300, 360, 395, 410, 430};
     private static boolean opened = false;
     private static int ticks = 0;
@@ -61,6 +62,10 @@ public final class DevAutotest {
         Minecraft mc = Minecraft.getInstance();
         if (!ON || event.phase != TickEvent.Phase.END || mc.player == null || mc.getSingleplayerServer() == null) return;
         ticks++;
+        if (MODE.equals("world")) {
+            worldTour(mc);
+            return;
+        }
         if (mc.screen instanceof DBCCharacterScreen || mc.screen instanceof com.dragonblock.client.gui.WishScreen) mc.setScreen(null);
         if (ticks == 380) {
             // Ask for riches to watch the farewell
@@ -136,5 +141,81 @@ public final class DevAutotest {
         if (ticks == 440) mc.setScreen(new InventoryScreen(mc.player));
         if (ticks == 450) Screenshot.grab(mc.gameDirectory, "autotest_inventory.png", mc.getMainRenderTarget(), c -> {});
         if (ticks == 460) mc.stop();
+    }
+
+    /** Talk to the master, die, meet the judge, visit the heavy planet, come back to life: a shot at every step. */
+    private static void worldTour(Minecraft mc) {
+        var server = mc.getSingleplayerServer();
+        var uuid = mc.player.getUUID();
+        if (mc.screen instanceof DBCCharacterScreen) mc.setScreen(null);
+        if (mc.screen instanceof net.minecraft.client.gui.screens.DeathScreen) {
+            mc.player.respawn();
+            mc.setScreen(null);
+        }
+        java.util.function.Consumer<java.util.function.Consumer<ServerPlayer>> onServer = task -> server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
+            if (sp != null) task.accept(sp);
+        });
+        java.util.function.BiConsumer<ServerPlayer, com.dragonblock.common.npc.NpcKind> faceNpc = (sp, kind) -> {
+            for (var npc : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.NpcEntity.class, sp.getBoundingBox().inflate(200))) {
+                if (npc.getKind() != kind) continue;
+                double dist = 3.0 * kind.getScale() + 1;
+                var look = npc.getLookAngle().multiply(1, 0, 1).normalize();
+                sp.teleportTo(sp.serverLevel(), npc.getX() + look.x * dist, npc.getY(), npc.getZ() + look.z * dist,
+                        (float) Math.toDegrees(Math.atan2(look.x, -look.z)), kind == com.dragonblock.common.npc.NpcKind.JUDGE ? -18f : 5f);
+                com.dragonblock.common.npc.Dialogues.open(sp, npc);
+                return;
+            }
+            DragonBlockMod.LOGGER.warn("[autotest] no {} found", kind);
+        };
+        switch (ticks) {
+            case 60 -> onServer.accept(sp -> {
+                PlayerDBCData data = PlayerDBCData.get(sp);
+                data.setRace(Race.SAIYAN);
+                data.setRaceChosen(true);
+                data.setTailOut(false);
+                data.saveToPlayer(sp);
+                ModMessages.syncToTracking(sp);
+                sp.setGameMode(GameType.SURVIVAL);
+                sp.serverLevel().setDayTime(1000);
+                faceNpc.accept(sp, com.dragonblock.common.npc.NpcKind.MASTER);
+            });
+            case 110 -> shot(mc, "world_master");
+            case 120 -> onServer.accept(sp -> faceNpc.accept(sp, com.dragonblock.common.npc.NpcKind.SCIENTIST));
+            case 170 -> shot(mc, "world_scientist");
+            case 180 -> {
+                mc.setScreen(null);
+                onServer.accept(sp -> sp.hurt(sp.damageSources().fellOutOfWorld(), 10000f));
+            }
+            case 260 -> shot(mc, "world_otherworld");
+            case 270 -> onServer.accept(sp -> faceNpc.accept(sp, com.dragonblock.common.npc.NpcKind.JUDGE));
+            case 320 -> shot(mc, "world_judge");
+            case 330 -> {
+                mc.setScreen(null);
+                onServer.accept(sp -> com.dragonblock.common.world.Worlds.send(sp, com.dragonblock.common.world.Worlds.CELESTIAL));
+            }
+            case 400 -> shot(mc, "world_celestial");
+            case 410 -> onServer.accept(sp -> faceNpc.accept(sp, com.dragonblock.common.npc.NpcKind.CELESTIAL));
+            case 460 -> shot(mc, "world_celestial_npc");
+            case 470 -> {
+                mc.setScreen(null);
+                onServer.accept(sp -> {
+                    PlayerDBCData data = PlayerDBCData.get(sp);
+                    DragonBlockMod.LOGGER.info("[autotest] dead={} deathDim={} pos={}", data.isDead(), data.getDeathDim(), data.getDeathPos());
+                    data.revive();
+                    data.saveToPlayer(sp);
+                    ModMessages.syncToTracking(sp);
+                    com.dragonblock.common.world.Worlds.sendTo(sp, net.minecraft.world.level.Level.OVERWORLD, data.getDeathPos());
+                });
+            }
+            case 530 -> shot(mc, "world_back");
+            case 540 -> mc.stop();
+            default -> {}
+        }
+    }
+
+    private static void shot(Minecraft mc, String name) {
+        Screenshot.grab(mc.gameDirectory, "autotest_" + name + ".png", mc.getMainRenderTarget(), c -> {});
+        DragonBlockMod.LOGGER.info("[autotest] shot {} in {}", name, mc.level.dimension().location());
     }
 }

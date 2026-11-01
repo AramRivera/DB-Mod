@@ -36,6 +36,8 @@ public class DragonBlockMod {
 
         // Lifecycle listeners
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener((net.minecraftforge.event.entity.EntityAttributeCreationEvent e) ->
+                e.put(ModEntities.NPC.get(), com.dragonblock.common.entity.NpcEntity.attributes().build()));
 
         // Register ourselves to MinecraftForge event bus
         MinecraftForge.EVENT_BUS.register(this);

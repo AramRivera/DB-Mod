@@ -1,0 +1,22 @@
+{
+ "type": "dragonblock:otherworld",
+ "generator": {
+  "type": "minecraft:flat",
+  "settings": {
+   "biome": "dragonblock:otherworld",
+   "lakes": false,
+   "features": false,
+   "layers": [
+    {
+     "block": "minecraft:air",
+     "height": 60
+    },
+    {
+     "block": "minecraft:white_wool",
+     "height": 1
+    }
+   ],
+   "structure_overrides": []
+  }
+ }
+}

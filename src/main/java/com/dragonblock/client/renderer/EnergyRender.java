@@ -252,6 +252,25 @@ public final class EnergyRender {
         pose.popPose();
     }
 
+    /** A glowing golden ring lying flat at the pose origin: the halo of a soul in the Other World. */
+    public static void halo(PoseStack pose, MultiBufferSource buffers, float time) {
+        VertexConsumer vc = buffers.getBuffer(DBRenderTypes.glow(KI_TEX));
+        PoseStack.Pose p = pose.last();
+        final int sides = 24;
+        float inner = 0.2f, outer = 0.28f, bob = 0.02f * Mth.sin(time * 0.1f);
+        int color = scaleColor(0xFFE070, 0.9f + 0.1f * Mth.sin(time * 0.2f));
+        for (int s = 0; s < sides; s++) {
+            float a0 = Mth.TWO_PI * s / sides, a1 = Mth.TWO_PI * (s + 1) / sides;
+            quad(vc, p, new Vec3(Mth.cos(a0) * inner, bob, Mth.sin(a0) * inner), new Vec3(Mth.cos(a1) * inner, bob, Mth.sin(a1) * inner),
+                    new Vec3(Mth.cos(a1) * outer, bob, Mth.sin(a1) * outer), new Vec3(Mth.cos(a0) * outer, bob, Mth.sin(a0) * outer),
+                    0f, 1f, 0f, 1f, color, color);
+            // a little thickness so it reads from the side too
+            quad(vc, p, new Vec3(Mth.cos(a0) * outer, bob - 0.03f, Mth.sin(a0) * outer), new Vec3(Mth.cos(a1) * outer, bob - 0.03f, Mth.sin(a1) * outer),
+                    new Vec3(Mth.cos(a1) * outer, bob + 0.03f, Mth.sin(a1) * outer), new Vec3(Mth.cos(a0) * outer, bob + 0.03f, Mth.sin(a0) * outer),
+                    0f, 1f, 0f, 1f, color, color);
+        }
+    }
+
     /** Ribbon winding around a beam from the pose origin to {@code to} (the Makankosappo spiral). */
     public static void spiral(PoseStack pose, MultiBufferSource buffers, Vec3 to, float radius, int rgb, float time) {
         double len = to.length();

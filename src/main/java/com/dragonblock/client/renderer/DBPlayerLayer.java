@@ -86,6 +86,13 @@ public class DBPlayerLayer extends RenderLayer<AbstractClientPlayer, PlayerModel
         renderHair(pose, buffers, light, player, data, body, partialTick);
         renderEyes(pose, buffers, body, form);
         renderAccessories(pose, buffers, light, data, body);
+        if (data.isDead() && body.head.visible) {
+            pose.pushPose();
+            body.head.translateAndRotate(pose);
+            pose.translate(0, -0.75f, 0); // a hand's width over the crown
+            EnergyRender.halo(pose, buffers, ageInTicks);
+            pose.popPose();
+        }
         if (form.isOozaru()) renderApeHead(pose, buffers, light, body, form);
         renderEnergy(pose, buffers, player, data, ageInTicks, partialTick);
     }
