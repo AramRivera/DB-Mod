@@ -74,6 +74,10 @@ public final class NpcDialogues {
             o.add(new Option("Dame un consejo, maestro", q -> Dialogues.show(q, npc, new Node(tip(q), back(npc), bye()))));
             if (!d.hasLearned(Technique.KIAI)) o.add(new Option("Enséñame algo nuevo", q -> {
                 PlayerDBCData qd = PlayerDBCData.get(q);
+                if (qd.hasLearned(Technique.KIAI) || !qd.hasFlag("kaido_disciple")) {
+                    Dialogues.close(q);
+                    return;
+                }
                 qd.learn(Technique.KIAI);
                 save(q, qd);
                 reward(q);
@@ -84,6 +88,10 @@ public final class NpcDialogues {
             text = done >= TRIAL_KILLS ? "¡Has vuelto, y con el ki más afilado! Lo noto." : "¿Ya de vuelta? Llevas " + done + " de " + TRIAL_KILLS + ". Un guerrero termina lo que empieza.";
             if (done >= TRIAL_KILLS) o.add(new Option("Prueba superada, maestro", q -> {
                 PlayerDBCData qd = PlayerDBCData.get(q);
+                if (!QUEST_TRIAL.equals(qd.getQuest()) || qd.getQuestProgress() < TRIAL_KILLS) {
+                    Dialogues.close(q);
+                    return;
+                }
                 qd.setQuest("");
                 qd.setFlag("kaido_disciple");
                 qd.addTrainingPoints(400);
@@ -127,6 +135,10 @@ public final class NpcDialogues {
         List<Option> o = new ArrayList<>();
         if (!d.hasFlag("vela_radar")) o.add(new Option("¿Me prestas un radar del dragón?", q -> {
             PlayerDBCData qd = PlayerDBCData.get(q);
+            if (qd.hasFlag("vela_radar")) {
+                Dialogues.close(q);
+                return;
+            }
             qd.setFlag("vela_radar");
             save(q, qd);
             give(q, new ItemStack(ModItems.DRAGON_RADAR.get()));
@@ -156,6 +168,10 @@ public final class NpcDialogues {
         List<Option> o = new ArrayList<>();
         o.add(new Option("Quiero volver a la vida", q -> {
             PlayerDBCData qd = PlayerDBCData.get(q);
+            if (!qd.isDead()) {
+                Dialogues.close(q);
+                return;
+            }
             long left = REVIVE_WAIT - (q.level().getGameTime() - qd.getDeathTime());
             if (left <= 0) {
                 revive(q, qd);
@@ -164,6 +180,10 @@ public final class NpcDialogues {
             List<Option> pay = new ArrayList<>();
             if (qd.getTrainingPoints() >= REVIVE_COST) pay.add(new Option("Pagar " + REVIVE_COST + " TP", r -> {
                 PlayerDBCData rd = PlayerDBCData.get(r);
+                if (!rd.isDead() || rd.getTrainingPoints() < REVIVE_COST) {
+                    Dialogues.close(r);
+                    return;
+                }
                 rd.addTrainingPoints(-REVIVE_COST);
                 revive(r, rd);
             }));
@@ -200,6 +220,10 @@ public final class NpcDialogues {
         List<Option> o = new ArrayList<>();
         if (!d.hasLearned(Technique.GENKIDAMA)) o.add(new Option("Enséñame tu técnica", q -> {
             PlayerDBCData qd = PlayerDBCData.get(q);
+            if (qd.hasLearned(Technique.GENKIDAMA)) {
+                Dialogues.close(q);
+                return;
+            }
             if (qd.getLevel() < Technique.GENKIDAMA.getMinLevel()) {
                 Dialogues.show(q, npc, new Node("Aún no. Tu cuerpo no aguantaría reunir tanta energía. Vuelve cuando seas nivel "
                         + Technique.GENKIDAMA.getMinLevel() + " (ahora " + qd.getLevel() + "). Entrena aquí: con esta gravedad se aprende el doble.", back(npc), bye()));
