@@ -37,13 +37,17 @@ public class C2SInputStatePacket {
             if (player == null) return;
 
             PlayerDBCData data = PlayerDBCData.get(player);
+            if (com.dragonblock.common.combat.melee.MeleeCombatManager.isBusy(player)) {
+                data.clearInput();
+                return;
+            }
             data.setChargingKi((flags & CHARGE) != 0);
             // Already transformed: the transform key does nothing until you revert. Letting go halfway
             // costs a short wait before the next attempt, so the untouchable power-up can't be chained.
             boolean wasHeld = data.isTransformHeld();
             data.setTransformHeld((flags & TRANSFORM) != 0 && data.getTransformation() == Transformation.BASE && data.transformRetry == 0);
             if (wasHeld && !data.isTransformHeld() && data.getTransformCharge() > 0f) data.transformRetry = 60;
-            data.setGuarding((flags & GUARD) != 0);
+            com.dragonblock.common.combat.melee.MeleeCombatManager.setGuard(player, (flags & GUARD) != 0);
             boolean tech = (flags & TECH) != 0;
             if (data.isTechHeld() && !tech) {
                 if ((flags & SUPPRESS) != 0) data.setTechCharge(0f);

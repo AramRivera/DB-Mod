@@ -60,7 +60,27 @@ public class ClientEvents {
                         com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.DODGE, targetId));
             }
         }
+        if (ModKeyBindings.HEAVY_KEY.consumeClick()) combat(com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.HEAVY_ATTACK);
+        if (ModKeyBindings.SMASH_KEY.consumeClick()) combat(com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.METEOR_SMASH);
+        if (ModKeyBindings.CANCEL_TRAINING_KEY.consumeClick()) combat(com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.CANCEL_TRAINING);
+        if (ModKeyBindings.CYCLE_KEY.consumeClick()) com.dragonblock.client.combat.LockOnManager.cycleTarget(mc.player, !Screen.hasShiftDown());
         if (ModKeyBindings.LOCK_ON_KEY.consumeClick()) com.dragonblock.client.combat.LockOnManager.toggle(mc.player);
+    }
+
+    private static void combat(com.dragonblock.common.network.packet.C2SCombatActionPacket.Action action) {
+        var target = com.dragonblock.client.combat.LockOnManager.getTarget();
+        ModMessages.sendToServer(new com.dragonblock.common.network.packet.C2SCombatActionPacket(action,
+            target == null ? 0 : target.getId()));
+    }
+
+    @SubscribeEvent
+    public static void onCombatClick(InputEvent.InteractionKeyMappingTriggered event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.screen != null || !event.isAttack()
+                || !com.dragonblock.client.combat.LockOnManager.isLocked()) return;
+        event.setCanceled(true);
+        event.setSwingHand(false);
+        combat(com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.LIGHT_ATTACK);
     }
 
     /** Ctrl + mouse wheel scrolls the technique bar instead of the hotbar. */

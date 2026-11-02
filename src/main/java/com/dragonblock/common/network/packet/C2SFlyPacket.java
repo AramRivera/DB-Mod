@@ -20,7 +20,7 @@ public class C2SFlyPacket {
     public void handle(CustomPayloadEvent.Context context) {
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
-            if (player == null) return;
+            if (player == null || com.dragonblock.common.combat.melee.MeleeCombatManager.isBusy(player)) return;
 
             PlayerDBCData data = PlayerDBCData.get(player);
             boolean newFlight = !data.isFlying();

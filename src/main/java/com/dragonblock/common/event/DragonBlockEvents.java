@@ -65,9 +65,27 @@ public class DragonBlockEvents {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData.get(player).saveToPlayer(player);
+            com.dragonblock.common.combat.melee.MeleeCombatManager.clear(player.getUUID());
+            com.dragonblock.common.combat.training.MasterTrainingManager.stopTraining(player);
             PlayerDBCData.removePlayer(player.getUUID());
             ModMessages.forget(player.getUUID());
         }
+    }
+
+    private static void resetCombat(ServerPlayer player) {
+        com.dragonblock.common.combat.melee.MeleeCombatManager.clear(player.getUUID());
+        com.dragonblock.common.combat.training.MasterTrainingManager.stopTraining(player);
+        PlayerDBCData.get(player).clearInput();
+    }
+
+    @SubscribeEvent
+    public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) resetCombat(player);
+    }
+
+    @SubscribeEvent
+    public static void onDeath(net.minecraftforge.event.entity.living.LivingDeathEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) resetCombat(player);
     }
 
     /** A player coming into view needs the other player's data to render their aura, hair and tail. */
@@ -82,6 +100,7 @@ public class DragonBlockEvents {
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
+            resetCombat(player);
             data.setCurrentKi(data.getMaxKi());
             data.setTransformation(Transformation.BASE);
             data.setBody(data.getMaxBody());
@@ -121,6 +140,10 @@ public class DragonBlockEvents {
     @SubscribeEvent
     public static void onAttacked(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || event.getSource().getEntity() == null) return;
+        if (com.dragonblock.common.combat.melee.MeleeCombatManager.evade(player)) {
+            event.setCanceled(true);
+            return;
+        }
         PlayerDBCData data = PlayerDBCData.get(player);
         if (data.isTransformHeld() && data.getSelectedForm() != data.getTransformation() && data.getTransformCharge() > 0f) {
             event.setCanceled(true);
@@ -134,7 +157,7 @@ public class DragonBlockEvents {
         // Attacker
         if (event.getSource().getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            if (event.getSource().getDirectEntity() == player) {
+            if (event.getSource().getDirectEntity() == player && !com.dragonblock.common.combat.melee.MeleeCombatManager.isResolvingHit(player.getUUID())) {
                 event.setAmount((event.getAmount() + data.getEffectiveStr() * 0.4f) * FormEffects.meleeMultiplier(player, data));
             }
 
@@ -177,7 +200,11 @@ public class DragonBlockEvents {
             amount *= FormEffects.incomingMultiplier(data);
 
             // Guard: 65% blocked, paid with Ki
-            if (data.isGuarding() && data.consumeKi(amount * 1.5f)) {
+            boolean managedMelee = event.getSource().getEntity() instanceof ServerPlayer source
+                    && com.dragonblock.common.combat.melee.MeleeCombatManager.isResolvingHit(source.getUUID());
+            if (!managedMelee && data.isGuarding() && data.consumeKi(amount * 1.5f)) {
+                com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player,
+                    com.dragonblock.common.combat.training.TrainingChallenge.Type.GUARD_DEFENSE);
                 amount *= 0.35f;
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                         SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.8f, 0.8f);
@@ -204,6 +231,7 @@ public class DragonBlockEvents {
     @SubscribeEvent
     public static void onMeleeLanded(LivingDamageEvent event) {
         if (!(event.getSource().getEntity() instanceof ServerPlayer attacker) || event.getSource().getDirectEntity() != attacker) return;
+        if (com.dragonblock.common.combat.melee.MeleeCombatManager.isResolvingHit(attacker.getUUID())) return;
         LivingEntity target = event.getEntity();
         PlayerDBCData data = PlayerDBCData.get(attacker);
         float mine = data.getBattlePower();
@@ -290,6 +318,8 @@ public class DragonBlockEvents {
             return;
         }
         ServerPlayer sp = (ServerPlayer) player;
+        com.dragonblock.common.combat.melee.MeleeCombatManager.tick(sp);
+        com.dragonblock.common.combat.training.MasterTrainingManager.tick(sp);
 
         if (data.isChargingKi()) {
             data.setCurrentKi(data.getCurrentKi() + 1.2f + data.getEffectiveWil() * 0.1f);

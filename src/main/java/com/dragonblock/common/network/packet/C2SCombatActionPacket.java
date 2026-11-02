@@ -18,6 +18,7 @@ public class C2SCombatActionPacket {
         DODGE,
         BOOST_CHASE,
         EVASIVE_VANISH,
+        CANCEL_TRAINING,
         METEOR_SMASH
     }
 

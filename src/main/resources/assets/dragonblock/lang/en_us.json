@@ -50,6 +50,10 @@
   "entity.dragonblock.majin": "Glutton Majin",
   "entity.dragonblock.majin_spawn": "Little Majin",
   "item.dragonblock.majin_cocoon": "Majin Cocoon",
-  "key.dragonblock.lock_on": "Lock-on Target (Toggle)",
-  "hud.dragonblock.lock_on": "LOCKED"
+  "key.dragonblock.lock_on": "Lock on",
+  "hud.dragonblock.lock_on": "LOCKED",
+  "key.dragonblock.heavy_attack": "Heavy attack",
+  "key.dragonblock.meteor_smash": "Meteor smash",
+  "key.dragonblock.cycle_target": "Cycle target",
+  "key.dragonblock.cancel_training": "Cancel training"
 }

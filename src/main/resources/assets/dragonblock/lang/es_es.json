@@ -50,6 +50,10 @@
   "entity.dragonblock.majin": "Majin Glotón",
   "entity.dragonblock.majin_spawn": "Pequeño Majin",
   "item.dragonblock.majin_cocoon": "Capullo Majin",
-  "key.dragonblock.lock_on": "Fijar Objetivo (Lock-On)",
-  "hud.dragonblock.lock_on": "FIJADO"
+  "key.dragonblock.lock_on": "Fijar objetivo",
+  "hud.dragonblock.lock_on": "FIJADO",
+  "key.dragonblock.heavy_attack": "Golpe fuerte",
+  "key.dragonblock.meteor_smash": "Remate aéreo",
+  "key.dragonblock.cycle_target": "Cambiar objetivo",
+  "key.dragonblock.cancel_training": "Cancelar entrenamiento"
 }

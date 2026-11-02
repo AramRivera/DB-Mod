@@ -50,9 +50,14 @@ public class ModKeyBindings {
     public static final KeyMapping ACCESSORIES_KEY = key("accessories", GLFW.GLFW_KEY_K);
     public static final KeyMapping LOCK_ON_KEY = key("lock_on", GLFW.GLFW_KEY_Z);
 
+    public static final KeyMapping HEAVY_KEY = key("heavy_attack", GLFW.GLFW_KEY_U);
+    public static final KeyMapping SMASH_KEY = key("meteor_smash", GLFW.GLFW_KEY_M);
+    public static final KeyMapping CYCLE_KEY = key("cycle_target", GLFW.GLFW_KEY_TAB);
+    public static final KeyMapping CANCEL_TRAINING_KEY = key("cancel_training", GLFW.GLFW_KEY_O);
+
     public static final KeyMapping[] ALL = {
             CHARGE_KI_KEY, TRANSFORM_KEY, CHARACTER_SHEET_KEY, FLY_KEY, TECHNIQUE_KEY,
-            REVERT_KEY, DASH_KEY, GUARD_KEY, TOGGLE_AURA_KEY, ACCESSORIES_KEY, LOCK_ON_KEY
+            REVERT_KEY, DASH_KEY, GUARD_KEY, TOGGLE_AURA_KEY, ACCESSORIES_KEY, LOCK_ON_KEY, HEAVY_KEY, SMASH_KEY, CYCLE_KEY, CANCEL_TRAINING_KEY
     };
 
     private static KeyMapping key(String name, int glfwKey) {

@@ -38,6 +38,11 @@ public final class KiAttacks {
         if (data.dashCooldown > 0) data.dashCooldown--;
         if (data.dashIframes > 0) data.dashIframes--;
 
+        if (com.dragonblock.common.combat.melee.MeleeCombatManager.isBusy(player)) {
+            data.setTechHeld(false);
+            data.setTechCharge(0f);
+            return;
+        }
         Technique tech = data.getSelectedTechnique();
         if (!data.isTechHeld() || tech == null || onCooldown(data, tech)) return;
 
@@ -63,6 +68,11 @@ public final class KiAttacks {
 
     /** Key released: fires the selected technique if it gathered enough charge, else it fizzles. */
     public static void release(ServerPlayer player, PlayerDBCData data) {
+        if (com.dragonblock.common.combat.melee.MeleeCombatManager.isBusy(player)) {
+            data.setTechHeld(false);
+            data.setTechCharge(0f);
+            return;
+        }
         Technique tech = data.getSelectedTechnique();
         float charge = data.getTechCharge();
         data.setTechCharge(0f);
@@ -80,6 +90,7 @@ public final class KiAttacks {
     }
 
     private static void fire(ServerPlayer player, PlayerDBCData data, Technique tech, float charge) {
+        if (com.dragonblock.common.combat.melee.MeleeCombatManager.isBusy(player)) return;
         if (tech == Technique.TELEPORT && player.isShiftKeyDown()) { // sneaking: reach for a ki in any world instead
             data.setTechHeld(false);
             InstantTransmission.open(player, 0);

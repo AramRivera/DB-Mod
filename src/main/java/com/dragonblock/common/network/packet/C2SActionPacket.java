@@ -41,7 +41,9 @@ public class C2SActionPacket {
 
             switch (action) {
                 case REVERT -> FormController.revert(player, data);
-                case DASH -> KiAttacks.dash(player, data);
+                case DASH -> {
+                    if (!com.dragonblock.common.combat.melee.MeleeCombatManager.isBusy(player)) KiAttacks.dash(player, data);
+                }
                 case SELECT_FORM -> {
                     Transformation[] forms = Transformation.values();
                     if (arg < 0 || arg >= forms.length) return;

@@ -49,6 +49,13 @@ public final class MeleeCombatManager {
         public long lastIncomingAttackTick = 0;
         public UUID lastAttackerUUID = null;
         public long groundSlamUntilTick = 0;
+        public long dodgeUntilTick, perfectUntilTick, counterUntilTick;
+        public long impactTick;
+        public int pendingTarget, pendingStep;
+        public boolean pendingHeavy;
+        public UUID comboTarget;
+        public boolean resolvingHit;
+        public int confirmedHits;
     }
 
     private static final Map<UUID, ComboState> STATES = new HashMap<>();
@@ -63,33 +70,84 @@ public final class MeleeCombatManager {
         STATES.remove(id);
     }
 
+    public static boolean isResolvingHit(UUID id) {
+        ComboState state = STATES.get(id);
+        return state != null && state.resolvingHit;
+    }
+
+    public static boolean isBusy(ServerPlayer player) {
+        ComboState state = getState(player.getUUID());
+        long now = player.level().getGameTime();
+        return now < state.stunUntilTick || now < state.nextAllowedAttackTick || state.impactTick > 0;
+    }
+
+    public static void tick(ServerPlayer player) {
+        ComboState state = getState(player.getUUID());
+        long now = player.level().getGameTime();
+        if (!player.isAlive() || player.isSpectator()) { clear(player.getUUID()); return; }
+        if (now < state.stunUntilTick) {
+            PlayerDBCData data = PlayerDBCData.get(player);
+            data.clearInput();
+            state.impactTick = 0;
+            state.isGuarding = false;
+        }
+        if (state.impactTick > 0 && now >= state.impactTick) {
+            state.impactTick = 0;
+            LivingEntity target = findTarget(player, state.pendingTarget);
+            if (target != null) applyMeleeHit(player, target, state.pendingStep, state.pendingHeavy, now);
+            else { state.step = 0; state.confirmedHits = 0; }
+        }
+    }
+
+    public static void setGuard(ServerPlayer player, boolean held) {
+        ComboState state = getState(player.getUUID());
+        boolean allowed = held && !isBusy(player) && player.level().getGameTime() >= state.nextAllowedAttackTick;
+        state.isGuarding = allowed;
+        PlayerDBCData.get(player).setGuarding(allowed);
+    }
+
+    /** Called before damage/rewards, for melee and Ki alike. */
+    public static boolean evade(ServerPlayer player) {
+        ComboState state = getState(player.getUUID());
+        long now = player.level().getGameTime();
+        if (now >= state.dodgeUntilTick) return false;
+        if (now < state.perfectUntilTick) {
+            state.perfectUntilTick = 0;
+            state.counterUntilTick = now + 16;
+            player.displayClientMessage(Component.literal("¡Esquiva perfecta! Golpea para contraatacar."), true);
+            com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player,
+                com.dragonblock.common.combat.training.TrainingChallenge.Type.PERFECT_DODGE);
+        }
+        return true;
+    }
+
     public static boolean isTargetLaunched(UUID id, long now) {
         ComboState state = STATES.get(id);
         return state != null && now < state.launchedUntilTick;
     }
 
     public static void handleCombatAction(ServerPlayer player, C2SCombatActionPacket.Action action, int targetId) {
-        if (!player.isAlive()) return;
+        if (!player.isAlive() || player.isSpectator()) return;
+        PlayerDBCData input = PlayerDBCData.get(player);
+        if (input.isTransformHeld() || input.isTechHeld()) return;
         ComboState state = getState(player.getUUID());
         long now = player.level().getGameTime();
 
         // While in hitstun / guard break, only EVASIVE_VANISH is permitted
+        if (action == C2SCombatActionPacket.Action.CANCEL_TRAINING) {
+            com.dragonblock.common.combat.training.MasterTrainingManager.stopTraining(player);
+            return;
+        }
         if (now < state.stunUntilTick && action != C2SCombatActionPacket.Action.EVASIVE_VANISH) {
             return;
         }
 
         switch (action) {
+            case CANCEL_TRAINING -> com.dragonblock.common.combat.training.MasterTrainingManager.stopTraining(player);
             case LIGHT_ATTACK -> handleLightAttack(player, state, targetId, now);
             case HEAVY_ATTACK -> handleHeavyAttack(player, state, targetId, now);
-            case GUARD_START -> {
-                state.isGuarding = true;
-                PlayerDBCData.get(player).setGuarding(true);
-                com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player, com.dragonblock.common.combat.training.TrainingChallenge.Type.GUARD_DEFENSE);
-            }
-            case GUARD_END -> {
-                state.isGuarding = false;
-                PlayerDBCData.get(player).setGuarding(false);
-            }
+            case GUARD_START -> setGuard(player, true);
+            case GUARD_END -> setGuard(player, false);
             case DODGE -> handleDodge(player, state, now);
             case BOOST_CHASE -> handleBoostChase(player, state, targetId, now);
             case METEOR_SMASH -> handleMeteorSmash(player, state, targetId, now);
@@ -99,10 +157,12 @@ public final class MeleeCombatManager {
 
     private static void handleLightAttack(ServerPlayer player, ComboState state, int targetId, long now) {
         if (now < state.nextAllowedAttackTick) return;
+        setGuard(player, false);
 
         // Reset combo if player waited too long
         if (now - state.lastAttackTick > COMBO_WINDOW_TICKS) {
             state.step = 0;
+            state.confirmedHits = 0;
         }
 
         int currentStep = state.step;
@@ -120,19 +180,17 @@ public final class MeleeCombatManager {
         // Broadcast visual animation to all tracking players
         ModMessages.broadcastAnim(player, anim, 0);
 
-        // Find and resolve target hit
-        LivingEntity target = findTarget(player, targetId);
-        if (target != null) {
-            applyMeleeHit(player, target, currentStep, false, now);
-        } else {
-            // Miss swoosh sound
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.7f, 1.4f + currentStep * 0.1f);
-        }
+        state.impactTick = now + 2;
+        state.pendingTarget = targetId;
+        state.pendingStep = currentStep;
+        state.pendingHeavy = false;
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.7f, 1.4f);
     }
 
     private static void handleHeavyAttack(ServerPlayer player, ComboState state, int targetId, long now) {
         if (now < state.nextAllowedAttackTick) return;
+        setGuard(player, false);
 
         state.step = 0;
         state.lastAttackTick = now;
@@ -140,53 +198,29 @@ public final class MeleeCombatManager {
 
         ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.KICK_HEAVY, 0);
 
-        LivingEntity target = findTarget(player, targetId);
-        if (target != null) {
-            applyMeleeHit(player, target, 2, true, now);
-        } else {
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.9f, 0.9f);
-        }
+        state.impactTick = now + 4;
+        state.pendingTarget = targetId;
+        state.pendingStep = 0;
+        state.pendingHeavy = true;
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.9f, 0.9f);
     }
 
     private static void handleDodge(ServerPlayer player, ComboState state, long now) {
         if (now < state.nextAllowedAttackTick) return;
         PlayerDBCData data = PlayerDBCData.get(player);
 
-        // Check for Perfect Dodge (dodging within 5 ticks of an incoming attack)
-        boolean perfect = (now - state.lastIncomingAttackTick) <= 5 && state.lastAttackerUUID != null;
-        float kiCost = perfect ? 4f : 12f;
-
-        if (data.consumeKi(kiCost)) {
-            state.nextAllowedAttackTick = now + (perfect ? 6 : 10);
-            Vec3 dir = player.getLookAngle().multiply(1, 0, 1).normalize();
-            player.push(dir.x * (perfect ? 1.45 : 1.1), 0.15, dir.z * (perfect ? 1.45 : 1.1));
-            player.hurtMarked = true;
-
-            if (perfect) {
-                // Perfect Dodge reward and feedback
-                player.displayClientMessage(Component.literal("¡Esquiva Perfecta!"), true);
-                data.addTrainingPoints(10);
-                com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player, com.dragonblock.common.combat.training.TrainingChallenge.Type.PERFECT_DODGE);
-                if (data.getTransformation() != Transformation.BASE) {
-                    data.addMastery(data.getTransformation(), 0.10f);
-                }
-                ServerLevel level = (ServerLevel) player.level();
-                level.sendParticles(ParticleTypes.FLASH, player.getX(), player.getY() + 1.0, player.getZ(), 1, 0, 0, 0, 0);
-                level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                        SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.2f, 1.8f);
-
-                // Punish attacker with whiff freeze
-                ComboState attackerState = STATES.get(state.lastAttackerUUID);
-                if (attackerState != null) {
-                    attackerState.nextAllowedAttackTick = now + 14;
-                }
-            } else {
-                ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.DASH, 0);
-                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                        SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8f, 1.8f);
-            }
-        }
+        if (!data.consumeKi(12f)) return;
+        state.nextAllowedAttackTick = now + 12;
+        state.dodgeUntilTick = now + 6;
+        state.perfectUntilTick = now + 2;
+        Vec3 dir = player.getDeltaMovement().multiply(1, 0, 1).normalize();
+        if (dir.lengthSqr() < 0.01) dir = player.getLookAngle().multiply(1, 0, 1).normalize().scale(-1);
+        player.push(dir.x * 1.1, player.onGround() ? 0.15 : 0, dir.z * 1.1);
+        player.hurtMarked = true;
+        data.setGuarding(false);
+        state.isGuarding = false;
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.DASH, 0);
     }
 
     /** Boost Dash Chase: Launches the player at high velocity towards an airborne/launched opponent. */
@@ -203,12 +237,14 @@ public final class MeleeCombatManager {
         }
         if (target == null || target == player) return;
 
+        if (now < state.nextAllowedAttackTick || now > state.chaseWindowUntilTick
+                || state.chasingTargetId != target.getId() || !player.hasLineOfSight(target)) return;
         PlayerDBCData data = PlayerDBCData.get(player);
-        if (!data.consumeKi(12f)) return;
 
         Vec3 toTarget = target.position().add(0, target.getBbHeight() * 0.5, 0).subtract(player.getEyePosition());
         double dist = toTarget.length();
-        if (dist > 32.0 || dist < 1.0) return;
+        if (dist > 32.0 || dist < 1.0 || !data.consumeKi(12f)) return;
+        state.nextAllowedAttackTick = now + 10;
 
         Vec3 homing = toTarget.normalize().scale(Math.min(2.4, Math.max(1.5, dist * 0.35)));
         player.setDeltaMovement(homing);
@@ -226,17 +262,26 @@ public final class MeleeCombatManager {
 
     /** Meteor Smash: Downward hammer smash on an airborne opponent, rocketing them to the ground. */
     private static void handleMeteorSmash(ServerPlayer player, ComboState state, int targetId, long now) {
+        if (now < state.nextAllowedAttackTick || now > state.chaseWindowUntilTick
+                || state.chasingTargetId != targetId) return;
         LivingEntity target = findTarget(player, targetId);
-        if (target == null) return;
+        if (target == null || target.onGround() || SafeZones.protects(player, target)
+                || SafeZones.isSafe(target.level(), target.position())) return;
+        state.nextAllowedAttackTick = now + 20;
+        state.chaseWindowUntilTick = 0;
 
         PlayerDBCData data = PlayerDBCData.get(player);
         Transformation form = data.getTransformation();
         float str = (float) data.getEffectiveStr();
         float baseDmg = (4.0f + str * 0.45f) * 1.85f;
-        float totalDamage = baseDmg * (form.getStatMultiplier() > 1f ? (1f + (form.getStatMultiplier() - 1f) * 0.6f) : 1f);
+        float totalDamage = baseDmg;
 
         // Slam target downward into the floor
-        target.hurt(player.damageSources().playerAttack(player), totalDamage);
+        state.resolvingHit = true;
+        boolean landed;
+        try { landed = target.hurt(player.damageSources().playerAttack(player), totalDamage); }
+        finally { state.resolvingHit = false; }
+        if (!landed) return;
         target.setDeltaMovement(0, -1.85, 0);
         target.hurtMarked = true;
 
@@ -251,24 +296,19 @@ public final class MeleeCombatManager {
         level.sendParticles(ParticleTypes.SONIC_BOOM, impact.x, impact.y, impact.z, 1, 0, 0, 0, 0);
         level.playSound(null, impact.x, impact.y, impact.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1.5f, 0.7f);
 
-        data.addTrainingPoints(5);
         com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player, com.dragonblock.common.combat.training.TrainingChallenge.Type.AERIAL_CHASE);
-        if (form != Transformation.BASE) {
-            data.addMastery(form, 0.10f);
-        }
         data.saveToPlayer(player);
     }
 
     /** Z-Vanish Evasive: Spends Ki to break out of an opponent's combo string and appear behind them. */
     private static void handleEvasiveVanish(ServerPlayer player, ComboState state, long now) {
+        if (now < state.nextAllowedAttackTick && now >= state.stunUntilTick) return;
         PlayerDBCData data = PlayerDBCData.get(player);
         if (!data.consumeKi(30f)) {
             player.displayClientMessage(Component.literal("Ki insuficiente para Z-Vanish evasivo (Requiere 30 Ki)."), true);
             return;
         }
 
-        state.stunUntilTick = 0; // Break stun cleanly
-        state.nextAllowedAttackTick = now + 8;
 
         // Teleport behind whoever last attacked this player or behind own look vector
         Vec3 dest;
@@ -278,7 +318,16 @@ public final class MeleeCombatManager {
             dest = player.position().subtract(player.getLookAngle().multiply(1, 0, 1).normalize().scale(2.5));
         }
 
-        player.teleportTo(dest.x, dest.y + 0.1, dest.z);
+        AABB destinationBox = player.getBoundingBox().move(dest.subtract(player.position()));
+        if (!player.level().noCollision(player, destinationBox) || !player.level().getWorldBorder().isWithinBounds(destinationBox)) {
+            data.setCurrentKi(data.getCurrentKi() + 30f);
+            return;
+        }
+        state.stunUntilTick = 0;
+        state.nextAllowedAttackTick = now + 16;
+        state.impactTick = 0;
+        state.dodgeUntilTick = now + 6;
+        player.teleportTo(dest.x, dest.y, dest.z);
         player.hurtMarked = true;
 
         ServerLevel level = (ServerLevel) player.level();
@@ -293,8 +342,8 @@ public final class MeleeCombatManager {
         double maxDist = BASE_REACH * player.getScale();
         if (targetId != 0) {
             Entity entity = player.level().getEntity(targetId);
-            if (entity instanceof LivingEntity living && living.isAlive() && !living.isSpectator() && !(living instanceof NpcEntity)) {
-                if (player.distanceTo(living) <= maxDist + living.getBbWidth() + 1.0) {
+            if (entity instanceof LivingEntity living && living != player && living.isAlive() && !living.isSpectator() && !(living instanceof NpcEntity) && player.hasLineOfSight(living)) {
+                if (player.distanceTo(living) <= maxDist + living.getBbWidth() * 0.5) {
                     Vec3 toTarget = living.getEyePosition().subtract(player.getEyePosition()).normalize();
                     if (player.getLookAngle().dot(toTarget) > 0.15) {
                         return living;
@@ -308,7 +357,7 @@ public final class MeleeCombatManager {
         AABB searchBox = player.getBoundingBox().inflate(maxDist);
 
         List<LivingEntity> list = player.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                e -> e != player && e.isAlive() && !e.isSpectator() && !(e instanceof NpcEntity));
+                e -> e != player && e.isAlive() && !e.isSpectator() && !(e instanceof NpcEntity) && player.hasLineOfSight(e));
 
         LivingEntity best = null;
         double bestDist = maxDist;
@@ -326,6 +375,11 @@ public final class MeleeCombatManager {
     }
 
     private static void applyMeleeHit(ServerPlayer attacker, LivingEntity target, int comboStep, boolean isHeavy, long now) {
+        if (target instanceof ServerPlayer defender) {
+            PlayerDBCData defenderData = PlayerDBCData.get(defender);
+            if (evade(defender) || defenderData.dashIframes > 0
+                    || (defenderData.isTransformHeld() && defenderData.getTransformCharge() > 0)) return;
+        }
         if (SafeZones.protects(attacker, target) || SafeZones.isSafe(target.level(), target.position())) {
             attacker.displayClientMessage(Component.literal("Objetivo protegido en zona segura."), true);
             return;
@@ -341,8 +395,12 @@ public final class MeleeCombatManager {
 
         // Combo scaling
         float comboScale = Math.max(0.64f, 1.0f - (comboStep * 0.12f));
-        float formMultiplier = form.getStatMultiplier();
-        float totalDamage = baseDmg * comboScale * (formMultiplier > 1f ? (1f + (formMultiplier - 1f) * 0.5f) : 1f);
+        ComboState attacking = getState(attacker.getUUID());
+        if (attacking.comboTarget == null || !attacking.comboTarget.equals(target.getUUID())) attacking.confirmedHits = 0;
+        attacking.comboTarget = target.getUUID();
+        if (comboStep == 3 && attacking.confirmedHits < 3) comboStep = 0;
+        float totalDamage = baseDmg * comboScale;
+        if (now < attacking.counterUntilTick) { totalDamage *= 1.35f; attacking.counterUntilTick = 0; }
 
         // Record incoming attack on defender for Perfect Dodge detection
         if (target instanceof ServerPlayer targetPlayer) {
@@ -350,7 +408,8 @@ public final class MeleeCombatManager {
             targetState.lastIncomingAttackTick = now;
             targetState.lastAttackerUUID = attacker.getUUID();
 
-            if (targetState.isGuarding) {
+            Vec3 incomingDirection = attacker.position().subtract(target.position()).normalize();
+            if (PlayerDBCData.get(targetPlayer).isGuarding() && target.getLookAngle().dot(incomingDirection) > 0) {
                 PlayerDBCData targetData = PlayerDBCData.get(targetPlayer);
                 boolean kiSufficient = targetData.consumeKi(totalDamage * 1.4f);
                 if (!kiSufficient || isHeavy) {
@@ -363,7 +422,9 @@ public final class MeleeCombatManager {
                     target.level().playSound(null, target.getX(), target.getY(), target.getZ(),
                             SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.5f, 1.2f);
                 } else {
-                    totalDamage *= 0.32f; // Blocked 68%
+                    totalDamage *= 0.35f;
+                    com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(targetPlayer,
+                        com.dragonblock.common.combat.training.TrainingChallenge.Type.GUARD_DEFENSE);
                     target.level().playSound(null, target.getX(), target.getY(), target.getZ(),
                             SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0f, 0.9f);
                 }
@@ -374,7 +435,19 @@ public final class MeleeCombatManager {
         }
 
         // Apply damage
-        target.hurt(attacker.damageSources().playerAttack(attacker), totalDamage);
+        int previousImmunity = target.invulnerableTime;
+        target.invulnerableTime = 0;
+        attacking.resolvingHit = true;
+        boolean landed;
+        try { landed = target.hurt(attacker.damageSources().playerAttack(attacker), totalDamage); }
+        finally { attacking.resolvingHit = false; }
+        if (!landed) {
+            target.invulnerableTime = previousImmunity;
+            attacking.step = 0;
+            attacking.confirmedHits = 0;
+            return;
+        }
+        attacking.confirmedHits = comboStep == 3 ? 0 : attacking.confirmedHits + 1;
 
         // Knockback vector
         Vec3 dir = target.position().subtract(attacker.position()).multiply(1, 0, 1).normalize();
@@ -414,16 +487,6 @@ public final class MeleeCombatManager {
             level.playSound(null, impactPos.x, impactPos.y, impactPos.z, SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 1.1f + comboStep * 0.1f);
         }
 
-        // Active Transformation Mastery Reward
-        if (form != Transformation.BASE) {
-            float currentMastery = data.getMastery(form);
-            if (currentMastery < 100.0f) {
-                data.addMastery(form, 0.05f);
-            }
-        }
-
-        // TP Reward for physical combat
-        data.addTrainingPoints(1 + (comboStep == 3 ? 2 : 0));
         data.saveToPlayer(attacker);
     }
 }

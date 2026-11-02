@@ -13,7 +13,7 @@ import java.util.*;
 
 /**
  * Server-authoritative manager for master training sessions.
- * Coordinates challenges, evaluation, rewards, anti-farming and master reactions.
+ * Evaluates real combat events and records one-time challenge rewards in existing player flags.
  */
 public final class MasterTrainingManager {
     public static final class Session {
@@ -21,6 +21,8 @@ public final class MasterTrainingManager {
         public int currentChallengeIndex = 0;
         public int progress = 0;
         public long startedTick;
+        public net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension;
+        public net.minecraft.world.phys.Vec3 origin;
 
         public Session(MasterTrainingProfile profile, long startedTick) {
             this.profile = profile;
@@ -53,6 +55,20 @@ public final class MasterTrainingManager {
                 roshiChallenges));
     }
 
+    public static void tick(ServerPlayer player) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) return;
+        if (!player.isAlive() || player.level().dimension() != session.dimension
+                || player.position().distanceToSqr(session.origin) > 128 * 128
+                || player.level().getGameTime() - session.startedTick > 20 * 60 * 10) {
+            stopTraining(player);
+            player.sendSystemMessage(Component.literal("Entrenamiento cancelado: límite de tiempo o zona de práctica."));
+        } else if (player.tickCount % 20 == 0 && session.currentChallengeIndex < session.profile.getChallenges().size()) {
+            TrainingChallenge challenge = session.profile.getChallenges().get(session.currentChallengeIndex);
+            player.displayClientMessage(Component.literal(challenge.getTitle() + " — " + challenge.getInstructions() + " [O: cancelar]"), true);
+        }
+    }
+
     private MasterTrainingManager() {}
 
     public static void registerProfile(MasterTrainingProfile profile) {
@@ -82,6 +98,8 @@ public final class MasterTrainingManager {
         Dialogues.close(player);
         long now = player.level().getGameTime();
         Session session = new Session(profile, now);
+        session.dimension = player.level().dimension();
+        session.origin = player.position();
         SESSIONS.put(player.getUUID(), session);
 
         player.sendSystemMessage(Component.literal("§6=== " + profile.getMasterName().toUpperCase() + " — ENTRENAMIENTO ==="));
@@ -104,7 +122,8 @@ public final class MasterTrainingManager {
         TrainingChallenge challenge = session.profile.getChallenges().get(session.currentChallengeIndex);
         player.sendSystemMessage(Component.literal("§aDesafío " + (session.currentChallengeIndex + 1) + ": §f" + challenge.getTitle()));
         player.sendSystemMessage(Component.literal("§7Objetivo: " + challenge.getInstructions()));
-        player.sendSystemMessage(Component.literal("§bRecompensa: +" + challenge.getRewardTp() + " TP"));
+        boolean completed = PlayerDBCData.get(player).hasFlag("training:" + session.profile.getId() + ":" + challenge.getId());
+        player.sendSystemMessage(Component.literal(completed ? "Practica: recompensa ya obtenida." : "Recompensa: +" + challenge.getRewardTp() + " TP"));
     }
 
     public static void onCombatAction(ServerPlayer player, TrainingChallenge.Type actionType) {
@@ -124,10 +143,15 @@ public final class MasterTrainingManager {
 
     private static void completeCurrentChallenge(ServerPlayer player, Session session, TrainingChallenge challenge) {
         PlayerDBCData data = PlayerDBCData.get(player);
-        data.addTrainingPoints(challenge.getRewardTp());
+        String completion = "training:" + session.profile.getId() + ":" + challenge.getId();
+        boolean firstCompletion = !data.hasFlag(completion);
+        if (firstCompletion) {
+            data.setFlag(completion);
+            data.addTrainingPoints(challenge.getRewardTp());
+        }
         data.saveToPlayer(player);
 
-        player.sendSystemMessage(Component.literal("§a✔ ¡Desafío superado: " + challenge.getTitle() + "! §6(+" + challenge.getRewardTp() + " TP)"));
+        player.sendSystemMessage(Component.literal("§a✔ ¡Desafío superado: " + challenge.getTitle() + "! §6(+" + (firstCompletion ? challenge.getRewardTp() : 0) + " TP)"));
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.2f);
 
