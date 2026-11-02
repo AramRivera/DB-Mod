@@ -6,10 +6,10 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 import net.minecraftforge.fml.DistExecutor;
 
-/** One-shot animation (technique release, dash, transformation) broadcast to everyone tracking the player. */
+/** One-shot animation (technique release, dash, transformation, melee attacks) broadcast to everyone tracking the player. */
 public class S2CAnimPacket {
     /** TECHNIQUE carries the technique ordinal in {@code arg}. */
-    public enum Anim { TECHNIQUE, DASH, TRANSFORM, SCOUTER_BREAK }
+    public enum Anim { TECHNIQUE, DASH, TRANSFORM, SCOUTER_BREAK, PUNCH_LIGHT_1, PUNCH_LIGHT_2, KICK_HEAVY, UPPERCUT }
 
     private final int entityId;
     private final Anim anim;

@@ -41,6 +41,7 @@ public class ClientEvents {
         }
         if (ModKeyBindings.ACCESSORIES_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.OPEN_ACCESSORIES, 0));
         if (ModKeyBindings.DASH_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.DASH, 0));
+        if (ModKeyBindings.LOCK_ON_KEY.consumeClick()) com.dragonblock.client.combat.LockOnManager.toggle(mc.player);
     }
 
     /** Ctrl + mouse wheel scrolls the technique bar instead of the hotbar. */

@@ -189,6 +189,46 @@ public class DBPlayerModel extends PlayerModel<AbstractClientPlayer> {
                 rightArm.zRot += 0.15f + breath * 0.03f;
                 leftArm.zRot -= 0.15f + breath * 0.03f;
             }
+            case PUNCH_LIGHT_1 -> {
+                if (firstPerson) arms(-1.42f + pitch, -0.1f, 0f, -0.7f, 0.5f, 0.1f);
+                else {
+                    arms(-1.5f + pitch, -0.1f, 0.05f, -0.7f + pitch * 0.3f, 0.45f, 0f);
+                    body.yRot = -0.25f;
+                    rightLeg.xRot = 0.2f;
+                    leftLeg.xRot = -0.2f;
+                }
+            }
+            case PUNCH_LIGHT_2 -> {
+                if (firstPerson) arms(-0.7f, -0.5f, -0.1f, -1.42f + pitch, 0.1f, 0f);
+                else {
+                    arms(-0.7f + pitch * 0.3f, -0.45f, 0f, -1.5f + pitch, 0.1f, -0.05f);
+                    body.yRot = 0.25f;
+                    rightLeg.xRot = -0.2f;
+                    leftLeg.xRot = 0.2f;
+                }
+            }
+            case KICK_HEAVY -> {
+                if (firstPerson) arms(-0.4f, 0.3f, 0.5f, -0.6f, -0.3f, -0.4f);
+                else {
+                    arms(-0.4f, 0.3f, 0.5f, -0.6f, -0.3f, -0.4f);
+                    rightLeg.xRot = -1.65f + pitch * 0.5f;
+                    rightLeg.zRot = 0.35f;
+                    leftLeg.xRot = 0.35f;
+                    body.xRot = 0.25f;
+                    body.zRot = -0.3f;
+                    body.yRot = 0.35f;
+                }
+            }
+            case UPPERCUT -> {
+                if (firstPerson) arms(-2.0f + pitch, 0.2f, 0.1f, -0.5f, 0.4f, 0f);
+                else {
+                    arms(-1.95f + pitch, 0.15f, 0.1f, -0.6f + pitch * 0.2f, 0.4f, 0f);
+                    head.xRot = -0.35f;
+                    body.xRot = -0.15f;
+                    rightLeg.xRot = -0.35f;
+                    leftLeg.xRot = 0.35f;
+                }
+            }
             case NONE -> {}
         }
     }

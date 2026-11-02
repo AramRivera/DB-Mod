@@ -96,6 +96,12 @@ public class ModMessages {
                 .consumerMainThread(C2STravelPacket::handle)
                 .add();
 
+        INSTANCE.messageBuilder(com.dragonblock.common.network.packet.C2SCombatActionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(com.dragonblock.common.network.packet.C2SCombatActionPacket::toBytes)
+                .decoder(com.dragonblock.common.network.packet.C2SCombatActionPacket::new)
+                .consumerMainThread(com.dragonblock.common.network.packet.C2SCombatActionPacket::handle)
+                .add();
+
         INSTANCE.messageBuilder(S2CSyncDBCDataPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(S2CSyncDBCDataPacket::toBytes)
                 .decoder(S2CSyncDBCDataPacket::new)

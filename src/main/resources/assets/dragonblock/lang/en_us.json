@@ -49,5 +49,7 @@
   "entity.dragonblock.raider": "Saiyan Raider",
   "entity.dragonblock.majin": "Glutton Majin",
   "entity.dragonblock.majin_spawn": "Little Majin",
-  "item.dragonblock.majin_cocoon": "Majin Cocoon"
+  "item.dragonblock.majin_cocoon": "Majin Cocoon",
+  "key.dragonblock.lock_on": "Lock-on Target (Toggle)",
+  "hud.dragonblock.lock_on": "LOCKED"
 }

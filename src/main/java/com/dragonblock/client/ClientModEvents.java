@@ -106,5 +106,9 @@ public class ClientModEvents {
                 ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "safe_zone"),
                 com.dragonblock.client.overlay.SafeZoneHud.INSTANCE
         );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "lock_on"),
+                com.dragonblock.client.combat.LockOnOverlay.INSTANCE
+        );
     }
 }

@@ -49,5 +49,7 @@
   "entity.dragonblock.raider": "Invasor Saiyajin",
   "entity.dragonblock.majin": "Majin Glotón",
   "entity.dragonblock.majin_spawn": "Pequeño Majin",
-  "item.dragonblock.majin_cocoon": "Capullo Majin"
+  "item.dragonblock.majin_cocoon": "Capullo Majin",
+  "key.dragonblock.lock_on": "Fijar Objetivo (Lock-On)",
+  "hud.dragonblock.lock_on": "FIJADO"
 }
