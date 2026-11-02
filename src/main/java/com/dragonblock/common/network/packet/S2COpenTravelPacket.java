@@ -23,7 +23,7 @@ public class S2COpenTravelPacket {
 
     public void handle(CustomPayloadEvent.Context context) {
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                net.minecraft.client.Minecraft.getInstance().setScreen(new com.dragonblock.client.gui.TravelScreen(shipId))));
+                com.dragonblock.client.ClientPacketHandlers.openTravel(shipId)));
         context.setPacketHandled(true);
     }
 }

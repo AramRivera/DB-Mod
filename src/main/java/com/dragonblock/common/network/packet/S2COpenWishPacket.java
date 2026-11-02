@@ -23,7 +23,7 @@ public class S2COpenWishPacket {
 
     public void handle(CustomPayloadEvent.Context context) {
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                net.minecraft.client.Minecraft.getInstance().setScreen(new com.dragonblock.client.gui.WishScreen(entityId))));
+                com.dragonblock.client.ClientPacketHandlers.openWish(entityId)));
         context.setPacketHandled(true);
     }
 }
