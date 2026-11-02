@@ -1,0 +1,144 @@
+import json
+
+js = []
+js.append("Project.texture_width = 128;")
+js.append("Project.texture_height = 128;")
+
+# Groups
+groups_def = [
+    {"name": "root", "origin": [0, 0, 0], "parent": None},
+    {"name": "body", "origin": [0, 19, 0], "parent": "root"},
+    {"name": "torso", "origin": [0, 22, 0], "parent": "body"},
+    {"name": "head", "origin": [0, 35, 0], "parent": "torso"},
+    {"name": "jaw", "origin": [0, 35, -2], "parent": "head"},
+    {"name": "right_arm", "origin": [4.5, 31, 0], "parent": "torso"},
+    {"name": "right_forearm", "origin": [4.5, 25, 0], "parent": "right_arm"},
+    {"name": "right_hand", "origin": [4.5, 19, 0], "parent": "right_forearm"},
+    {"name": "left_arm", "origin": [-4.5, 31, 0], "parent": "torso"},
+    {"name": "left_forearm", "origin": [-4.5, 25, 0], "parent": "left_arm"},
+    {"name": "left_hand", "origin": [-4.5, 19, 0], "parent": "left_forearm"},
+    {"name": "right_leg", "origin": [2.5, 19, 0], "parent": "body"},
+    {"name": "right_shin", "origin": [2.5, 9, 0], "parent": "right_leg"},
+    {"name": "left_leg", "origin": [-2.5, 19, 0], "parent": "body"},
+    {"name": "left_shin", "origin": [-2.5, 9, 0], "parent": "left_leg"},
+    {"name": "tail", "origin": [0, 19, 2], "parent": "body"},
+    {"name": "tail2", "origin": [0, 21.5, 6.5], "parent": "tail"},
+    {"name": "tail3", "origin": [0, 27.5, 8.5], "parent": "tail2"},
+]
+
+js.append(f"const gDefs = {json.dumps(groups_def)};")
+js.append("""
+const groupMap = {};
+for (const g of gDefs) {
+    const grp = new Group({ name: g.name, origin: g.origin }).init();
+    groupMap[g.name] = grp;
+    if (g.parent && groupMap[g.parent]) {
+        grp.addTo(groupMap[g.parent]);
+    }
+}
+""")
+
+# Locators
+js.append("""
+new Locator({ name: 'mouth_fx', from: [0, 35.5, -4.8] }).init().addTo(groupMap['head']);
+new Locator({ name: 'right_hand_fx', from: [4.5, 15.5, 0] }).init().addTo(groupMap['right_hand']);
+new Locator({ name: 'left_hand_fx', from: [-4.5, 15.5, 0] }).init().addTo(groupMap['left_hand']);
+""")
+
+# Cubes
+cubes = [
+    # Pelvis & Waist & Sash (body)
+    {"name": "pelvis", "from": [-3.5, 17.5, -2.5], "to": [3.5, 22, 2.5], "parent": "body"},
+    {"name": "belt_sash", "from": [-3.8, 19.5, -2.8], "to": [3.8, 22.5, 2.8], "parent": "body"},
+    {"name": "sash_loincloth", "from": [-1.5, 7.5, -3.1], "to": [1.5, 20.5, -2.5], "parent": "body"},
+
+    # Torso, Chest, Neck, Collar (torso)
+    {"name": "torso_chest", "from": [-3.2, 22, -2.2], "to": [3.2, 32, 2.2], "parent": "torso"},
+    {"name": "neck", "from": [-1.5, 32, -1.5], "to": [1.5, 35.5, 1.5], "parent": "torso"},
+    {"name": "neck_ring_gold", "from": [-1.8, 33, -1.8], "to": [1.8, 34.2, 1.8], "parent": "torso"},
+    {"name": "deity_collar_f", "from": [-5.5, 29, -2.8], "to": [5.5, 32.5, -1.7], "parent": "torso"},
+    {"name": "deity_collar_b", "from": [-5.5, 29, 1.7], "to": [5.5, 32.5, 2.8], "parent": "torso"},
+    {"name": "deity_collar_r", "from": [3.2, 30.5, -2.5], "to": [5.8, 32.5, 2.5], "parent": "torso", "side": "right"},
+    {"name": "deity_collar_l", "from": [-5.8, 30.5, -2.5], "to": [-3.2, 32.5, 2.5], "parent": "torso", "side": "left"},
+
+    # Head, Snout, Ears, Jaw (head)
+    {"name": "head_base", "from": [-3, 35, -3], "to": [3, 41, 3], "parent": "head"},
+    {"name": "head_snout", "from": [-1.5, 35, -4.5], "to": [1.5, 37.8, -3], "parent": "head"},
+    {"name": "head_nose", "from": [-0.6, 36.8, -4.8], "to": [0.6, 37.6, -4.3], "parent": "head"},
+    {"name": "head_cheek_r", "from": [2.6, 35.5, -2], "to": [3.6, 38.5, 1.5], "parent": "head", "side": "right"},
+    {"name": "head_cheek_l", "from": [-3.6, 35.5, -2], "to": [-2.6, 38.5, 1.5], "parent": "head", "side": "left"},
+    {"name": "jaw_main", "from": [-1.2, 34, -4.2], "to": [1.2, 35.2, -2.5], "parent": "jaw"},
+    # Ears
+    {"name": "ear_right_base", "from": [1.2, 40.5, -1.5], "to": [3.2, 46.5, 1.5], "origin": [2.2, 41, 0], "rotation": [-5, 8, -6], "parent": "head", "side": "right"},
+    {"name": "ear_right_tip", "from": [1.5, 46.5, -1], "to": [2.8, 52, 1], "origin": [2.2, 46.5, 0], "rotation": [-8, 12, -8], "parent": "head", "side": "right"},
+    {"name": "ear_left_base", "from": [-3.2, 40.5, -1.5], "to": [-1.2, 46.5, 1.5], "origin": [-2.2, 41, 0], "rotation": [-5, -8, 6], "parent": "head", "side": "left"},
+    {"name": "ear_left_tip", "from": [-2.8, 46.5, -1], "to": [-1.5, 52, 1], "origin": [-2.2, 46.5, 0], "rotation": [-8, -12, 8], "parent": "head", "side": "left"},
+    {"name": "earring_gold", "from": [-3.3, 44.5, -0.6], "to": [-2.5, 46, 1.2], "parent": "head", "side": "left"},
+
+    # Right Arm & Hand
+    {"name": "arm_upper_right", "from": [3.5, 25, -1.5], "to": [5.5, 31, 1.5], "parent": "right_arm", "side": "right"},
+    {"name": "armband_right", "from": [3.3, 27.5, -1.7], "to": [5.7, 29, 1.7], "parent": "right_arm", "side": "right"},
+    {"name": "arm_fore_right", "from": [3.5, 19, -1.5], "to": [5.5, 25, 1.5], "parent": "right_forearm", "side": "right"},
+    {"name": "wristband_right", "from": [3.3, 19, -1.7], "to": [5.7, 21.5, 1.7], "parent": "right_forearm", "side": "right"},
+    {"name": "hand_palm_right", "from": [3.8, 15.5, -1.5], "to": [5.2, 19, 1.5], "parent": "right_hand", "side": "right"},
+    {"name": "claw_thumb_right", "from": [5.2, 15.8, -1], "to": [5.8, 17.5, 0.5], "parent": "right_hand", "side": "right"},
+    {"name": "claw_f1_right", "from": [3.9, 14.5, -1.6], "to": [4.4, 15.8, -0.6], "parent": "right_hand", "side": "right"},
+    {"name": "claw_f2_right", "from": [4.6, 14.3, -1.6], "to": [5.1, 15.8, -0.6], "parent": "right_hand", "side": "right"},
+
+    # Left Arm & Hand
+    {"name": "arm_upper_left", "from": [-5.5, 25, -1.5], "to": [-3.5, 31, 1.5], "parent": "left_arm", "side": "left"},
+    {"name": "armband_left", "from": [-5.7, 27.5, -1.7], "to": [-3.3, 29, 1.7], "parent": "left_arm", "side": "left"},
+    {"name": "arm_fore_left", "from": [-5.5, 19, -1.5], "to": [-3.5, 25, 1.5], "parent": "left_forearm", "side": "left"},
+    {"name": "wristband_left", "from": [-5.7, 19, -1.7], "to": [-3.3, 21.5, 1.7], "parent": "left_forearm", "side": "left"},
+    {"name": "hand_palm_left", "from": [-5.2, 15.5, -1.5], "to": [-3.8, 19, 1.5], "parent": "left_hand", "side": "left"},
+    {"name": "claw_thumb_left", "from": [-5.8, 15.8, -1], "to": [-5.2, 17.5, 0.5], "parent": "left_hand", "side": "left"},
+    {"name": "claw_f1_left", "from": [-4.4, 14.5, -1.6], "to": [-3.9, 15.8, -0.6], "parent": "left_hand", "side": "left"},
+    {"name": "claw_f2_left", "from": [-5.1, 14.3, -1.6], "to": [-4.6, 15.8, -0.6], "parent": "left_hand", "side": "left"},
+
+    # Right Leg & Shin & Foot (baggy harem pants!)
+    {"name": "pant_thigh_right", "from": [0.8, 9, -2.6], "to": [4.6, 19, 2.6], "parent": "right_leg", "side": "right"},
+    {"name": "pant_cuff_right", "from": [1.4, 8.5, -2], "to": [4, 9.5, 2], "parent": "right_leg", "side": "right"},
+    {"name": "shin_skin_right", "from": [1.8, 4, -0.9], "to": [3.2, 8.8, 0.9], "parent": "right_shin", "side": "right"},
+    {"name": "boot_ring_right", "from": [1.4, 3.8, -1.5], "to": [3.6, 4.8, 1.5], "parent": "right_shin", "side": "right"},
+    {"name": "boot_foot_right", "from": [1.5, 0, -3.5], "to": [3.5, 4, 1.5], "parent": "right_shin", "side": "right"},
+
+    # Left Leg & Shin & Foot (baggy harem pants!)
+    {"name": "pant_thigh_left", "from": [-4.6, 9, -2.6], "to": [-0.8, 19, 2.6], "parent": "left_leg", "side": "left"},
+    {"name": "pant_cuff_left", "from": [-4, 8.5, -2], "to": [-1.4, 9.5, 2], "parent": "left_leg", "side": "left"},
+    {"name": "shin_skin_left", "from": [-3.2, 4, -0.9], "to": [-1.8, 8.8, 0.9], "parent": "left_shin", "side": "left"},
+    {"name": "boot_ring_left", "from": [-3.6, 3.8, -1.5], "to": [-1.4, 4.8, 1.5], "parent": "left_shin", "side": "left"},
+    {"name": "boot_foot_left", "from": [-3.5, 0, -3.5], "to": [-1.5, 4, 1.5], "parent": "left_shin", "side": "left"},
+
+    # Feline Tail (tail > tail2 > tail3)
+    {"name": "tail_seg_1", "from": [-1, 18, 2], "to": [1, 22, 7], "origin": [0, 19, 2], "rotation": [20, 0, 0], "parent": "tail"},
+    {"name": "tail_seg_2", "from": [-0.8, 20.5, 6], "to": [0.8, 28, 9], "origin": [0, 21.5, 6.5], "rotation": [30, 0, 0], "parent": "tail2"},
+    {"name": "tail_seg_3", "from": [-0.6, 27, 8], "to": [0.6, 36, 10.5], "origin": [0, 27.5, 8.5], "rotation": [-25, 0, 0], "parent": "tail3"},
+]
+
+js.append(f"const cDefs = {json.dumps(cubes)};")
+js.append("""
+for (const c of cDefs) {
+    const cube = new Cube({
+        name: c.name,
+        from: c.from,
+        to: c.to,
+        origin: c.origin || [(c.from[0] + c.to[0])/2, (c.from[1] + c.to[1])/2, (c.from[2] + c.to[2])/2],
+        rotation: c.rotation || [0, 0, 0]
+    }).init();
+    if (c.parent && groupMap[c.parent]) {
+        cube.addTo(groupMap[c.parent]);
+    }
+}
+Canvas.updateAll();
+return {
+    cubeCount: Cube.all.length,
+    groupCount: Group.all.length,
+    locCount: Locator.all.length
+};
+""")
+
+full_script = "\n".join(js)
+with open('tools/run_beerus_script.js', 'w', encoding='utf-8') as f:
+    f.write(full_script)
+
+print(f"Generated Beerus script with {len(cubes)} cubes!")
