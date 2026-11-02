@@ -28,7 +28,7 @@ import java.util.UUID;
 /**
  * Server-authoritative Melee Combat and Combo Manager inspired by Dragon Ball Xenoverse 2.
  * Validates range, angles, cooldowns, combo timing, damage scaling, guard breaking,
- * knockbacks and transformation mastery rewards.
+ * aerial Boost Dash chases, Meteor Smash downward slams, and Z-Vanish evasions.
  */
 public final class MeleeCombatManager {
     public static final int COMBO_WINDOW_TICKS = 18;
@@ -42,6 +42,13 @@ public final class MeleeCombatManager {
         public long nextAllowedAttackTick = 0;
         public long stunUntilTick = 0;
         public boolean isGuarding = false;
+        public long launchedUntilTick = 0;
+        public int launchedByPlayerId = 0;
+        public int chasingTargetId = 0;
+        public long chaseWindowUntilTick = 0;
+        public long lastIncomingAttackTick = 0;
+        public UUID lastAttackerUUID = null;
+        public long groundSlamUntilTick = 0;
     }
 
     private static final Map<UUID, ComboState> STATES = new HashMap<>();
@@ -56,13 +63,18 @@ public final class MeleeCombatManager {
         STATES.remove(id);
     }
 
+    public static boolean isTargetLaunched(UUID id, long now) {
+        ComboState state = STATES.get(id);
+        return state != null && now < state.launchedUntilTick;
+    }
+
     public static void handleCombatAction(ServerPlayer player, C2SCombatActionPacket.Action action, int targetId) {
         if (!player.isAlive()) return;
         ComboState state = getState(player.getUUID());
         long now = player.level().getGameTime();
 
-        if (now < state.stunUntilTick) {
-            // Player is stunned / guard broken
+        // While in hitstun / guard break, only EVASIVE_VANISH is permitted
+        if (now < state.stunUntilTick && action != C2SCombatActionPacket.Action.EVASIVE_VANISH) {
             return;
         }
 
@@ -78,6 +90,9 @@ public final class MeleeCombatManager {
                 PlayerDBCData.get(player).setGuarding(false);
             }
             case DODGE -> handleDodge(player, state, now);
+            case BOOST_CHASE -> handleBoostChase(player, state, targetId, now);
+            case METEOR_SMASH -> handleMeteorSmash(player, state, targetId, now);
+            case EVASIVE_VANISH -> handleEvasiveVanish(player, state, now);
         }
     }
 
@@ -136,15 +151,139 @@ public final class MeleeCombatManager {
     private static void handleDodge(ServerPlayer player, ComboState state, long now) {
         if (now < state.nextAllowedAttackTick) return;
         PlayerDBCData data = PlayerDBCData.get(player);
-        if (data.consumeKi(12f)) {
-            state.nextAllowedAttackTick = now + 10;
+
+        // Check for Perfect Dodge (dodging within 5 ticks of an incoming attack)
+        boolean perfect = (now - state.lastIncomingAttackTick) <= 5 && state.lastAttackerUUID != null;
+        float kiCost = perfect ? 4f : 12f;
+
+        if (data.consumeKi(kiCost)) {
+            state.nextAllowedAttackTick = now + (perfect ? 6 : 10);
             Vec3 dir = player.getLookAngle().multiply(1, 0, 1).normalize();
-            player.push(dir.x * 1.1, 0.15, dir.z * 1.1);
+            player.push(dir.x * (perfect ? 1.45 : 1.1), 0.15, dir.z * (perfect ? 1.45 : 1.1));
             player.hurtMarked = true;
-            ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.DASH, 0);
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8f, 1.8f);
+
+            if (perfect) {
+                // Perfect Dodge reward and feedback
+                player.displayClientMessage(Component.literal("¡Esquiva Perfecta!"), true);
+                data.addTrainingPoints(10);
+                if (data.getTransformation() != Transformation.BASE) {
+                    data.addMastery(data.getTransformation(), 0.10f);
+                }
+                ServerLevel level = (ServerLevel) player.level();
+                level.sendParticles(ParticleTypes.FLASH, player.getX(), player.getY() + 1.0, player.getZ(), 1, 0, 0, 0, 0);
+                level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.2f, 1.8f);
+
+                // Punish attacker with whiff freeze
+                ComboState attackerState = STATES.get(state.lastAttackerUUID);
+                if (attackerState != null) {
+                    attackerState.nextAllowedAttackTick = now + 14;
+                }
+            } else {
+                ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.DASH, 0);
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.8f, 1.8f);
+            }
         }
+    }
+
+    /** Boost Dash Chase: Launches the player at high velocity towards an airborne/launched opponent. */
+    private static void handleBoostChase(ServerPlayer player, ComboState state, int targetId, long now) {
+        LivingEntity target = null;
+        Entity entity = player.level().getEntity(targetId);
+        if (entity instanceof LivingEntity living && living.isAlive()) {
+            target = living;
+        } else if (state.chasingTargetId != 0) {
+            Entity chasing = player.level().getEntity(state.chasingTargetId);
+            if (chasing instanceof LivingEntity living && living.isAlive()) {
+                target = living;
+            }
+        }
+        if (target == null || target == player) return;
+
+        PlayerDBCData data = PlayerDBCData.get(player);
+        if (!data.consumeKi(12f)) return;
+
+        Vec3 toTarget = target.position().add(0, target.getBbHeight() * 0.5, 0).subtract(player.getEyePosition());
+        double dist = toTarget.length();
+        if (dist > 32.0 || dist < 1.0) return;
+
+        Vec3 homing = toTarget.normalize().scale(Math.min(2.4, Math.max(1.5, dist * 0.35)));
+        player.setDeltaMovement(homing);
+        player.hurtMarked = true;
+
+        state.chasingTargetId = target.getId();
+        state.chaseWindowUntilTick = now + 30;
+
+        ServerLevel level = (ServerLevel) player.level();
+        level.sendParticles(ParticleTypes.SONIC_BOOM, player.getX(), player.getY() + 1.0, player.getZ(), 1, 0, 0, 0, 0);
+        level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.2f, 1.6f);
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.DASH, 0);
+    }
+
+    /** Meteor Smash: Downward hammer smash on an airborne opponent, rocketing them to the ground. */
+    private static void handleMeteorSmash(ServerPlayer player, ComboState state, int targetId, long now) {
+        LivingEntity target = findTarget(player, targetId);
+        if (target == null) return;
+
+        PlayerDBCData data = PlayerDBCData.get(player);
+        Transformation form = data.getTransformation();
+        float str = (float) data.getEffectiveStr();
+        float baseDmg = (4.0f + str * 0.45f) * 1.85f;
+        float totalDamage = baseDmg * (form.getStatMultiplier() > 1f ? (1f + (form.getStatMultiplier() - 1f) * 0.6f) : 1f);
+
+        // Slam target downward into the floor
+        target.hurt(player.damageSources().playerAttack(player), totalDamage);
+        target.setDeltaMovement(0, -1.85, 0);
+        target.hurtMarked = true;
+
+        if (target instanceof ServerPlayer tp) {
+            getState(tp.getUUID()).groundSlamUntilTick = now + 35;
+        }
+
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.METEOR_SMASH, 0);
+
+        ServerLevel level = (ServerLevel) player.level();
+        Vec3 impact = target.position().add(0, target.getBbHeight() * 0.8, 0);
+        level.sendParticles(ParticleTypes.SONIC_BOOM, impact.x, impact.y, impact.z, 1, 0, 0, 0, 0);
+        level.playSound(null, impact.x, impact.y, impact.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1.5f, 0.7f);
+
+        data.addTrainingPoints(5);
+        if (form != Transformation.BASE) {
+            data.addMastery(form, 0.10f);
+        }
+        data.saveToPlayer(player);
+    }
+
+    /** Z-Vanish Evasive: Spends Ki to break out of an opponent's combo string and appear behind them. */
+    private static void handleEvasiveVanish(ServerPlayer player, ComboState state, long now) {
+        PlayerDBCData data = PlayerDBCData.get(player);
+        if (!data.consumeKi(30f)) {
+            player.displayClientMessage(Component.literal("Ki insuficiente para Z-Vanish evasivo (Requiere 30 Ki)."), true);
+            return;
+        }
+
+        state.stunUntilTick = 0; // Break stun cleanly
+        state.nextAllowedAttackTick = now + 8;
+
+        // Teleport behind whoever last attacked this player or behind own look vector
+        Vec3 dest;
+        if (state.lastAttackerUUID != null && player.level().getPlayerByUUID(state.lastAttackerUUID) instanceof ServerPlayer attacker) {
+            dest = attacker.position().subtract(attacker.getLookAngle().multiply(1, 0, 1).normalize().scale(2.2));
+        } else {
+            dest = player.position().subtract(player.getLookAngle().multiply(1, 0, 1).normalize().scale(2.5));
+        }
+
+        player.teleportTo(dest.x, dest.y + 0.1, dest.z);
+        player.hurtMarked = true;
+
+        ServerLevel level = (ServerLevel) player.level();
+        level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, player.getX(), player.getY() + 1.0, player.getZ(), 8, 0.2, 0.4, 0.2, 0.05);
+        level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.3f, 1.7f);
+        ModMessages.broadcastAnim(player, S2CAnimPacket.Anim.VANISH, 0);
+        player.displayClientMessage(Component.literal("¡Z-Vanish Evasivo!"), true);
     }
 
     private static LivingEntity findTarget(ServerPlayer player, int targetId) {
@@ -152,16 +291,15 @@ public final class MeleeCombatManager {
         if (targetId != 0) {
             Entity entity = player.level().getEntity(targetId);
             if (entity instanceof LivingEntity living && living.isAlive() && !living.isSpectator() && !(living instanceof NpcEntity)) {
-                if (player.distanceTo(living) <= maxDist + living.getBbWidth()) {
+                if (player.distanceTo(living) <= maxDist + living.getBbWidth() + 1.0) {
                     Vec3 toTarget = living.getEyePosition().subtract(player.getEyePosition()).normalize();
-                    if (player.getLookAngle().dot(toTarget) > 0.2) {
+                    if (player.getLookAngle().dot(toTarget) > 0.15) {
                         return living;
                     }
                 }
             }
         }
 
-        // Raycast / cone search ahead
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         AABB searchBox = player.getBoundingBox().inflate(maxDist);
@@ -176,7 +314,7 @@ public final class MeleeCombatManager {
             Vec3 toE = e.getEyePosition().subtract(eye);
             double d = toE.length();
             if (d > maxDist) continue;
-            if (look.dot(toE.normalize()) > 0.4 && d < bestDist) {
+            if (look.dot(toE.normalize()) > 0.35 && d < bestDist) {
                 bestDist = d;
                 best = e;
             }
@@ -198,22 +336,25 @@ public final class MeleeCombatManager {
         if (isHeavy) baseDmg *= 1.45f;
         if (comboStep == 3) baseDmg *= 1.65f;
 
-        // Combo scaling: each hit within a combo scales down by 12% to prevent infinite/unfair bursts
+        // Combo scaling
         float comboScale = Math.max(0.64f, 1.0f - (comboStep * 0.12f));
         float formMultiplier = form.getStatMultiplier();
         float totalDamage = baseDmg * comboScale * (formMultiplier > 1f ? (1f + (formMultiplier - 1f) * 0.5f) : 1f);
 
-        boolean targetGuarding = false;
+        // Record incoming attack on defender for Perfect Dodge detection
         if (target instanceof ServerPlayer targetPlayer) {
-            PlayerDBCData targetData = PlayerDBCData.get(targetPlayer);
             ComboState targetState = getState(targetPlayer.getUUID());
-            if (targetData.isGuarding() || targetState.isGuarding) {
-                targetGuarding = true;
+            targetState.lastIncomingAttackTick = now;
+            targetState.lastAttackerUUID = attacker.getUUID();
+
+            if (targetState.isGuarding) {
+                PlayerDBCData targetData = PlayerDBCData.get(targetPlayer);
                 boolean kiSufficient = targetData.consumeKi(totalDamage * 1.4f);
                 if (!kiSufficient || isHeavy) {
                     // GUARD BREAK!
                     targetState.stunUntilTick = now + 35;
                     targetData.setGuarding(false);
+                    targetState.isGuarding = false;
                     targetPlayer.displayClientMessage(Component.literal("¡Ruptura de Guardia! Aturdido"), true);
                     attacker.displayClientMessage(Component.literal("¡Rompiste su guardia!"), true);
                     target.level().playSound(null, target.getX(), target.getY(), target.getZ(),
@@ -223,6 +364,9 @@ public final class MeleeCombatManager {
                     target.level().playSound(null, target.getX(), target.getY(), target.getZ(),
                             SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0f, 0.9f);
                 }
+            } else {
+                // Apply hitstun to target (stuns for 12 ticks, allowing combo follow-up or evasive vanish)
+                targetState.stunUntilTick = now + 12;
             }
         }
 
@@ -240,23 +384,33 @@ public final class MeleeCombatManager {
             // Launch finisher (Uppercut) sends opponent into the sky for aerial follow-up
             target.push(dir.x * 0.35, 0.82, dir.z * 0.35);
             target.hurtMarked = true;
+
+            // Mark target as launched for the chase window!
+            if (target instanceof ServerPlayer tp) {
+                ComboState ts = getState(tp.getUUID());
+                ts.launchedUntilTick = now + 25;
+                ts.launchedByPlayerId = attacker.getId();
+            }
+            ComboState as = getState(attacker.getUUID());
+            as.chasingTargetId = target.getId();
+            as.chaseWindowUntilTick = now + 25;
+
             level.sendParticles(ParticleTypes.SONIC_BOOM, impactPos.x, impactPos.y, impactPos.z, 1, 0, 0, 0, 0);
             level.playSound(null, impactPos.x, impactPos.y, impactPos.z, SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.PLAYERS, 1.4f, 0.7f);
+            attacker.displayClientMessage(Component.literal("¡Enemigo por los aires! Presiona [R] para perseguir"), true);
         } else if (isHeavy || comboStep == 2) {
-            // Heavy kick knockback
             target.push(dir.x * 0.65, 0.18, dir.z * 0.65);
             target.hurtMarked = true;
             level.sendParticles(ParticleTypes.CRIT, impactPos.x, impactPos.y, impactPos.z, 8, 0.2, 0.2, 0.2, 0.1);
             level.playSound(null, impactPos.x, impactPos.y, impactPos.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1.2f, 0.9f);
         } else {
-            // Light stagger
             target.push(dir.x * 0.12, 0.04, dir.z * 0.12);
             target.hurtMarked = true;
             level.sendParticles(ParticleTypes.CRIT, impactPos.x, impactPos.y, impactPos.z, 4, 0.1, 0.1, 0.1, 0.05);
             level.playSound(null, impactPos.x, impactPos.y, impactPos.z, SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 1.1f + comboStep * 0.1f);
         }
 
-        // Active Transformation Mastery Reward: landed strikes grant +0.05% mastery
+        // Active Transformation Mastery Reward
         if (form != Transformation.BASE) {
             float currentMastery = data.getMastery(form);
             if (currentMastery < 100.0f) {

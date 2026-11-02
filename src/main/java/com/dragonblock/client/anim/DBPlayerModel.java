@@ -229,6 +229,16 @@ public class DBPlayerModel extends PlayerModel<AbstractClientPlayer> {
                     leftLeg.xRot = 0.35f;
                 }
             }
+            case METEOR_SMASH -> {
+                if (firstPerson) arms(-2.2f + pitch, 0.1f, 0.08f, -2.2f + pitch, -0.1f, -0.08f);
+                else {
+                    arms(-2.35f + pitch, 0.15f, 0.08f, -2.35f + pitch, -0.15f, -0.08f);
+                    body.xRot = 0.38f;
+                    head.xRot = -0.25f;
+                    rightLeg.xRot = 0.45f;
+                    leftLeg.xRot = 0.45f;
+                }
+            }
             case NONE -> {}
         }
     }

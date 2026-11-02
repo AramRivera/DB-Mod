@@ -163,6 +163,14 @@ public class DragonBlockEvents {
                 return;
             }
 
+            if (data.isTechHeld() && data.getTechCharge() > 0.05f) {
+                data.setTechHeld(false);
+                data.setTechCharge(0f);
+                player.displayClientMessage(Component.literal("¡Carga de técnica interrumpida por el impacto!"), true);
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.ITEM_BREAK, SoundSource.PLAYERS, 1.0f, 1.5f);
+            }
+
             float amount = event.getAmount();
             amount *= 1f - Math.min(0.6f, data.getEffectiveDex() * 0.012f);
             if (data.getRace() == Race.MAJIN) amount *= 0.85f;
@@ -226,6 +234,15 @@ public class DragonBlockEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         PlayerDBCData data = PlayerDBCData.get(player);
         syncBodyWithVanilla(player, data);
+
+        var combatState = com.dragonblock.common.combat.melee.MeleeCombatManager.getState(player.getUUID());
+        if (combatState.groundSlamUntilTick > player.level().getGameTime() && player.onGround()) {
+            combatState.groundSlamUntilTick = 0;
+            ServerLevel sl = (ServerLevel) player.level();
+            sl.sendParticles(ParticleTypes.EXPLOSION, player.getX(), player.getY(), player.getZ(), 1, 0, 0, 0, 0);
+            sl.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, player.getX(), player.getY(), player.getZ(), 14, 0.5, 0.1, 0.5, 0.1);
+            sl.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 1.2f, 1.2f);
+        }
 
         float before = player.getHealth();
         FormEffects.onDamaged(data, event.getAmount() / data.getMaxBody());

@@ -32,7 +32,7 @@ public final class AnimState {
         Technique technique = Technique.KI_BLAST;
     }
 
-    public enum Pose { NONE, GUARD, TECH_FIRE, TECH_CHARGE, POWER_UP, CHARGE, FLY, HOVER, PUNCH_LIGHT_1, PUNCH_LIGHT_2, KICK_HEAVY, UPPERCUT }
+    public enum Pose { NONE, GUARD, TECH_FIRE, TECH_CHARGE, POWER_UP, CHARGE, FLY, HOVER, PUNCH_LIGHT_1, PUNCH_LIGHT_2, KICK_HEAVY, UPPERCUT, METEOR_SMASH }
 
     private AnimState() {}
 

@@ -6,11 +6,20 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 
 /**
- * Server-authoritative combat packet. Carries the physical melee action intent
- * and the target entity ID (if locked on).
+ * Server-authoritative combat packet. Carries the physical melee action intent,
+ * defense actions, aerial chases, vanishes and the target entity ID (if locked on).
  */
 public class C2SCombatActionPacket {
-    public enum Action { LIGHT_ATTACK, HEAVY_ATTACK, GUARD_START, GUARD_END, DODGE }
+    public enum Action {
+        LIGHT_ATTACK,
+        HEAVY_ATTACK,
+        GUARD_START,
+        GUARD_END,
+        DODGE,
+        BOOST_CHASE,
+        EVASIVE_VANISH,
+        METEOR_SMASH
+    }
 
     private final Action action;
     private final int targetId;

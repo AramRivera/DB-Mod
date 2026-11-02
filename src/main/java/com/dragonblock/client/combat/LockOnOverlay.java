@@ -72,5 +72,11 @@ public enum LockOnOverlay implements LayeredDraw.Layer {
             int hpColor = hpRatio > 0.5f ? UiTheme.GOOD : (hpRatio > 0.25f ? UiTheme.GOLD : UiTheme.BAD);
             g.fill(barX, barY, barX + fillW, barY + barH, hpColor);
         }
+
+        if (!target.onGround() && mc.player.distanceTo(target) > 3.0) {
+            String chasePrompt = "[ ⚡ CHASE (R) ]";
+            int cx = (sw - mc.font.width(chasePrompt)) / 2;
+            g.drawString(mc.font, chasePrompt, cx, y + h + 2, UiTheme.ORANGE, false);
+        }
     }
 }

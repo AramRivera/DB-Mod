@@ -40,7 +40,26 @@ public class ClientEvents {
             mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal(label), true);
         }
         if (ModKeyBindings.ACCESSORIES_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.OPEN_ACCESSORIES, 0));
-        if (ModKeyBindings.DASH_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.DASH, 0));
+        if (ModKeyBindings.DASH_KEY.consumeClick()) {
+            int targetId = com.dragonblock.client.combat.LockOnManager.isLocked() && com.dragonblock.client.combat.LockOnManager.getTarget() != null
+                    ? com.dragonblock.client.combat.LockOnManager.getTarget().getId() : 0;
+            var target = com.dragonblock.client.combat.LockOnManager.getTarget();
+            boolean targetAirborne = target != null && !target.onGround() && mc.player.distanceTo(target) > 3.0;
+
+            if (ModKeyBindings.GUARD_KEY.isDown()) {
+                // Evasive Vanish (Z-Vanish)
+                ModMessages.sendToServer(new com.dragonblock.common.network.packet.C2SCombatActionPacket(
+                        com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.EVASIVE_VANISH, targetId));
+            } else if (targetAirborne) {
+                // Boost Dash Chase toward airborne/launched opponent
+                ModMessages.sendToServer(new com.dragonblock.common.network.packet.C2SCombatActionPacket(
+                        com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.BOOST_CHASE, targetId));
+            } else {
+                // Directional combat dodge
+                ModMessages.sendToServer(new com.dragonblock.common.network.packet.C2SCombatActionPacket(
+                        com.dragonblock.common.network.packet.C2SCombatActionPacket.Action.DODGE, targetId));
+            }
+        }
         if (ModKeyBindings.LOCK_ON_KEY.consumeClick()) com.dragonblock.client.combat.LockOnManager.toggle(mc.player);
     }
 
