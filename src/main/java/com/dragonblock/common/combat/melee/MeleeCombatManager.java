@@ -84,6 +84,7 @@ public final class MeleeCombatManager {
             case GUARD_START -> {
                 state.isGuarding = true;
                 PlayerDBCData.get(player).setGuarding(true);
+                com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player, com.dragonblock.common.combat.training.TrainingChallenge.Type.GUARD_DEFENSE);
             }
             case GUARD_END -> {
                 state.isGuarding = false;
@@ -166,6 +167,7 @@ public final class MeleeCombatManager {
                 // Perfect Dodge reward and feedback
                 player.displayClientMessage(Component.literal("¡Esquiva Perfecta!"), true);
                 data.addTrainingPoints(10);
+                com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player, com.dragonblock.common.combat.training.TrainingChallenge.Type.PERFECT_DODGE);
                 if (data.getTransformation() != Transformation.BASE) {
                     data.addMastery(data.getTransformation(), 0.10f);
                 }
@@ -250,6 +252,7 @@ public final class MeleeCombatManager {
         level.playSound(null, impact.x, impact.y, impact.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1.5f, 0.7f);
 
         data.addTrainingPoints(5);
+        com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(player, com.dragonblock.common.combat.training.TrainingChallenge.Type.AERIAL_CHASE);
         if (form != Transformation.BASE) {
             data.addMastery(form, 0.10f);
         }
@@ -398,6 +401,7 @@ public final class MeleeCombatManager {
             level.sendParticles(ParticleTypes.SONIC_BOOM, impactPos.x, impactPos.y, impactPos.z, 1, 0, 0, 0, 0);
             level.playSound(null, impactPos.x, impactPos.y, impactPos.z, SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.PLAYERS, 1.4f, 0.7f);
             attacker.displayClientMessage(Component.literal("¡Enemigo por los aires! Presiona [R] para perseguir"), true);
+            com.dragonblock.common.combat.training.MasterTrainingManager.onCombatAction(attacker, com.dragonblock.common.combat.training.TrainingChallenge.Type.COMBO_CHAIN);
         } else if (isHeavy || comboStep == 2) {
             target.push(dir.x * 0.65, 0.18, dir.z * 0.65);
             target.hurtMarked = true;

@@ -116,6 +116,7 @@ public final class NpcDialogues {
                 Dialogues.show(q, npc, new Node("Je, todos dicen eso. Demuéstralo: derrota a " + TRIAL_KILLS + " criaturas hostiles y vuelve a verme. Sin trampas, ¿eh?", bye()));
             }));
         }
+        o.add(new Option("🥋 Entrenamiento de Combate Físico", q -> com.dragonblock.common.combat.training.MasterTrainingManager.startTraining(q, "roshi")));
         o.add(new Option("Háblame de las Esferas del Dragón", q -> Dialogues.show(q, npc, new Node(
                 "Siete esferas naranjas con estrellas dentro, repartidas por el mundo. Si las reúnes en círculo, aparece el Dragón Eterno y te concede un deseo. "
                         + "Luego vuelan lejos y hay que buscarlas otra vez. La Doctora Vela tiene un radar que las encuentra... dile que vas de mi parte.", back(npc), bye()))));
