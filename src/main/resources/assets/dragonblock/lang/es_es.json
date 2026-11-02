@@ -35,5 +35,8 @@
   "block.dragonblock.dragon_ball_7": "Esfera del Dragón (7 Estrellas)",
   "entity.dragonblock.shenlong": "Dragón Eterno",
   "container.dragonblock.accessories": "Accesorios",
-  "item.dragonblock.ball_capsule": "Cápsula de esferas"
+  "item.dragonblock.ball_capsule": "Cápsula de esferas",
+  "item.dragonblock.ship_capsule": "Cápsula de nave espacial",
+  "entity.dragonblock.spaceship": "Nave espacial",
+  "entity.dragonblock.npc": "NPC"
 }

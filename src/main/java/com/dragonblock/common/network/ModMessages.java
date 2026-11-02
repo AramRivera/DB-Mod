@@ -13,7 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
 public class ModMessages {
-    private static final int PROTOCOL_VERSION = 6;
+    private static final int PROTOCOL_VERSION = 7;
     public static final SimpleChannel INSTANCE = ChannelBuilder.named(
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "messages"))
             .networkProtocolVersion(PROTOCOL_VERSION)
@@ -82,6 +82,18 @@ public class ModMessages {
                 .encoder(C2SDialogueChoicePacket::toBytes)
                 .decoder(C2SDialogueChoicePacket::new)
                 .consumerMainThread(C2SDialogueChoicePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(S2COpenTravelPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(S2COpenTravelPacket::toBytes)
+                .decoder(S2COpenTravelPacket::new)
+                .consumerMainThread(S2COpenTravelPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(C2STravelPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2STravelPacket::toBytes)
+                .decoder(C2STravelPacket::new)
+                .consumerMainThread(C2STravelPacket::handle)
                 .add();
 
         INSTANCE.messageBuilder(S2CSyncDBCDataPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)

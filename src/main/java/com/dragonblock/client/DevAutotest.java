@@ -62,8 +62,15 @@ public final class DevAutotest {
         Minecraft mc = Minecraft.getInstance();
         if (!ON || event.phase != TickEvent.Phase.END || mc.player == null || mc.getSingleplayerServer() == null) return;
         ticks++;
+        // Keep running when the window loses focus, or the integrated server pauses mid-test
+        mc.options.pauseOnLostFocus = false;
+        if (mc.screen instanceof net.minecraft.client.gui.screens.PauseScreen) mc.setScreen(null);
         if (MODE.equals("world")) {
             worldTour(mc);
+            return;
+        }
+        if (MODE.equals("ship")) {
+            shipTrip(mc);
             return;
         }
         if (mc.screen instanceof DBCCharacterScreen || mc.screen instanceof com.dragonblock.client.gui.WishScreen) mc.setScreen(null);
@@ -210,6 +217,64 @@ public final class DevAutotest {
             }
             case 530 -> shot(mc, "world_back");
             case 540 -> mc.stop();
+            default -> {}
+        }
+    }
+
+    /** Park a ship, board it, fly to Namek and land: liftoff, hyperspace, arrival and the planet itself. */
+    private static void shipTrip(Minecraft mc) {
+        var server = mc.getSingleplayerServer();
+        var uuid = mc.player.getUUID();
+        if (mc.screen instanceof DBCCharacterScreen || mc.screen instanceof com.dragonblock.client.gui.TravelScreen) mc.setScreen(null);
+        java.util.function.Consumer<java.util.function.Consumer<ServerPlayer>> onServer = task -> server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
+            if (sp != null) task.accept(sp);
+        });
+        switch (ticks) {
+            case 60 -> onServer.accept(sp -> {
+                PlayerDBCData data = PlayerDBCData.get(sp);
+                data.setRace(Race.SAIYAN);
+                data.setRaceChosen(true);
+                data.setTailOut(false);
+                data.saveToPlayer(sp);
+                ModMessages.syncToTracking(sp);
+                sp.serverLevel().setDayTime(1000);
+                var ship = new com.dragonblock.common.entity.SpaceshipEntity(com.dragonblock.common.registry.ModEntities.SPACESHIP.get(), sp.serverLevel());
+                var at = sp.position().add(sp.getLookAngle().multiply(1, 0, 1).normalize().scale(7));
+                int y = sp.serverLevel().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(at.x), (int) Math.floor(at.z));
+                ship.moveTo(at.x, y, at.z, sp.getYRot(), 0f);
+                sp.serverLevel().addFreshEntity(ship);
+                sp.setXRot(10f);
+            });
+            case 80 -> shot(mc, "ship_parked");
+            case 90 -> {
+                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+                onServer.accept(sp -> {
+                    for (var ship : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.SpaceshipEntity.class, sp.getBoundingBox().inflate(20))) {
+                        sp.startRiding(ship, true);
+                        var here = com.dragonblock.common.world.Planet.of(sp.level().dimension());
+                        ship.launch(sp, here == com.dragonblock.common.world.Planet.NAMEK ? com.dragonblock.common.world.Planet.EARTH
+                                : com.dragonblock.common.world.Planet.NAMEK);
+                    }
+                });
+            }
+            case 125 -> shot(mc, "ship_liftoff");
+            case 137 -> shot(mc, "ship_warp");
+            case 160 -> shot(mc, "ship_arrive");
+            case 235 -> shot(mc, "ship_landed");
+            case 240 -> {
+                onServer.accept(ServerPlayer::stopRiding);
+                mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+            }
+            case 260 -> {
+                mc.player.setXRot(-5f);
+                shot(mc, "namek_view");
+            }
+            case 300 -> {
+                DragonBlockMod.LOGGER.info("[autotest] after landing: health={} dim={}", mc.player.getHealth(), mc.level.dimension().location());
+                shot(mc, "ship_after");
+            }
+            case 310 -> mc.stop();
             default -> {}
         }
     }

@@ -38,4 +38,13 @@ public class ModEntities {
                             .clientTrackingRange(10)
                             .build("npc")
             );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.SpaceshipEntity>> SPACESHIP =
+            ENTITY_TYPES.register("spaceship", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.SpaceshipEntity>of(com.dragonblock.common.entity.SpaceshipEntity::new, MobCategory.MISC)
+                            .sized(3.6f, 4.0f)
+                            .clientTrackingRange(10)
+                            .updateInterval(1)
+                            .build("spaceship")
+            );
 }

@@ -146,6 +146,23 @@ public final class NpcDialogues {
             reward(q);
             Dialogues.show(q, npc, new Node("¡Claro! Toma mi radar y una cápsula para guardar las esferas cuando las encuentres. Ni se te ocurra romperlos, ¿eh? Son prototipos.", back(npc), bye()));
         }));
+        if (!d.hasFlag("vela_ship")) o.add(new Option("¿Puedo viajar a otros planetas?", q -> {
+            PlayerDBCData qd = PlayerDBCData.get(q);
+            if (qd.hasFlag("vela_ship")) {
+                Dialogues.close(q);
+                return;
+            }
+            if (!qd.hasFlag("kaido_disciple")) {
+                Dialogues.show(q, npc, new Node("¿Al espacio, tú? Primero que el Maestro Kaido te acepte como discípulo... no pienso mandar a un novato a otro planeta.", back(npc), bye()));
+                return;
+            }
+            qd.setFlag("vela_ship");
+            save(q, qd);
+            give(q, new ItemStack(ModItems.SHIP_CAPSULE.get()));
+            reward(q);
+            Dialogues.show(q, npc, new Node("¡Así que Kaido te aceptó! Toma: una nave en cápsula. Úsala en el suelo, súbete y elige planeta en la consola. "
+                    + "Tiene combustible infinito... creo.", back(npc), bye()));
+        }));
         o.add(new Option("¿Qué inventas aquí?", q -> Dialogues.show(q, npc, new Node(
                 "Un poco de todo: cápsulas que guardan cosas enormes, radares, rastreadores de ki... Ahora estudio el viaje entre planetas. "
                         + "Dicen que hay un planeta verde de aguas esmeralda, y otro tan pequeño que puedes darle la vuelta en un minuto.", back(npc), bye()))));
