@@ -73,6 +73,10 @@ public final class DevAutotest {
             shipTrip(mc);
             return;
         }
+        if (MODE.equals("enemies")) {
+            enemyLineup(mc);
+            return;
+        }
         if (mc.screen instanceof DBCCharacterScreen || mc.screen instanceof com.dragonblock.client.gui.WishScreen) mc.setScreen(null);
         if (ticks == 380) {
             // Ask for riches to watch the farewell
@@ -275,6 +279,84 @@ public final class DevAutotest {
                 shot(mc, "ship_after");
             }
             case 310 -> mc.stop();
+            default -> {}
+        }
+    }
+
+    /** The three fighters attacking a (protected) player, then the emperor's transformation at half health. */
+    private static void enemyLineup(Minecraft mc) {
+        if (ticks > 62) {
+            mc.player.setYRot(0f);
+            mc.player.setXRot(8f);
+        }
+        var server = mc.getSingleplayerServer();
+        var uuid = mc.player.getUUID();
+        if (mc.screen instanceof DBCCharacterScreen) mc.setScreen(null);
+        java.util.function.Consumer<java.util.function.Consumer<ServerPlayer>> onServer = task -> server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
+            if (sp != null) task.accept(sp);
+        });
+        java.util.function.BiConsumer<ServerPlayer, java.util.List<net.minecraft.world.entity.EntityType<com.dragonblock.common.entity.DBEnemy>>> spawn = (sp, types) -> {
+            var look = sp.getLookAngle().multiply(1, 0, 1).normalize();
+            var side = new net.minecraft.world.phys.Vec3(-look.z, 0, look.x);
+            for (int i = 0; i < types.size(); i++) {
+                var at = sp.position().add(look.scale(9)).add(side.scale((i - (types.size() - 1) / 2.0) * 3));
+                var e = types.get(i).create(sp.serverLevel());
+                e.moveTo(at.x, 201, at.z, sp.getYRot() + 180f, 0f);
+                e.setTarget(sp);
+                sp.serverLevel().addFreshEntity(e);
+            }
+        };
+        switch (ticks) {
+            case 60 -> onServer.accept(sp -> {
+                if (sp.level().dimension() != net.minecraft.world.level.Level.OVERWORLD) {
+                    sp.teleportTo(sp.server.overworld(), sp.server.overworld().getSharedSpawnPos().getX(), 120, sp.server.overworld().getSharedSpawnPos().getZ(), 0f, 0f);
+                }
+                PlayerDBCData data = PlayerDBCData.get(sp);
+                data.revive();
+                data.setRace(Race.SAIYAN);
+                data.setRaceChosen(true);
+                data.setTailOut(false);
+                data.saveToPlayer(sp);
+                ModMessages.syncToTracking(sp);
+                sp.setGameMode(GameType.SURVIVAL);
+                sp.getAbilities().invulnerable = true;
+                sp.getAbilities().mayfly = true;
+                sp.getAbilities().flying = true;
+                sp.onUpdateAbilities();
+                sp.serverLevel().setDayTime(1000);
+                // A stone arena up in the sky: nothing in the way of the camera
+                int cx = sp.getBlockX(), cz = sp.getBlockZ();
+                for (int x = -20; x <= 20; x++)
+                    for (int z = -20; z <= 20; z++)
+                        sp.serverLevel().setBlockAndUpdate(new BlockPos(cx + x, 200, cz + z), net.minecraft.world.level.block.Blocks.SMOOTH_STONE.defaultBlockState());
+                sp.getAbilities().flying = false;
+                sp.onUpdateAbilities();
+                sp.teleportTo(sp.serverLevel(), cx + 0.5, 201, cz - 6 + 0.5, 0f, 8f);
+                sp.server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true); // peaceful deletes monsters
+            });
+            case 80 -> onServer.accept(sp -> spawn.accept(sp, java.util.List.of(com.dragonblock.common.registry.ModEntities.BANDIT.get(),
+                    com.dragonblock.common.registry.ModEntities.SOLDIER.get(), com.dragonblock.common.registry.ModEntities.ANDROID.get())));
+            case 100 -> shot(mc, "enemies_lineup");
+            case 150 -> shot(mc, "enemies_attack");
+            case 170 -> onServer.accept(sp -> {
+                for (var e : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, sp.getBoundingBox().inflate(40))) e.discard();
+                spawn.accept(sp, java.util.List.of(com.dragonblock.common.registry.ModEntities.EMPEROR.get()));
+            });
+            case 200 -> shot(mc, "emperor");
+            case 210 -> onServer.accept(sp -> {
+                for (var e : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, sp.getBoundingBox().inflate(40))) {
+                    e.hurt(sp.damageSources().playerAttack(sp), e.getMaxHealth() * 0.55f);
+                }
+            });
+            case 240 -> shot(mc, "emperor_transforming");
+            case 300 -> {
+                for (var e : mc.level.getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, mc.player.getBoundingBox().inflate(40))) {
+                    DragonBlockMod.LOGGER.info("[autotest] {} phase={} hp={}", e.getKind(), e.getPhase(), e.getHealth());
+                }
+                shot(mc, "emperor_gold");
+            }
+            case 320 -> mc.stop();
             default -> {}
         }
     }

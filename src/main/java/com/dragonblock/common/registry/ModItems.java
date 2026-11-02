@@ -29,6 +29,8 @@ public class ModItems {
     public static final RegistryObject<Item> COMBAT_BELT = ITEMS.register("combat_belt",
             () -> new AccessoryItem(AccessoryItem.Slot.BELT, "Puesto: el ki se regenera un 25% más rápido."));
 
+    public static final RegistryObject<Item> IMPERIAL_BEACON = ITEMS.register("imperial_beacon", ImperialBeaconItem::new);
+
     public static final RegistryObject<Item> SHIP_CAPSULE = ITEMS.register("ship_capsule", ShipCapsuleItem::new);
 
     public static final RegistryObject<Item> BALL_CAPSULE = ITEMS.register("ball_capsule", BallCapsuleItem::new);

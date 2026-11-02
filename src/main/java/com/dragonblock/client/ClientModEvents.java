@@ -31,6 +31,9 @@ public class ClientModEvents {
         event.registerEntityRenderer(ModEntities.SHENLONG.get(), com.dragonblock.client.renderer.ShenlongRenderer::new);
         event.registerEntityRenderer(ModEntities.NPC.get(), com.dragonblock.client.renderer.NpcRenderer::new);
         event.registerEntityRenderer(ModEntities.SPACESHIP.get(), com.dragonblock.client.renderer.ShipRenderer::new);
+        for (var enemy : java.util.List.of(ModEntities.BANDIT, ModEntities.SOLDIER, ModEntities.ANDROID, ModEntities.EMPEROR)) {
+            event.registerEntityRenderer(enemy.get(), com.dragonblock.client.renderer.EnemyRenderer::new);
+        }
     }
 
     @SubscribeEvent

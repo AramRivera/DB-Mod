@@ -38,5 +38,10 @@
   "item.dragonblock.ball_capsule": "Cápsula de esferas",
   "item.dragonblock.ship_capsule": "Cápsula de nave espacial",
   "entity.dragonblock.spaceship": "Nave espacial",
-  "entity.dragonblock.npc": "NPC"
+  "entity.dragonblock.npc": "NPC",
+  "item.dragonblock.imperial_beacon": "Baliza imperial",
+  "entity.dragonblock.bandit": "Bandido del Desierto",
+  "entity.dragonblock.soldier": "Soldado del Imperio",
+  "entity.dragonblock.android": "Androide de Combate",
+  "entity.dragonblock.emperor": "Kryos, Emperador Galáctico"
 }

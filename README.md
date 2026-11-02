@@ -221,6 +221,38 @@ El dragón es un diseño propio de dragón oriental (modelo en `assets/dragonblo
 
 ---
 
+### 9. Personajes y misiones
+Personajes propios sobre los arquetipos del género; clic derecho para hablar (diálogo con texto escrito letra a letra, opciones con el ratón o con los números 1-9).
+
+| Personaje | Dónde | Qué ofrece |
+| :--- | :--- | :--- |
+| **Maestro Kaido** | Su casa de tejado rojo, junto al spawn de la Tierra | La **prueba del maestro**: derrota 10 criaturas hostiles. Recompensa: 400 TP, el Kamehameha y ser su discípulo (luego te enseña el Kiai y te da consejos). |
+| **Doctora Vela** | Su laboratorio-cúpula junto a la casa del maestro | El **radar del dragón** y una cápsula de esferas; cuando el maestro te acepta, la **nave espacial**. |
+| **El Gran Juez** | Otro Mundo | Te devuelve a la vida (gratis tras 2 minutos o pagando 300 TP) o te manda a entrenar con el Maestro Celeste. |
+| **Maestro Celeste** | Planeta Celeste | Te enseña la Genkidama (nivel 90) y te explica su gravedad. |
+
+### 10. El Otro Mundo
+Al morir, tu alma llega al **Otro Mundo**: cielo dorado sobre un mar de nubes, la plaza del Gran Juez con su escritorio gigante, alfombra roja y un **camino dorado** serpenteante. Llevas una **aureola** que todos ven. El juez te devuelve a donde caíste.
+
+### 11. Planetas y la nave espacial
+- **Tierra**: el mundo normal.
+- **Namek**: mundo propio generado con cuevas y minerales, cielo verde pálido, hierba turquesa, agua esmeralda y árboles de copa redonda; tres soles, **nunca anochece**. Patrullan soldados del Imperio.
+- **Planeta Celeste**: diminuto, flotando en un cielo violeta. **Gravedad x2,5** (caes rápido, saltas poco, te mueves lento) y **el entrenamiento vale el doble de TP**.
+
+La **nave en cápsula** se usa en el suelo; clic derecho para subir y elegir destino en la consola de navegación. Despega con fuego y humo, cruza el **hiperespacio** (estrellas que pasan a toda velocidad) y aterriza suave en el destino, contigo dentro. Agachado y golpéala vacía para guardarla. Las almas no pueden pilotar naves.
+
+### 12. Enemigos
+| Enemigo | Dónde | Cómo pelea |
+| :--- | :--- | :--- |
+| **Bandido del Desierto** | Tierra | Cuerpo a cuerpo con su sable. |
+| **Soldado del Imperio** | Namek | Armadura blanca con hombreras y scouter; levanta el brazo para apuntar y dispara ráfagas de Ki. Puede soltar un scouter o la **Baliza imperial**. |
+| **Androide de Combate** | Namek (raro) | Muy resistente, golpea fuerte y dispara láser rojo por el visor. |
+| **Kryos, Emperador Galáctico** | Se invoca con la Baliza imperial | Jefe con barra de vida. Ráfagas y esferas explosivas. **A mitad de vida se transforma**: intocable unos segundos entre rayos y aura, y vuelve dorado, más grande, más rápido y más fuerte. |
+
+Derrotar enemigos da TP a quien da el golpe final; cuentan para la prueba del Maestro Kaido.
+
+---
+
 ## 🕹️ Controles por Defecto
 
 | Tecla | Acción |

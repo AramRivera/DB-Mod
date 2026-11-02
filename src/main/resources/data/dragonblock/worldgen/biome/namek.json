@@ -10,7 +10,22 @@
   "grass_color": 5228960,
   "foliage_color": 7332008
  },
- "spawners": {},
+ "spawners": {
+  "monster": [
+   {
+    "type": "dragonblock:soldier",
+    "weight": 60,
+    "minCount": 1,
+    "maxCount": 3
+   },
+   {
+    "type": "dragonblock:android",
+    "weight": 5,
+    "minCount": 1,
+    "maxCount": 1
+   }
+  ]
+ },
  "spawn_costs": {},
  "carvers": {
   "air": [

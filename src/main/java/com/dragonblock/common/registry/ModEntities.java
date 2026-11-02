@@ -47,4 +47,40 @@ public class ModEntities {
                             .updateInterval(1)
                             .build("spaceship")
             );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> BANDIT =
+            ENTITY_TYPES.register("bandit", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.BANDIT), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("bandit")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> SOLDIER =
+            ENTITY_TYPES.register("soldier", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.SOLDIER), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("soldier")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> ANDROID =
+            ENTITY_TYPES.register("android", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.ANDROID), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("android")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> EMPEROR =
+            ENTITY_TYPES.register("emperor", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.EMPEROR), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("emperor")
+            );
 }

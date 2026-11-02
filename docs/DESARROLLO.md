@@ -127,6 +127,21 @@ JAVA_TOOL_OPTIONS="-Ddragonblock.autotest=dragon" ./gradlew.bat runClient
 ```
 Ojo: los `ModelPart` ya dividen sus medidas entre 16; la escala del `PoseStack` va en bloques por unidad de modelo (por eso `ShenlongRenderer.SCALE` es 5 y no 5/16).
 
+## NPCs, diálogos y misiones
+`common/entity/NpcEntity` + `common/npc` (`NpcKind`, `Dialogues` con sesiones validadas en el servidor, `NpcDialogues` con el contenido). Cada opción es una acción de servidor que **vuelve a comprobar el estado** al ejecutarse. Skins y detalles 3D: `tools/gen_npc_assets.py` → `textures/entity/npc` y `npc_extras.json` (render en `NpcRenderer`).
+
+## Mundos
+`common/world/Worlds` construye en código los lugares la primera vez que se visita cada mundo (bandera en SavedData): casa del maestro y laboratorio junto al spawn, plaza del juez, planeta celeste. Dimensiones en `data/dragonblock/dimension*` y `worldgen/biome`; Namek usa el ruido del overworld con bioma fijo y árbol propio (`worldgen/configured_feature/namek_tree.json`). `WorldEvents`: muerte → Otro Mundo, gravedad del planeta celeste, conteo de la prueba. `Planet` lista los destinos de la nave y dónde aterrizar.
+
+## Nave
+`SpaceshipEntity` (IDLE → LIFTOFF → salto entre dimensiones creando una nave nueva en el destino → LANDING), `TravelScreen`, `WarpOverlay`, modelo `ship.json` (`tools/gen_ship_json.py`, vista previa con `tools/preview_box_model.py`). Los pasajeros nunca acumulan caída.
+
+## Enemigos
+`DBEnemy` + `EnemyKind` (stats), `EnemyRenderer` (modelo humanoide, skins y equipo de `tools/gen_enemy_assets.py`). Los objetivos de IA se añaden al final del constructor: `Mob` llama a `registerGoals()` antes de que la subclase guarde su tipo. Apariciones: `data/dragonblock/forge/biome_modifier/bandits.json` y `spawners` del bioma de Namek.
+
+## Pruebas automáticas
+`DevAutotest` con `-Ddragonblock.autotest=<modo>`: `dragon` (ritual), `world` (maestro, muerte, juez, planeta celeste, volver a la vida), `ship` (viaje a otro planeta), `enemies` (arena en el cielo, combate y transformación del emperador). Guarda capturas en `run/screenshots/autotest_*.png`.
+
 ## Probar
 ```
 ./gradlew.bat runClient
