@@ -52,7 +52,10 @@ public final class Dialogues {
     }
 
     private static void send(ServerPlayer player, int id, String speaker, Node node) {
-        SESSIONS.put(player.getUUID(), new Session(id, node.options(), player.server.getTickCount()));
+        // The shield's clock starts with the conversation, not with each new line of it
+        Session old = SESSIONS.get(player.getUUID());
+        int openedAt = old != null && old.npcId() == id ? old.openedAt() : player.server.getTickCount();
+        SESSIONS.put(player.getUUID(), new Session(id, node.options(), openedAt));
         ModMessages.sendToPlayer(new S2CDialoguePacket(id, speaker, node.text(), node.options().stream().map(Option::label).toList()), player);
     }
 
@@ -78,12 +81,17 @@ public final class Dialogues {
         session.options().get(index).action().accept(player);
     }
 
-    /** Whoever is reading a character's line, standing next to them, can't be hurt (nor hurt anyone). */
+    /**
+     * Whoever is reading a character's line, standing next to them, can't be hurt (nor hurt anyone). Only
+     * at characters with a calm ring around them (never the tournament host), and not as an escape: anyone
+     * hit in the last five seconds has to fight it out first.
+     */
     public static boolean isTalking(ServerPlayer player) {
         Session session = SESSIONS.get(player.getUUID());
         return session != null && player.server.getTickCount() - session.openedAt() < SHIELD_TICKS
-                && !com.dragonblock.common.world.Tournament.isFighting(player) // no hiding behind the host mid-match
-                && player.level().getEntity(session.npcId()) instanceof NpcEntity npc && npc.distanceTo(player) <= 10 * npc.getKind().getScale();
+                && player.tickCount - player.getLastHurtByMobTimestamp() > 100
+                && player.level().getEntity(session.npcId()) instanceof NpcEntity npc && npc.getKind().getSafeRadius() > 0
+                && npc.distanceTo(player) <= 10 * npc.getKind().getScale();
     }
 
     public static void forget(UUID player) {

@@ -103,6 +103,23 @@ public final class SafeZones {
         if (event.getEntity() instanceof Player player && !mayBuild(player, event.getPos())) event.setCanceled(true);
     }
 
+    /** Buckets: no pouring lava or water into a zone, nor scooping it out. */
+    @SubscribeEvent
+    public static void onBucket(net.minecraftforge.event.entity.player.FillBucketEvent event) {
+        if (event.getTarget() instanceof net.minecraft.world.phys.BlockHitResult hit
+                && (!mayBuild(event.getEntity(), hit.getBlockPos()) || !mayBuild(event.getEntity(), hit.getBlockPos().relative(hit.getDirection())))) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** Lava meeting water (cobblestone, obsidian) or fire from lava doesn't change a zone's blocks. */
+    @SubscribeEvent
+    public static void onFluidPlace(BlockEvent.FluidPlaceBlockEvent event) {
+        if (event.getLevel() instanceof Level level && !level.isClientSide && isGuarded(level, Vec3.atCenterOf(event.getPos()))) {
+            event.setNewState(event.getOriginalState());
+        }
+    }
+
     private static boolean mayBuild(Player player, BlockPos pos) {
         return player.level().isClientSide || player.hasPermissions(2) || !isGuarded(player.level(), Vec3.atCenterOf(pos));
     }

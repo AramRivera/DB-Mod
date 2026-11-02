@@ -270,7 +270,8 @@ Derrotar enemigos da TP a quien da el golpe final; cuentan para la prueba del Ma
 
 ### 13. Zonas seguras (sin PvP)
 - **Todo el Otro Mundo** y un **círculo alrededor de cada personaje** (casa del maestro, laboratorio, Palacio del Cielo, aldea de Namek, Planeta Celeste) son zonas seguras: los jugadores no se pueden dañar, las técnicas no les afectan y las explosiones no rompen nada. Solo los operadores pueden construir o romper allí.
-- **Mientras hablas con un personaje** nadie puede hacerte daño (ni tú a nadie).
+- **Mientras hablas con un personaje** (dentro de su zona) nadie puede hacerte daño, ni tú a nadie, durante un minuto como máximo. No sirve para escapar: si te han golpeado en los últimos 5 segundos, no protege.
+- Tampoco se puede verter ni recoger lava o agua con cubos dentro de una zona.
 - Arriba aparece **ZONA SEGURA · SIN PVP** mientras estás dentro.
 - El ring del Torneo **no** es zona segura (es para pelear), pero sus edificios están protegidos.
 
@@ -278,7 +279,7 @@ Derrotar enemigos da TP a quien da el golpe final; cuentan para la prueba del Ma
 Usa **Teletransportación agachado**: dos dedos en la frente y sientes los ki conocidos, en **cualquier mundo**: los jugadores conectados (ordenados por poder) y los personajes con los que has hablado. Elige uno y apareces a su lado. Cuesta **un cuarto de tu ki** y tiene **30 s** de espera. Los vivos solo llegan a los vivos y las almas solo dentro del Otro Mundo. Sin agacharte sigue siendo el salto corto de siempre.
 
 ### 15. El Gran Torneo de Artes Marciales
-Inscríbete con el Presentador. Cuando hay dos guerreros en la lista, se anuncia el combate a todo el servidor y ambos aparecen en el ring con una cuenta atrás. Pierdes si **tocas el suelo fuera del ring**, si te dejan **K.O.** (no mueres: el golpe final termina el combate) o si huyes o te desconectas. Nadie de fuera puede intervenir. A los 3 minutos deciden los jueces por la salud restante. El ganador se lleva **300 TP**.
+Inscríbete con el Presentador. Cuando hay dos guerreros en la lista, se anuncia el combate a todo el servidor y ambos aparecen en el ring con una cuenta atrás. Pierdes si **tocas el suelo fuera del ring**, si te dejan **K.O.** (no mueres: el golpe final termina el combate) o si huyes o te desconectas. Nadie de fuera puede intervenir. A los 3 minutos deciden los jueces por la salud restante. El ganador se lleva **300 TP** si el combate duró al menos 20 segundos y no le ganó al mismo rival en los últimos 15 minutos (así no se puede farmear el premio).
 
 ---
 

@@ -43,6 +43,9 @@ public final class Tournament {
     }
 
     private static final Deque<UUID> QUEUE = new ArrayDeque<>();
+    /** When each winner last got paid for beating each opponent: the same pair can't farm the prize. */
+    private static final java.util.Map<String, Integer> PAID = new java.util.HashMap<>();
+    private static final int PAIR_COOLDOWN = 20 * 60 * 15, MIN_FIGHT = 20 * 20;
     private static Match match;
 
     private Tournament() {}
@@ -117,17 +120,26 @@ public final class Tournament {
     }
 
     private static void end(MinecraftServer server, UUID winner, UUID loser, String how) {
+        int fought = server.getTickCount() - match.startedAt() - COUNTDOWN;
         match = null;
         announce(server, name(server, winner) + " vence a " + name(server, loser) + " " + how + ".");
         ServerPlayer w = server.getPlayerList().getPlayer(winner), l = server.getPlayerList().getPlayer(loser);
         if (w != null) {
-            PlayerDBCData d = PlayerDBCData.get(w);
-            d.addTrainingPoints(REWARD);
-            d.saveToPlayer(w);
-            ModMessages.syncToPlayer(w);
             title(w, "¡VICTORIA!", ChatFormatting.GOLD);
             w.level().playSound(null, w.getX(), w.getY(), w.getZ(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1f, 1f);
-            w.displayClientMessage(Component.literal("+" + REWARD + " TP").withStyle(ChatFormatting.GOLD), true);
+            // Paid only for a real fight: not a walkover or a twenty-second setup, and once per pair every 15 minutes
+            String pair = winner + ">" + loser;
+            Integer last = PAID.get(pair);
+            if (fought >= MIN_FIGHT && (last == null || server.getTickCount() - last > PAIR_COOLDOWN)) {
+                PAID.put(pair, server.getTickCount());
+                PlayerDBCData d = PlayerDBCData.get(w);
+                d.addTrainingPoints(REWARD);
+                d.saveToPlayer(w);
+                ModMessages.syncToPlayer(w);
+                w.displayClientMessage(Component.literal("+" + REWARD + " TP").withStyle(ChatFormatting.GOLD), true);
+            } else {
+                w.displayClientMessage(Component.literal("Sin premio: el combate fue demasiado corto o ya le ganaste hace poco.").withStyle(ChatFormatting.GRAY), true);
+            }
         }
         if (l != null) title(l, "DERROTA", ChatFormatting.RED);
         BlockPos ring = ring(server);
