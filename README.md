@@ -230,14 +230,26 @@ Personajes propios sobre los arquetipos del género; clic derecho para hablar (d
 | **Doctora Vela** | Su laboratorio-cúpula junto a la casa del maestro | El **radar del dragón** y una cápsula de esferas; cuando el maestro te acepta, la **nave espacial**. |
 | **El Gran Juez** | Otro Mundo | Te devuelve a la vida (gratis tras 2 minutos o pagando 300 TP) o te manda a entrenar con el Maestro Celeste. |
 | **Maestro Celeste** | Planeta Celeste | Te enseña la Genkidama (nivel 90) y te explica su gravedad. |
+| **El Presentador** | Junto al ring del Torneo | Te inscribe en el **Gran Torneo de Artes Marciales** y explica las reglas. |
+| **El Guardián** | Palacio del Cielo, en lo alto de la torre | Te enseña la **Teletransportación** (nivel 50). |
+| **Gran Anciano Tsuru** | Aldea de Namek | **Despierta tu poder oculto** una vez (+1500 TP); a los namekianos les enseña el Makankosappo. |
+| **Aldeanos namekianos** | Aldea de Namek | Consejos y rumores del planeta. |
+
+Hablar con alguien te enseña a **reconocer su ki**: luego puedes viajar hasta él con la teletransportación.
 
 ### 10. El Otro Mundo
-Al morir, tu alma llega al **Otro Mundo**: cielo dorado sobre un mar de nubes, la plaza del Gran Juez con su escritorio gigante, alfombra roja y un **camino dorado** serpenteante. Llevas una **aureola** que todos ven. El juez te devuelve a donde caíste.
+Al morir, tu alma llega al **Otro Mundo**: cielo dorado sobre un mar de nubes, la gran plaza del Gran Juez con su **salón de columnas** y escritorio gigante, alfombra roja y un **camino dorado** serpenteante de 700 bloques con faroles. Al final del camino, una puerta dorada lleva al **Planeta Celeste**. Llevas una **aureola** que todos ven. El juez te devuelve a donde caíste. Si te caes de las nubes, vuelves a la plaza.
+
+### Lugares de la Tierra
+- **Casa del Maestro Kaido y laboratorio de la Doctora Vela**, junto al spawn.
+- **Gran Torneo de Artes Marciales**: ring de piedra elevado, gradas, salón y puerta con dos torres de pagoda.
+- **Torre y Palacio del Cielo**: una torre blanca con escalera hasta las nubes (y=228) que sostiene una plataforma con templo de cúpula, palmeras y el Guardián.
 
 ### 11. Planetas y la nave espacial
 - **Tierra**: el mundo normal.
 - **Namek**: mundo propio generado con cuevas y minerales, cielo verde pálido, hierba turquesa, agua esmeralda y árboles de copa redonda; tres soles, **nunca anochece**. Patrullan soldados del Imperio.
-- **Planeta Celeste**: diminuto, flotando en un cielo violeta. **Gravedad x2,5** (caes rápido, saltas poco, te mueves lento) y **el entrenamiento vale el doble de TP**.
+- **Namek** tiene ahora una **aldea** de cúpulas blancas alrededor de una plaza (donde aterrizan las naves) y la gran cúpula del Gran Anciano.
+- **Planeta Celeste**: pequeño (ahora el doble de ancho, con árboles y un sendero), flotando en un cielo violeta. **Gravedad x2,5** (caes rápido, saltas poco, te mueves lento) y **el entrenamiento vale el doble de TP**.
 
 La **nave en cápsula** se usa en el suelo; clic derecho para subir y elegir destino en la consola de navegación. Despega con fuego y humo, cruza el **hiperespacio** (estrellas que pasan a toda velocidad) y aterriza suave en el destino, contigo dentro. Agachado y golpéala vacía para guardarla. Las almas no pueden pilotar naves.
 
@@ -249,7 +261,24 @@ La **nave en cápsula** se usa en el suelo; clic derecho para subir y elegir des
 | **Androide de Combate** | Namek (raro) | Muy resistente, golpea fuerte y dispara láser rojo por el visor. |
 | **Kryos, Emperador Galáctico** | Se invoca con la Baliza imperial | Jefe con barra de vida. Ráfagas y esferas explosivas. **A mitad de vida se transforma**: intocable unos segundos entre rayos y aura, y vuelve dorado, más grande, más rápido y más fuerte. |
 
+| **Germinado** | Tierra y Namek, en grupos | Pequeño y rápido, salta sobre ti. Malherido, **se agarra y explota** (se hincha y parpadea en blanco: ¡aléjate!). |
+| **Dinosaurio** | Selvas, sabanas, llanuras y badlands | Muerde fuerte y ruge. Suelta carne. |
+| **Invasor Saiyajin** | Tierra (raro) | Armadura, scouter y ráfagas de Ki. **Bajo la luna llena** se convierte en un **Ozaru gigante** con barra de jefe, golpes enormes y ráfagas por la boca. |
+| **Majin Glotón** | Se invoca con el **Capullo Majin** (receta: ojo de ender, lana rosa, bloque de slime) | Jefe rosa: **se regenera** si lo dejas tranquilo, salta y aplasta el suelo, y al 66% y 33% de vida **suelta Pequeños Majin**. |
+
 Derrotar enemigos da TP a quien da el golpe final; cuentan para la prueba del Maestro Kaido.
+
+### 13. Zonas seguras (sin PvP)
+- **Todo el Otro Mundo** y un **círculo alrededor de cada personaje** (casa del maestro, laboratorio, Palacio del Cielo, aldea de Namek, Planeta Celeste) son zonas seguras: los jugadores no se pueden dañar, las técnicas no les afectan y las explosiones no rompen nada. Solo los operadores pueden construir o romper allí.
+- **Mientras hablas con un personaje** nadie puede hacerte daño (ni tú a nadie).
+- Arriba aparece **ZONA SEGURA · SIN PVP** mientras estás dentro.
+- El ring del Torneo **no** es zona segura (es para pelear), pero sus edificios están protegidos.
+
+### 14. Teletransportación instantánea entre mundos
+Usa **Teletransportación agachado**: dos dedos en la frente y sientes los ki conocidos, en **cualquier mundo**: los jugadores conectados (ordenados por poder) y los personajes con los que has hablado. Elige uno y apareces a su lado. Cuesta **un cuarto de tu ki** y tiene **30 s** de espera. Los vivos solo llegan a los vivos y las almas solo dentro del Otro Mundo. Sin agacharte sigue siendo el salto corto de siempre.
+
+### 15. El Gran Torneo de Artes Marciales
+Inscríbete con el Presentador. Cuando hay dos guerreros en la lista, se anuncia el combate a todo el servidor y ambos aparecen en el ring con una cuenta atrás. Pierdes si **tocas el suelo fuera del ring**, si te dejan **K.O.** (no mueres: el golpe final termina el combate) o si huyes o te desconectas. Nadie de fuera puede intervenir. A los 3 minutos deciden los jueces por la salud restante. El ganador se lleva **300 TP**.
 
 ---
 

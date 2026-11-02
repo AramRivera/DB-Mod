@@ -1,12 +1,14 @@
 package com.dragonblock.common.npc;
 
 import com.dragonblock.common.data.PlayerDBCData;
+import com.dragonblock.common.data.Race;
 import com.dragonblock.common.data.Technique;
 import com.dragonblock.common.entity.NpcEntity;
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.npc.Dialogues.Node;
 import com.dragonblock.common.npc.Dialogues.Option;
 import com.dragonblock.common.registry.ModItems;
+import com.dragonblock.common.world.Tournament;
 import com.dragonblock.common.world.Worlds;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -39,6 +41,10 @@ public final class NpcDialogues {
             case SCIENTIST -> scientist(p, npc);
             case JUDGE -> judge(p, npc);
             case CELESTIAL -> celestial(p, npc);
+            case ANNOUNCER -> announcer(p, npc);
+            case GUARDIAN -> guardian(p, npc);
+            case ELDER -> elder(p, npc);
+            case VILLAGER -> villager(p, npc);
         };
     }
 
@@ -262,5 +268,110 @@ public final class NpcDialogues {
         }));
         o.add(bye());
         return new Node("¡Jo, jo! Un visitante. Soy el Maestro Celeste, guardián de este rinconcito del cielo. ¿Vienes a entrenar?", o);
+    }
+
+    // ------------------------------------------------------------------ the tournament host
+
+    private static Node announcer(ServerPlayer p, NpcEntity npc) {
+        List<Option> o = new ArrayList<>();
+        if (Tournament.isFighting(p)) {
+            return new Node("¿Qué haces aquí abajo? ¡Te esperan en el ring!", bye());
+        }
+        if (Tournament.isQueued(p)) {
+            o.add(new Option("Retirar mi inscripción", q -> {
+                Tournament.leave(q);
+                Dialogues.show(q, npc, new Node("Hecho. Vuelve cuando quieras: el torneo nunca cierra.", bye()));
+            }));
+        } else {
+            o.add(new Option("Inscribirme en el torneo", q -> {
+                PlayerDBCData qd = PlayerDBCData.get(q);
+                if (qd.isDead() || !qd.isRaceChosen()) {
+                    Dialogues.close(q);
+                    return;
+                }
+                Tournament.join(q);
+                Dialogues.show(q, npc, new Node(Tournament.isFighting(q) ? "¡Tenemos rival! ¡Sube al ring!"
+                        : "¡Inscrito! Hay " + Tournament.queueSize() + " guerreros en la lista. Te llamaré cuando te toque: no te vayas lejos.", bye()));
+            }));
+        }
+        o.add(new Option("¿Cuáles son las reglas?", q -> Dialogues.show(q, npc, new Node(
+                "Combates uno contra uno en el ring. Pierdes si tocas el suelo de fuera, si te dejan K.O. o si huyes. Nadie de fuera puede intervenir. "
+                        + "Si en tres minutos no hay vencedor, deciden los jueces por la salud que os quede. El ganador se lleva " + Tournament.REWARD + " TP.", back(npc), bye()))));
+        o.add(bye());
+        String now = Tournament.current(p.server);
+        return new Node("¡Damas y caballeros, bienvenidos al Gran Torneo de Artes Marciales! " + (now == null ? "Ahora mismo el ring está libre." : "En el ring: " + now + ".")
+                + " ¿Quieres demostrar lo que vales?", o);
+    }
+
+    // ------------------------------------------------------------------ the guardian of the sky palace
+
+    private static Node guardian(ServerPlayer p, NpcEntity npc) {
+        PlayerDBCData d = PlayerDBCData.get(p);
+        List<Option> o = new ArrayList<>();
+        if (!d.hasLearned(Technique.TELEPORT)) o.add(new Option("Enséñame a moverme como el rayo", q -> {
+            PlayerDBCData qd = PlayerDBCData.get(q);
+            if (qd.hasLearned(Technique.TELEPORT)) {
+                Dialogues.close(q);
+                return;
+            }
+            if (qd.getLevel() < Technique.TELEPORT.getMinLevel()) {
+                Dialogues.show(q, npc, new Node("Tu ki aún es demasiado ruidoso para esconderse en el de otro. Vuelve al nivel "
+                        + Technique.TELEPORT.getMinLevel() + " (ahora " + qd.getLevel() + ").", back(npc), bye()));
+                return;
+            }
+            qd.learn(Technique.TELEPORT);
+            save(q, qd);
+            reward(q);
+            Dialogues.show(q, npc, new Node("Dos dedos en la frente. Busca un ki que conozcas... y deja que tu cuerpo lo siga. "
+                    + "Usada sin más te lleva a donde miras; agachado, a cualquier ki conocido de cualquier mundo. Cuesta mucho ki: úsala con cabeza.", back(npc), bye()));
+        }));
+        o.add(new Option("¿Qué es este lugar?", q -> Dialogues.show(q, npc, new Node(
+                "El Palacio del Cielo. Desde aquí se vigila toda la Tierra. Pocos suben la torre a pie... los que lo hacen ya son guerreros de verdad.", back(npc), bye()))));
+        o.add(new Option("¿Cómo encuentro a alguien lejos?", q -> Dialogues.show(q, npc, new Node(
+                "Cada ser vivo tiene un ki único. Habla con la gente y aprenderás a reconocer el suyo; a los guerreros los sentirás siempre. "
+                        + "Con la teletransportación puedes llegar a ellos aunque estén en otro planeta.", back(npc), bye()))));
+        o.add(bye());
+        return new Node("Has llegado hasta lo más alto. Bienvenido al palacio. Soy el Guardián de la Tierra.", o);
+    }
+
+    // ------------------------------------------------------------------ the elder of the green planet
+
+    private static final String ELDER_AWAKENED = "elder_awakened";
+    private static final int AWAKEN_TP = 1500;
+
+    private static Node elder(ServerPlayer p, NpcEntity npc) {
+        PlayerDBCData d = PlayerDBCData.get(p);
+        List<Option> o = new ArrayList<>();
+        if (!d.hasFlag(ELDER_AWAKENED)) o.add(new Option("Despierta mi poder oculto", q -> {
+            PlayerDBCData qd = PlayerDBCData.get(q);
+            if (qd.hasFlag(ELDER_AWAKENED)) {
+                Dialogues.close(q);
+                return;
+            }
+            qd.setFlag(ELDER_AWAKENED);
+            qd.addTrainingPoints(AWAKEN_TP);
+            boolean namek = qd.getRace() == Race.NAMEKIAN && !qd.hasLearned(Technique.MAKANKOSAPPO);
+            if (namek) qd.learn(Technique.MAKANKOSAPPO);
+            save(q, qd);
+            reward(q);
+            Dialogues.show(q, npc, new Node("Acércate... pon tu cabeza bajo mi mano. Sí... había mucho poder dormido aquí dentro. (+" + AWAKEN_TP + " TP)"
+                    + (namek ? " Y como hijo de este planeta, te entrego la técnica del rayo perforador." : ""), bye()));
+        }));
+        o.add(new Option("Háblame de tu pueblo", q -> Dialogues.show(q, npc, new Node(
+                "Somos un pueblo tranquilo: bebemos agua y cuidamos los árboles de copa redonda. Hace mucho tuvimos que huir de nuestro mundo... "
+                        + "y aquí, bajo tres soles, volvimos a empezar. Los soldados del Imperio patrullan ahora nuestras tierras. Ten cuidado.", back(npc), bye()))));
+        o.add(bye());
+        return new Node(d.hasFlag(ELDER_AWAKENED) ? "Tu poder ya está despierto, joven. Ahora solo el entrenamiento lo hará crecer."
+                : "Bienvenido, viajero. Siento un gran poder dormido en ti... Soy Tsuru, el más anciano de este planeta.", o);
+    }
+
+    private static Node villager(ServerPlayer p, NpcEntity npc) {
+        String[] lines = {
+                "¡Un visitante! El Gran Anciano vive en la casa grande del centro. Seguro que quiere conocerte.",
+                "Aquí nunca anochece: con tres soles, ¿quién necesita dormir?",
+                "Los soldados del Imperio llevan aparatos en el ojo que miden el ki. Si escondes el tuyo... no te ven venir.",
+                "Nuestros árboles dan sombra a todo el pueblo. Por favor, no los derribes con tus rayos.",
+                "Dicen que este planeta también guarda esferas mágicas... pero esa es otra historia."};
+        return new Node(lines[Math.floorMod(npc.getUUID().hashCode(), lines.length)], bye());
     }
 }

@@ -42,10 +42,16 @@ public class DragonBlockMod {
             e.put(ModEntities.SOLDIER.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.SOLDIER).build());
             e.put(ModEntities.ANDROID.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.ANDROID).build());
             e.put(ModEntities.EMPEROR.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.EMPEROR).build());
+            e.put(ModEntities.SPROUT.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.SPROUT).build());
+            e.put(ModEntities.DINO.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.DINO).build());
+            e.put(ModEntities.RAIDER.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.RAIDER).build());
+            e.put(ModEntities.MAJIN.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.MAJIN).build());
+            e.put(ModEntities.MAJIN_SPAWN.get(), com.dragonblock.common.entity.DBEnemy.attributes(com.dragonblock.common.entity.EnemyKind.MAJIN_SPAWN).build());
         });
         // Fighters spawn in any light: Namek never gets dark
         modEventBus.addListener((net.minecraftforge.event.entity.SpawnPlacementRegisterEvent e) -> {
-            for (var type : java.util.List.of(ModEntities.BANDIT.get(), ModEntities.SOLDIER.get(), ModEntities.ANDROID.get())) {
+            for (var type : java.util.List.of(ModEntities.BANDIT.get(), ModEntities.SOLDIER.get(), ModEntities.ANDROID.get(),
+                    ModEntities.SPROUT.get(), ModEntities.DINO.get(), ModEntities.RAIDER.get())) {
                 e.register(type, net.minecraft.world.entity.SpawnPlacementTypes.ON_GROUND, net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                         net.minecraft.world.entity.monster.Monster::checkAnyLightMonsterSpawnRules, net.minecraftforge.event.entity.SpawnPlacementRegisterEvent.Operation.REPLACE);
             }

@@ -1,0 +1,19 @@
+{
+ "type": "forge:add_spawns",
+ "biomes": [
+  "minecraft:jungle",
+  "minecraft:sparse_jungle",
+  "minecraft:bamboo_jungle",
+  "minecraft:savanna",
+  "minecraft:savanna_plateau",
+  "minecraft:plains",
+  "minecraft:badlands",
+  "minecraft:wooded_badlands"
+ ],
+ "spawners": {
+  "type": "dragonblock:dino",
+  "weight": 6,
+  "minCount": 1,
+  "maxCount": 2
+ }
+}

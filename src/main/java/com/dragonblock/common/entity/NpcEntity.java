@@ -68,6 +68,12 @@ public class NpcEntity extends PathfinderMob {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        if (!level().isClientSide && tickCount % 200 == 1) com.dragonblock.common.world.Landmarks.note(this);
+    }
+
+    @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
         if (player instanceof ServerPlayer sp && hand == InteractionHand.MAIN_HAND) Dialogues.open(sp, this);
         return InteractionResult.sidedSuccess(level().isClientSide);

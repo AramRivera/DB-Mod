@@ -77,6 +77,15 @@ public final class DevAutotest {
             enemyLineup(mc);
             return;
         }
+        if (MODE.equals("bestiary")) {
+            if (ticks <= 60) enemyLineup(mc); // same sky arena
+            else bestiary(mc);
+            return;
+        }
+        if (MODE.equals("expand")) {
+            expansionTour(mc);
+            return;
+        }
         if (mc.screen instanceof DBCCharacterScreen || mc.screen instanceof com.dragonblock.client.gui.WishScreen) mc.setScreen(null);
         if (ticks == 380) {
             // Ask for riches to watch the farewell
@@ -364,5 +373,205 @@ public final class DevAutotest {
     private static void shot(Minecraft mc, String name) {
         Screenshot.grab(mc.gameDirectory, "autotest_" + name + ".png", mc.getMainRenderTarget(), c -> {});
         DragonBlockMod.LOGGER.info("[autotest] shot {} in {}", name, mc.level.dimension().location());
+    }
+
+    /**
+     * The big-server expansion: a view from above of every new place, the safe-zone badge, a hit on a
+     * player who is talking (must be shielded) and an instant transmission to the Namekian elder.
+     */
+    private static void expansionTour(Minecraft mc) {
+        var server = mc.getSingleplayerServer();
+        var uuid = mc.player.getUUID();
+        if (mc.screen instanceof DBCCharacterScreen) mc.setScreen(null);
+        java.util.function.Consumer<java.util.function.Consumer<ServerPlayer>> onServer = task -> server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
+            if (sp != null) task.accept(sp);
+        });
+        // Hover over a spot: dz blocks south of it and dy above, looking north and down
+        java.util.function.BiConsumer<ServerPlayer, Object[]> overlook = (sp, a) -> {
+            @SuppressWarnings("unchecked")
+            var dim = (net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>) a[0];
+            var level = server.getLevel(dim);
+            com.dragonblock.common.world.Worlds.ensureBuilt(level);
+            BlockPos at = (BlockPos) a[1];
+            sp.getAbilities().flying = true;
+            sp.onUpdateAbilities();
+            sp.teleportTo(level, at.getX() + 0.5, at.getY() + (int) a[2], at.getZ() + (int) a[3] + 0.5, 180f, (float) a[4]);
+        };
+        java.util.function.Function<com.dragonblock.common.npc.NpcKind, BlockPos> spot = kind -> {
+            var s = com.dragonblock.common.world.Landmarks.find(server, kind);
+            DragonBlockMod.LOGGER.info("[autotest] landmark {} = {}", kind, s);
+            return s == null ? BlockPos.ZERO : s.pos();
+        };
+        var namek = com.dragonblock.common.world.Planet.NAMEK.getDimension();
+        var earth = net.minecraft.world.level.Level.OVERWORLD;
+        switch (ticks) {
+            case 60 -> onServer.accept(sp -> {
+                PlayerDBCData data = PlayerDBCData.get(sp);
+                data.setRace(Race.SAIYAN);
+                data.setRaceChosen(true);
+                data.setTailOut(false);
+                data.learn(com.dragonblock.common.data.Technique.TELEPORT);
+                for (var k : new com.dragonblock.common.npc.NpcKind[]{com.dragonblock.common.npc.NpcKind.MASTER, com.dragonblock.common.npc.NpcKind.CELESTIAL,
+                        com.dragonblock.common.npc.NpcKind.ANNOUNCER, com.dragonblock.common.npc.NpcKind.GUARDIAN, com.dragonblock.common.npc.NpcKind.ELDER}) {
+                    data.setFlag(com.dragonblock.common.combat.InstantTransmission.KNOWN + k.id());
+                }
+                data.saveToPlayer(sp);
+                ModMessages.syncToTracking(sp);
+                sp.serverLevel().setDayTime(1000);
+                DragonBlockMod.LOGGER.info("[autotest] ring at {}", com.dragonblock.common.world.Tournament.ring(server));
+                overlook.accept(sp, new Object[]{earth, spot.apply(com.dragonblock.common.npc.NpcKind.ANNOUNCER).north(16), 34, 48, 30f});
+            });
+            case 140 -> shot(mc, "expand_arena");
+            case 150 -> onServer.accept(sp -> overlook.accept(sp, new Object[]{earth, spot.apply(com.dragonblock.common.npc.NpcKind.GUARDIAN), 22, 50, 22f}));
+            case 210 -> shot(mc, "expand_palace");
+            case 220 -> onServer.accept(sp -> overlook.accept(sp, new Object[]{earth, spot.apply(com.dragonblock.common.npc.NpcKind.GUARDIAN).atY(150), 0, 70, -25f}));
+            case 270 -> shot(mc, "expand_tower");
+            case 280 -> onServer.accept(sp -> overlook.accept(sp, new Object[]{com.dragonblock.common.world.Worlds.OTHERWORLD, new BlockPos(0, 61, -8), 16, 34, 12f}));
+            case 345 -> shot(mc, "expand_otherworld");
+            case 350 -> onServer.accept(sp -> overlook.accept(sp, new Object[]{com.dragonblock.common.world.Worlds.OTHERWORLD,
+                    new BlockPos(com.dragonblock.common.world.Worlds.roadX(com.dragonblock.common.world.Worlds.ROAD_END), 61, com.dragonblock.common.world.Worlds.ROAD_END), 12, -30, 20f}));
+            case 400 -> {
+                mc.player.setYRot(0f);
+                shot(mc, "expand_roadend");
+            }
+            case 410 -> onServer.accept(sp -> overlook.accept(sp, new Object[]{com.dragonblock.common.world.Worlds.CELESTIAL, new BlockPos(0, 80, 0), 22, 50, 25f}));
+            case 470 -> shot(mc, "expand_celestial");
+            case 480 -> onServer.accept(sp -> {
+                var level = server.getLevel(namek);
+                BlockPos plaza = com.dragonblock.common.world.Planet.NAMEK.landing(level);
+                overlook.accept(sp, new Object[]{namek, plaza.north(10), 30, 50, 28f});
+            });
+            case 550 -> shot(mc, "expand_namek");
+            case 560 -> onServer.accept(sp -> {
+                overlook.accept(sp, new Object[]{earth, spot.apply(com.dragonblock.common.npc.NpcKind.MASTER), 1, 4, 0f});
+                sp.getAbilities().flying = false;
+                sp.onUpdateAbilities();
+                sp.setGameMode(GameType.SURVIVAL);
+            });
+            case 600 -> onServer.accept(sp -> {
+                for (var npc : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.NpcEntity.class, sp.getBoundingBox().inflate(20))) {
+                    if (npc.getKind() == com.dragonblock.common.npc.NpcKind.MASTER) com.dragonblock.common.npc.Dialogues.open(sp, npc);
+                }
+                var zombie = net.minecraft.world.entity.EntityType.ZOMBIE.create(sp.serverLevel());
+                float before = sp.getHealth();
+                boolean hit = sp.hurt(sp.damageSources().mobAttack(zombie), 6f);
+                DragonBlockMod.LOGGER.info("[autotest] talking={} safe={} zombie hit landed={} health {} -> {}",
+                        com.dragonblock.common.npc.Dialogues.isTalking(sp), com.dragonblock.common.world.SafeZones.isSafe(sp.level(), sp.position()), hit, before, sp.getHealth());
+            });
+            case 640 -> shot(mc, "expand_talk");
+            case 650 -> mc.setScreen(null);
+            case 680 -> shot(mc, "expand_safezone");
+            case 690 -> onServer.accept(sp -> {
+                PlayerDBCData data = PlayerDBCData.get(sp);
+                data.setCurrentKi(data.getMaxKi());
+                com.dragonblock.common.combat.InstantTransmission.open(sp, 0);
+            });
+            case 740 -> shot(mc, "expand_transmission");
+            case 750 -> onServer.accept(sp -> com.dragonblock.common.npc.Dialogues.choose(sp, sp.getId(), 4)); // the elder, on Namek
+            case 820 -> {
+                onServer.accept(sp -> DragonBlockMod.LOGGER.info("[autotest] after transmission: {} at {}", sp.level().dimension().location(), sp.blockPosition()));
+                shot(mc, "expand_arrival");
+            }
+            case 830 -> mc.stop();
+            default -> {}
+        }
+    }
+
+    /** The new enemies in the sky arena: lineup, the demon splitting, the invader's ape under the full moon, a sprout's fuse. */
+    private static void bestiary(Minecraft mc) {
+        mc.player.setYRot(0f);
+        mc.player.setXRot(ticks >= 290 && ticks < 390 ? -14f : 8f);
+        var server = mc.getSingleplayerServer();
+        var uuid = mc.player.getUUID();
+        java.util.function.Consumer<java.util.function.Consumer<ServerPlayer>> onServer = task -> server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
+            if (sp != null) task.accept(sp);
+        });
+        java.util.function.BiConsumer<ServerPlayer, java.util.List<net.minecraft.world.entity.EntityType<com.dragonblock.common.entity.DBEnemy>>> spawn = (sp, types) -> {
+            for (int i = 0; i < types.size(); i++) {
+                var e = types.get(i).create(sp.serverLevel());
+                e.moveTo(sp.getX() + (i - (types.size() - 1) / 2.0) * 6, 201, sp.getZ() + 12, 180f, 0f);
+                e.setTarget(sp);
+                sp.serverLevel().addFreshEntity(e);
+            }
+        };
+        java.util.function.Consumer<ServerPlayer> clear = sp -> {
+            for (var e : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, sp.getBoundingBox().inflate(60))) e.discard();
+        };
+        java.util.function.Consumer<String> log = tag -> {
+            for (var e : mc.level.getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, mc.player.getBoundingBox().inflate(60))) {
+                DragonBlockMod.LOGGER.info("[autotest] {}: {} phase={} hp={}/{} scale={}", tag, e.getKind(), e.getPhase(), e.getHealth(), e.getMaxHealth(), e.getScale());
+            }
+        };
+        java.util.function.Consumer<ServerPlayer> freeze = sp -> {
+            for (var e : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, sp.getBoundingBox().inflate(60))) {
+                e.setNoAi(true);
+                e.setYRot(140f); // three-quarter view
+                e.setYBodyRot(140f);
+                e.setYHeadRot(140f);
+            }
+        };
+        switch (ticks) {
+            case 62 -> onServer.accept(sp -> {
+                // Away from the sky palace's shadow
+                int cx = sp.getBlockX() + 70, cz = sp.getBlockZ() - 40;
+                for (int x = -24; x <= 24; x++)
+                    for (int z = -24; z <= 24; z++)
+                        sp.serverLevel().setBlockAndUpdate(new BlockPos(cx + x, 200, cz + z), net.minecraft.world.level.block.Blocks.SMOOTH_STONE.defaultBlockState());
+                sp.teleportTo(sp.serverLevel(), cx + 0.5, 201, cz - 6 + 0.5, 0f, 8f);
+            });
+            case 80 -> onServer.accept(sp -> spawn.accept(sp, java.util.List.of(com.dragonblock.common.registry.ModEntities.SPROUT.get(),
+                    com.dragonblock.common.registry.ModEntities.DINO.get(), com.dragonblock.common.registry.ModEntities.RAIDER.get())));
+            case 132 -> onServer.accept(freeze);
+            case 140 -> shot(mc, "bestiary_lineup");
+            case 150 -> onServer.accept(sp -> {
+                clear.accept(sp);
+                spawn.accept(sp, java.util.List.of(com.dragonblock.common.registry.ModEntities.MAJIN.get()));
+            });
+            case 172 -> onServer.accept(freeze);
+            case 180 -> shot(mc, "bestiary_majin");
+            case 190 -> onServer.accept(sp -> {
+                for (var e : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, sp.getBoundingBox().inflate(40))) {
+                    e.hurt(sp.damageSources().playerAttack(sp), e.getMaxHealth() * 0.4f);
+                }
+            });
+            case 225 -> {
+                log.accept("split");
+                shot(mc, "bestiary_split");
+            }
+            case 240 -> onServer.accept(sp -> {
+                clear.accept(sp);
+                sp.serverLevel().setDayTime(18000); // midnight of day 0: full moon
+                spawn.accept(sp, java.util.List.of(com.dragonblock.common.registry.ModEntities.RAIDER.get()));
+            });
+            case 300 -> shot(mc, "bestiary_raider_transform");
+            case 365 -> onServer.accept(sp -> {
+                freeze.accept(sp);
+                sp.serverLevel().setDayTime(6000); // daylight for the picture
+                for (var e : sp.serverLevel().getEntitiesOfClass(com.dragonblock.common.entity.DBEnemy.class, sp.getBoundingBox().inflate(60))) {
+                    e.teleportTo(sp.getX(), 201, sp.getZ() + 16);
+                }
+            });
+            case 380 -> {
+                log.accept("ape");
+                shot(mc, "bestiary_ape");
+            }
+            case 390 -> onServer.accept(sp -> {
+                clear.accept(sp);
+                sp.serverLevel().setDayTime(1000);
+                var e = com.dragonblock.common.registry.ModEntities.SPROUT.get().create(sp.serverLevel());
+                e.moveTo(sp.getX(), 201, sp.getZ() + 1.8, 180f, 0f);
+                e.setTarget(sp);
+                sp.serverLevel().addFreshEntity(e);
+                e.hurt(sp.damageSources().playerAttack(sp), e.getMaxHealth() * 0.6f);
+            });
+            case 410 -> shot(mc, "bestiary_fuse");
+            case 450 -> {
+                log.accept("after fuse (sprout should be gone)");
+                mc.stop();
+            }
+            default -> {}
+        }
     }
 }

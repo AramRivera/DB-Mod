@@ -13,7 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
 public class ModMessages {
-    private static final int PROTOCOL_VERSION = 7;
+    private static final int PROTOCOL_VERSION = 8;
     public static final SimpleChannel INSTANCE = ChannelBuilder.named(
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "messages"))
             .networkProtocolVersion(PROTOCOL_VERSION)
@@ -115,9 +115,23 @@ public class ModMessages {
         sendToPlayer(createSync(player), player);
     }
 
-    /** Sync to the player and everyone tracking them, so auras, hair and tails render for others. */
+    /** What each player's watchers last received; identical data is not sent again. */
+    private static final java.util.Map<java.util.UUID, CompoundTag> LAST_BROADCAST = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Sync to the player and everyone tracking them, so auras, hair and tails render for others. Skipped
+     * when nothing changed since the last broadcast: with a full server most players are idle most of the
+     * time, and this runs every second for each of them. New watchers get a copy in onStartTracking.
+     */
     public static void syncToTracking(ServerPlayer player) {
-        INSTANCE.send(createSync(player), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+        CompoundTag tag = new CompoundTag();
+        PlayerDBCData.get(player).saveToNBT(tag);
+        if (tag.equals(LAST_BROADCAST.put(player.getUUID(), tag))) return;
+        INSTANCE.send(new S2CSyncDBCDataPacket(player.getUUID(), tag), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+    }
+
+    public static void forget(java.util.UUID player) {
+        LAST_BROADCAST.remove(player);
     }
 
     public static void broadcastAnim(ServerPlayer player, S2CAnimPacket.Anim anim, int arg) {

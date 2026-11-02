@@ -83,4 +83,49 @@ public class ModEntities {
                             .clientTrackingRange(10)
                             .build("emperor")
             );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> SPROUT =
+            ENTITY_TYPES.register("sprout", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.SPROUT), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("sprout")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> DINO =
+            ENTITY_TYPES.register("dino", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.DINO), MobCategory.MONSTER)
+                            .sized(1.6f, 2.4f)
+                            .clientTrackingRange(10)
+                            .build("dino")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> RAIDER =
+            ENTITY_TYPES.register("raider", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.RAIDER), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("raider")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> MAJIN =
+            ENTITY_TYPES.register("majin", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.MAJIN), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("majin")
+            );
+
+    public static final RegistryObject<EntityType<com.dragonblock.common.entity.DBEnemy>> MAJIN_SPAWN =
+            ENTITY_TYPES.register("majin_spawn", () ->
+                    EntityType.Builder.<com.dragonblock.common.entity.DBEnemy>of((type, level) -> new com.dragonblock.common.entity.DBEnemy(type, level,
+                                    com.dragonblock.common.entity.EnemyKind.MAJIN_SPAWN), MobCategory.MONSTER)
+                            .sized(0.6f, 1.8f)
+                            .clientTrackingRange(10)
+                            .build("majin_spawn")
+            );
 }

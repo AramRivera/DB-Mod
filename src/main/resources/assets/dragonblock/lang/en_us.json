@@ -43,5 +43,11 @@
   "entity.dragonblock.bandit": "Desert Bandit",
   "entity.dragonblock.soldier": "Imperial Soldier",
   "entity.dragonblock.android": "Combat Android",
-  "entity.dragonblock.emperor": "Kryos, Galactic Emperor"
+  "entity.dragonblock.emperor": "Kryos, Galactic Emperor",
+  "entity.dragonblock.sprout": "Sprout",
+  "entity.dragonblock.dino": "Dinosaur",
+  "entity.dragonblock.raider": "Saiyan Raider",
+  "entity.dragonblock.majin": "Glutton Majin",
+  "entity.dragonblock.majin_spawn": "Little Majin",
+  "item.dragonblock.majin_cocoon": "Majin Cocoon"
 }

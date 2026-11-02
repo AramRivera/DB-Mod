@@ -42,24 +42,32 @@ import java.util.EnumSet;
 /**
  * A hostile fighter: punches up close, and the ki users aim (arm raised, so you can see it coming) and
  * fire blasts from range. Defeating one gives the killer training points. The emperor has a boss bar and,
- * at half health, transforms: untouchable for a moment, then bigger, golden and faster.
+ * at half health, transforms: untouchable for a moment, then bigger, golden and faster. The sprouts leap
+ * and, beaten down, cling to you and blow up; the invader becomes a giant ape under the full moon; the
+ * pink demon regenerates when left alone, body-slams and sheds smaller copies as it weakens.
  */
 public class DBEnemy extends Monster {
     private static final EntityDataAccessor<Boolean> AIMING = SynchedEntityData.defineId(DBEnemy.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> PHASE = SynchedEntityData.defineId(DBEnemy.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TRANSFORMING = SynchedEntityData.defineId(DBEnemy.class, EntityDataSerializers.INT);
     public static final int TRANSFORM_TICKS = 60;
+    /** A sprout's fuse once it clings to you. */
+    public static final int FUSE_TICKS = 30;
 
     private final EnemyKind kind;
     private final ServerBossEvent bossBar;
+    private int sinceHurt, slamTicks, slamCooldown = 80, splits;
 
     public DBEnemy(EntityType<? extends DBEnemy> type, Level level, EnemyKind kind) {
         super(type, level);
         this.kind = kind;
         this.xpReward = kind.getTp() / 4;
-        this.bossBar = kind == EnemyKind.EMPEROR
-                ? new ServerBossEvent(Component.literal(kind.getDisplayName()), BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.NOTCHED_10)
-                : null;
+        this.bossBar = kind.isBoss() ? new ServerBossEvent(Component.literal(kind.getDisplayName()), switch (kind) {
+            case MAJIN -> BossEvent.BossBarColor.PINK;
+            case RAIDER -> BossEvent.BossBarColor.RED;
+            default -> BossEvent.BossBarColor.PURPLE;
+        }, BossEvent.BossBarOverlay.NOTCHED_10) : null;
+        if (bossBar != null && kind == EnemyKind.RAIDER) bossBar.setVisible(false); // only once he is the ape
         addGoals(); // Mob's constructor calls registerGoals() before kind is set, so the goals go here
     }
 
@@ -71,14 +79,14 @@ public class DBEnemy extends Monster {
                 .add(Attributes.ARMOR, kind.getArmor())
                 .add(Attributes.FOLLOW_RANGE, 32)
                 .add(Attributes.SCALE, kind.getScale())
-                .add(Attributes.KNOCKBACK_RESISTANCE, kind == EnemyKind.EMPEROR ? 0.8 : 0.1);
+                .add(Attributes.KNOCKBACK_RESISTANCE, kind == EnemyKind.EMPEROR || kind == EnemyKind.MAJIN ? 0.8 : kind == EnemyKind.DINO ? 0.4 : 0.1);
     }
 
     public EnemyKind getKind() { return kind; }
     public boolean isAiming() { return entityData.get(AIMING); }
-    /** 0 normally; 1 once the emperor has transformed. */
+    /** 0 normally; 1 once the emperor has transformed or the invader became the ape. */
     public int getPhase() { return entityData.get(PHASE); }
-    /** Ticks left in the emperor's transformation, 0 when not transforming. */
+    /** Ticks left in a transformation (or a sprout's fuse), 0 when none is under way. */
     public int getTransforming() { return entityData.get(TRANSFORMING); }
 
     @Override
@@ -94,6 +102,7 @@ public class DBEnemy extends Monster {
 
     private void addGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        if (kind == EnemyKind.SPROUT) goalSelector.addGoal(2, new net.minecraft.world.entity.ai.goal.LeapAtTargetGoal(this, 0.45f));
         if (kind.shoots()) goalSelector.addGoal(2, new KiShotGoal());
         goalSelector.addGoal(3, new MeleeAttackGoal(this, 1.1, false));
         goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.8));
@@ -111,18 +120,93 @@ public class DBEnemy extends Monster {
         if (t > 0) {
             entityData.set(TRANSFORMING, t - 1);
             if (level() instanceof ServerLevel sl && t % 4 == 0) {
-                sl.sendParticles(ParticleTypes.ELECTRIC_SPARK, getX(), getY() + 1.5, getZ(), 10, 0.8, 1.2, 0.8, 0.2);
+                sl.sendParticles(kind == EnemyKind.SPROUT ? ParticleTypes.SMOKE : ParticleTypes.ELECTRIC_SPARK,
+                        getX(), getY() + 1.5 * getScale(), getZ(), 10, 0.8 * getScale(), 1.2 * getScale(), 0.8 * getScale(), 0.2);
+            }
+            if (kind == EnemyKind.SPROUT && getTarget() != null) { // clinging on
+                getNavigation().stop();
+                setDeltaMovement(getTarget().position().subtract(position()).scale(0.25).add(0, getDeltaMovement().y, 0));
             }
             if (t == 1) finishTransformation();
+            if (isRemoved()) return;
+        }
+        LivingEntity target = getTarget();
+        switch (kind) {
+            case SPROUT -> {
+                if (t == 0 && target != null && distanceTo(target) < 2.2 && (getHealth() < getMaxHealth() * 0.5f || random.nextInt(80) == 0)) {
+                    entityData.set(TRANSFORMING, FUSE_TICKS);
+                    playSound(SoundEvents.CREEPER_PRIMED, 1f, 1.4f);
+                }
+            }
+            case RAIDER -> {
+                if (getPhase() == 0 && t == 0 && tickCount % 40 == 0 && underFullMoon()) {
+                    entityData.set(TRANSFORMING, TRANSFORM_TICKS);
+                    getNavigation().stop();
+                    playSound(ModSounds.TRANSFORM.get(), 3f, 0.5f);
+                    say("¡La luna llena! ¡Ahora verás el verdadero poder de mi raza!");
+                }
+            }
+            case MAJIN -> {
+                // Left alone, it puffs itself back together
+                if (++sinceHurt > 60 && tickCount % 10 == 0 && getHealth() < getMaxHealth()) heal(getMaxHealth() * 0.01f);
+                tickSlam(target);
+            }
+            default -> {}
         }
         if (bossBar != null) bossBar.setProgress(getHealth() / getMaxHealth());
     }
 
+    private boolean underFullMoon() {
+        return level().getMoonPhase() == 0 && !level().isDay() && level().canSeeSky(blockPosition().above());
+    }
+
+    /** The demon's body slam: a hop toward you and a shockwave where it lands. */
+    private void tickSlam(LivingEntity target) {
+        if (slamTicks > 0) {
+            if (++slamTicks > 6 && onGround()) {
+                slamTicks = 0;
+                slamCooldown = 100 + random.nextInt(60);
+                for (LivingEntity e : level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(4.5),
+                        e -> e != this && !(e instanceof DBEnemy other && (other.kind == EnemyKind.MAJIN || other.kind == EnemyKind.MAJIN_SPAWN)))) {
+                    if (!e.hurt(damageSources().mobAttack(this), 10f)) continue;
+                    Vec3 away = e.position().subtract(position()).multiply(1, 0, 1).normalize();
+                    e.push(away.x * 1.2, 0.6, away.z * 1.2);
+                    e.hurtMarked = true;
+                }
+                if (level() instanceof ServerLevel sl) {
+                    sl.sendParticles(ParticleTypes.EXPLOSION, getX(), getY() + 0.3, getZ(), 8, 2.5, 0.2, 2.5, 0);
+                    sl.playSound(null, getX(), getY(), getZ(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 1.5f, 0.6f);
+                }
+            }
+            return;
+        }
+        if (--slamCooldown > 0 || target == null || !onGround() || distanceTo(target) > 7) return;
+        Vec3 to = target.position().subtract(position()).multiply(1, 0, 1).scale(0.12);
+        setDeltaMovement(to.x, 0.95, to.z);
+        hasImpulse = true;
+        slamTicks = 1;
+    }
+
+    /** Ends what TRANSFORMING was counting down: the emperor's form, the ape, or the sprout's blast. */
+    private void finishTransformation() {
+        switch (kind) {
+            case SPROUT -> {
+                level().explode(this, getX(), getY() + 0.5, getZ(), 2.6f, Level.ExplosionInteraction.NONE);
+                discard();
+            }
+            case RAIDER -> becomeApe();
+            default -> finishEmperor();
+        }
+    }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        if (getTransforming() > 0) return false; // nothing touches him while he transforms
+        if (getTransforming() > 0 && kind != EnemyKind.SPROUT) return false; // nothing touches them while they transform
         boolean hurt = super.hurt(source, amount);
-        if (hurt && kind == EnemyKind.EMPEROR && getPhase() == 0 && getHealth() <= getMaxHealth() / 2 && !isDeadOrDying()) startTransformation();
+        if (!hurt || isDeadOrDying()) return hurt;
+        sinceHurt = 0;
+        if (kind == EnemyKind.EMPEROR && getPhase() == 0 && getHealth() <= getMaxHealth() / 2) startTransformation();
+        if (kind == EnemyKind.MAJIN && splits < 2 && getHealth() < getMaxHealth() * (splits == 0 ? 0.66f : 0.33f)) split();
         return hurt;
     }
 
@@ -133,7 +217,49 @@ public class DBEnemy extends Monster {
         say("¿Crees que esto es todo mi poder? Te mostraré mi verdadera forma.");
     }
 
-    private void finishTransformation() {
+    /** Two small copies pop off the demon's body. */
+    private void split() {
+        splits++;
+        say(splits == 1 ? "¡Jejeje! ¡Más Majin! ¡Más amigos para jugar!" : "¡Majin enfadado! ¡MUY enfadado!");
+        if (!(level() instanceof ServerLevel sl)) return;
+        for (int i = 0; i < 2; i++) {
+            DBEnemy small = com.dragonblock.common.registry.ModEntities.MAJIN_SPAWN.get().create(sl);
+            if (small == null) continue;
+            double a = random.nextDouble() * Math.PI * 2;
+            small.moveTo(getX() + Math.cos(a) * 1.5, getY() + 0.5, getZ() + Math.sin(a) * 1.5, random.nextFloat() * 360f, 0f);
+            small.setDeltaMovement(Math.cos(a) * 0.4, 0.4, Math.sin(a) * 0.4);
+            small.setTarget(getTarget());
+            sl.addFreshEntity(small);
+        }
+        sl.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 1, getZ(), 30, 1, 1, 1, 0.1);
+        playSound(SoundEvents.SLIME_SQUISH, 2f, 0.6f);
+    }
+
+    /** Giant ape: three times the size and the health, a crushing punch, and a blast from the mouth. */
+    private void becomeApe() {
+        entityData.set(PHASE, 1);
+        setAttr(Attributes.SCALE, kind.getScale() * 3.2);
+        setAttr(Attributes.MAX_HEALTH, kind.getHealth() * 3);
+        setAttr(Attributes.ATTACK_DAMAGE, kind.getDamage() * 2.2);
+        setAttr(Attributes.MOVEMENT_SPEED, kind.getSpeed() * 0.85);
+        setAttr(Attributes.KNOCKBACK_RESISTANCE, 0.9);
+        setHealth(getMaxHealth());
+        if (level() instanceof ServerLevel sl) {
+            sl.sendParticles(ParticleTypes.EXPLOSION_EMITTER, getX(), getY() + 2, getZ(), 1, 0, 0, 0, 0);
+            sl.playSound(null, getX(), getY(), getZ(), SoundEvents.RAVAGER_ROAR, SoundSource.HOSTILE, 4f, 0.5f);
+        }
+        if (bossBar != null) {
+            bossBar.setName(Component.literal(kind.getDisplayName() + " (Ozaru)"));
+            bossBar.setVisible(true);
+        }
+    }
+
+    private void setAttr(net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attr, double value) {
+        var inst = getAttribute(attr);
+        if (inst != null) inst.setBaseValue(value);
+    }
+
+    private void finishEmperor() {
         entityData.set(PHASE, 1);
         setHealth(getMaxHealth() * 0.75f);
         var scale = getAttribute(Attributes.SCALE);
@@ -165,7 +291,12 @@ public class DBEnemy extends Monster {
             data.saveToPlayer(killer);
             ModMessages.syncToPlayer(killer);
         }
-        if (kind == EnemyKind.EMPEROR) say("Imposible... derrotado por... un simple guerrero...");
+        switch (kind) {
+            case EMPEROR -> say("Imposible... derrotado por... un simple guerrero...");
+            case MAJIN -> say("Majin... cansado... Majin quiere... dormir...");
+            case RAIDER -> { if (getPhase() == 1) say("Maldito... insecto... ¿cómo es posible...?"); }
+            default -> {}
+        }
     }
 
     @Override
@@ -181,6 +312,21 @@ public class DBEnemy extends Monster {
                 spawnAtLocation(new ItemStack(ModItems.SENZU_BEAN.get(), 3));
                 spawnAtLocation(new ItemStack(net.minecraft.world.item.Items.DIAMOND, 6));
             }
+            case DINO -> spawnAtLocation(new ItemStack(isOnFire() ? net.minecraft.world.item.Items.COOKED_BEEF : net.minecraft.world.item.Items.BEEF, 3 + random.nextInt(3)));
+            case SPROUT -> spawnAtLocation(new ItemStack(net.minecraft.world.item.Items.WHEAT_SEEDS, 1 + random.nextInt(3)));
+            case RAIDER -> {
+                if (random.nextFloat() < 0.15f) spawnAtLocation(new ItemStack(ModItems.SCOUTER.get()));
+                if (getPhase() == 1) {
+                    spawnAtLocation(new ItemStack(ModItems.SENZU_BEAN.get(), 2));
+                    spawnAtLocation(new ItemStack(net.minecraft.world.item.Items.DIAMOND, 3));
+                }
+            }
+            case MAJIN -> {
+                spawnAtLocation(new ItemStack(ModItems.SENZU_BEAN.get(), 5));
+                spawnAtLocation(new ItemStack(net.minecraft.world.item.Items.DIAMOND, 8));
+                spawnAtLocation(new ItemStack(net.minecraft.world.item.Items.COOKIE, 16));
+            }
+            case MAJIN_SPAWN -> spawnAtLocation(new ItemStack(net.minecraft.world.item.Items.COOKIE, 1 + random.nextInt(2)));
             default -> {}
         }
     }
@@ -199,19 +345,22 @@ public class DBEnemy extends Monster {
 
     @Override
     public boolean removeWhenFarAway(double distance) {
-        return kind != EnemyKind.EMPEROR && super.removeWhenFarAway(distance);
+        return kind != EnemyKind.EMPEROR && kind != EnemyKind.MAJIN && getPhase() == 0 && super.removeWhenFarAway(distance);
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("Phase", getPhase());
+        tag.putInt("Splits", splits);
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         entityData.set(PHASE, tag.getInt("Phase"));
+        splits = tag.getInt("Splits");
+        if (bossBar != null && kind == EnemyKind.RAIDER) bossBar.setVisible(getPhase() == 1);
     }
 
     /** Stops, raises an arm for a beat, then fires a ki blast at the target; the emperor fires faster and bigger. */
@@ -227,7 +376,7 @@ public class DBEnemy extends Monster {
             LivingEntity target = getTarget();
             if (target == null || getTransforming() > 0 || --cooldown > 0) return false;
             double d = distanceTo(target);
-            return d > 4 && d < 22 && hasLineOfSight(target);
+            return d > 4 * getScale() && d < 22 + 4 * getScale() && hasLineOfSight(target);
         }
 
         @Override
@@ -237,7 +386,7 @@ public class DBEnemy extends Monster {
 
         @Override
         public void start() {
-            aim = kind == EnemyKind.EMPEROR ? 12 : 18;
+            aim = kind.isBoss() ? 12 : 18;
             getNavigation().stop();
             entityData.set(AIMING, true);
         }
@@ -250,11 +399,12 @@ public class DBEnemy extends Monster {
             if (--aim > 0) return;
             Vec3 from = getEyePosition();
             Vec3 dir = target.getEyePosition().subtract(0, 0.3, 0).subtract(from);
-            boolean big = kind == EnemyKind.EMPEROR && getPhase() == 1 && random.nextInt(3) == 0;
+            boolean heavy = kind == EnemyKind.EMPEROR || kind == EnemyKind.MAJIN || kind == EnemyKind.RAIDER;
+            boolean big = heavy && (getPhase() == 1 || kind == EnemyKind.MAJIN) && random.nextInt(3) == 0;
             float damage = kind.getKiDamage() * (getPhase() == 1 ? 1.5f : 1f) * (big ? 1.8f : 1f);
-            KiBlastEntity blast = new KiBlastEntity(level(), DBEnemy.this, damage, kind == EnemyKind.EMPEROR ? (big ? 2.5f : 1f) : 0f,
-                    kind.getKiColor(), big ? 0.9f : 0.32f, big ? Technique.BIG_BANG : Technique.KI_BLAST);
-            blast.setPos(from.add(dir.normalize().scale(0.8)));
+            KiBlastEntity blast = new KiBlastEntity(level(), DBEnemy.this, damage, heavy ? (big ? 2.5f : 1f) : 0f,
+                    kind.getKiColor(), (big ? 0.9f : 0.32f) * (getPhase() == 1 && kind == EnemyKind.RAIDER ? 2f : 1f), big ? Technique.BIG_BANG : Technique.KI_BLAST);
+            blast.setPos(from.add(dir.normalize().scale(0.8 * getScale())));
             blast.shoot(dir.x, dir.y, dir.z, big ? 1.4f : 1.9f, kind == EnemyKind.ANDROID ? 0.5f : 2.5f);
             level().addFreshEntity(blast);
             playSound(ModSounds.KI_BLAST.get(), 1.2f, big ? 0.6f : 1.2f);
@@ -263,7 +413,7 @@ public class DBEnemy extends Monster {
         @Override
         public void stop() {
             entityData.set(AIMING, false);
-            cooldown = kind == EnemyKind.EMPEROR ? (getPhase() == 1 ? 25 : 40) : 50 + random.nextInt(40);
+            cooldown = kind.isBoss() ? (getPhase() == 1 ? 25 : 40) : 50 + random.nextInt(40);
         }
     }
 }

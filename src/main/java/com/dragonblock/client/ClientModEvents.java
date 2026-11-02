@@ -31,7 +31,9 @@ public class ClientModEvents {
         event.registerEntityRenderer(ModEntities.SHENLONG.get(), com.dragonblock.client.renderer.ShenlongRenderer::new);
         event.registerEntityRenderer(ModEntities.NPC.get(), com.dragonblock.client.renderer.NpcRenderer::new);
         event.registerEntityRenderer(ModEntities.SPACESHIP.get(), com.dragonblock.client.renderer.ShipRenderer::new);
-        for (var enemy : java.util.List.of(ModEntities.BANDIT, ModEntities.SOLDIER, ModEntities.ANDROID, ModEntities.EMPEROR)) {
+        event.registerEntityRenderer(ModEntities.DINO.get(), com.dragonblock.client.renderer.DinoRenderer::new);
+        for (var enemy : java.util.List.of(ModEntities.BANDIT, ModEntities.SOLDIER, ModEntities.ANDROID, ModEntities.EMPEROR,
+                ModEntities.SPROUT, ModEntities.RAIDER, ModEntities.MAJIN, ModEntities.MAJIN_SPAWN)) {
             event.registerEntityRenderer(enemy.get(), com.dragonblock.client.renderer.EnemyRenderer::new);
         }
     }
@@ -99,6 +101,10 @@ public class ClientModEvents {
         event.getLayeredDraw().add(
                 ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "warp"),
                 com.dragonblock.client.overlay.WarpOverlay.INSTANCE
+        );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "safe_zone"),
+                com.dragonblock.client.overlay.SafeZoneHud.INSTANCE
         );
     }
 }

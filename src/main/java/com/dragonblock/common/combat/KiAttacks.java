@@ -6,6 +6,7 @@ import com.dragonblock.common.entity.KiBlastEntity;
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.network.packet.S2CAnimPacket;
 import com.dragonblock.common.registry.ModSounds;
+import com.dragonblock.common.world.SafeZones;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -79,6 +80,11 @@ public final class KiAttacks {
     }
 
     private static void fire(ServerPlayer player, PlayerDBCData data, Technique tech, float charge) {
+        if (tech == Technique.TELEPORT && player.isShiftKeyDown()) { // sneaking: reach for a ki in any world instead
+            data.setTechHeld(false);
+            InstantTransmission.open(player, 0);
+            return;
+        }
         if (tech.isInstant()) {
             float cost = tech.getKiCost() * FormEffects.kiCostMultiplier(data);
             if (!data.consumeKi(cost)) {
@@ -170,8 +176,9 @@ public final class KiAttacks {
                 SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.2f, 2.0f);
     }
 
-    /** Other players are only affected when this server allows PvP between the two (teams included). */
+    /** Other players are only affected when this server allows PvP between the two (teams and safe zones included). */
     static boolean mayAffect(ServerPlayer caster, LivingEntity target) {
+        if (SafeZones.protects(caster, target)) return false;
         return !(target instanceof net.minecraft.world.entity.player.Player other) || caster.canHarmPlayer(other);
     }
 

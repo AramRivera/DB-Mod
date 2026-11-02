@@ -32,7 +32,7 @@ public enum Technique {
     TAIYOKEN("Taiyoken", Kind.FLASH, Stance.FACE, 0xFFFFF0, 0.5f, 1f, 30, 0f, 200, 10, 300, 10,
             "Un destello cegador que deja sin vista a quien te esté mirando."),
     TELEPORT("Teletransportación", Kind.TELEPORT, Stance.FOREHEAD, 0xE8F0FF, 0.75f, 1f, 40, 0f, 800, 50, 100, 6,
-            "Dos dedos en la frente: apareces detrás de quien miras, o donde apuntes.");
+            "Dos dedos en la frente: apareces detrás de quien miras, o donde apuntes. Agachado: sientes un ki conocido en cualquier mundo y viajas hasta él.");
 
     /** What happens on release. */
     public enum Kind { BLAST, BEAM, PIERCE, DISC, BOMB, BALL, SHOCKWAVE, FLASH, TELEPORT }

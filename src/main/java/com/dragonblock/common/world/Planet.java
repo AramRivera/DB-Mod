@@ -34,7 +34,7 @@ public enum Planet {
         return null;
     }
 
-    /** Ground to land on: the Earth's spawn, the celestial landing pad, or the nearest dry land to Namek's center. */
+    /** Ground to land on: the Earth's spawn, the celestial landing pad, or Namek's village (on the nearest dry land to its center). */
     public BlockPos landing(ServerLevel level) {
         return switch (this) {
             case EARTH -> surface(level, level.getSharedSpawnPos().getX() + 6, level.getSharedSpawnPos().getZ() - 6);
@@ -42,7 +42,11 @@ public enum Planet {
                 Worlds.ensureBuilt(level);
                 yield BlockPos.containing(Worlds.CELESTIAL_ARRIVAL).offset(0, 0, 3);
             }
-            case NAMEK -> dryLand(level);
+            case NAMEK -> {
+                Worlds.ensureBuilt(level); // the village plaza is the landing field
+                BlockPos plaza = Worlds.anchor(level);
+                yield plaza != null ? plaza : dryLand(level);
+            }
         };
     }
 
@@ -52,7 +56,7 @@ public enum Planet {
     }
 
     /** Spirals out from the center in 24-block steps until it finds ground that isn't under water. */
-    private static BlockPos dryLand(ServerLevel level) {
+    static BlockPos dryLand(ServerLevel level) {
         for (int ring = 0; ring <= 12; ring++) {
             for (int i = -ring; i <= ring; i++) {
                 for (int[] c : new int[][]{{i, -ring}, {i, ring}, {-ring, i}, {ring, i}}) {

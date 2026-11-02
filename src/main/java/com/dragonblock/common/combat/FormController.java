@@ -104,7 +104,7 @@ public final class FormController {
     /** The burst of a strong form throws back everything around. Only a shove: it never deals damage. */
     private static void blastAway(ServerPlayer player, float radius) {
         for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(radius),
-                e -> e != player && e.isAlive() && !e.isSpectator())) {
+                e -> e != player && e.isAlive() && !e.isSpectator() && !com.dragonblock.common.world.SafeZones.protects(player, e))) {
             Vec3 away = e.position().subtract(player.position()).multiply(1, 0, 1);
             double dist = away.length();
             if (dist > radius) continue;

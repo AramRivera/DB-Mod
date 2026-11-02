@@ -66,6 +66,7 @@ public class DragonBlockEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData.get(player).saveToPlayer(player);
             PlayerDBCData.removePlayer(player.getUUID());
+            ModMessages.forget(player.getUUID());
         }
     }
 
@@ -97,6 +98,7 @@ public class DragonBlockEvents {
     public static void onPlayerClone(PlayerEvent.Clone event) {
         Player original = event.getOriginal();
         Player newPlayer = event.getEntity();
+        if (!original.level().isClientSide) PlayerDBCData.get(original).saveToPlayer(original); // the tick only saves once a second
         if (original.getPersistentData().contains("DragonBlockData")) {
             newPlayer.getPersistentData().put("DragonBlockData", original.getPersistentData().getCompound("DragonBlockData"));
         }
@@ -295,7 +297,7 @@ public class DragonBlockEvents {
         }
         syncBodyWithVanilla(player, data);
 
-        data.saveToPlayer(player);
+        if (player.tickCount % 20 == 0) data.saveToPlayer(player); // also saved on logout, death and dimension clone
 
         if (player.tickCount % 20 == 0) updatePlayerAttributes(player, data);
         if (data.isGuarding() != data.guardApplied || data.isTransformHeld() != data.rootApplied) applyStanceSlow(player, data);

@@ -68,7 +68,7 @@ public class DialogueScreen extends Screen {
         int l = boxLeft(), w = boxWidth(), top = boxTop();
 
         // The character, life-size on the left
-        if (mc.level != null && mc.level.getEntity(npcId) instanceof LivingEntity npc) {
+        if (mc.level != null && mc.level.getEntity(npcId) instanceof LivingEntity npc && npc != mc.player) {
             float scale = 1f / Math.max(1f, npc.getBbHeight() / 1.8f);
             InventoryScreen.renderEntityInInventoryFollowsMouse(g, l - 4, top - 120, l + 90, top + 10, (int) (55 * scale), 0.0625f, mouseX, mouseY, npc);
         }
@@ -124,6 +124,13 @@ public class DialogueScreen extends Screen {
 
     private void choose(int index) {
         ModMessages.sendToServer(new C2SDialogueChoicePacket(npcId, index));
+    }
+
+    /** Leaving the conversation also ends its protection on the server. */
+    @Override
+    public void onClose() {
+        ModMessages.sendToServer(new C2SDialogueChoicePacket(npcId, -1));
+        super.onClose();
     }
 
     private static boolean inside(double mx, double my, int x, int y, int w, int h) {

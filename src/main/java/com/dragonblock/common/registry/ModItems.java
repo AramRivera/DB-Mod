@@ -30,6 +30,7 @@ public class ModItems {
             () -> new AccessoryItem(AccessoryItem.Slot.BELT, "Puesto: el ki se regenera un 25% más rápido."));
 
     public static final RegistryObject<Item> IMPERIAL_BEACON = ITEMS.register("imperial_beacon", ImperialBeaconItem::new);
+    public static final RegistryObject<Item> MAJIN_COCOON = ITEMS.register("majin_cocoon", com.dragonblock.common.item.MajinCocoonItem::new);
 
     public static final RegistryObject<Item> SHIP_CAPSULE = ITEMS.register("ship_capsule", ShipCapsuleItem::new);
 

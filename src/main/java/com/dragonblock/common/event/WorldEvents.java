@@ -91,10 +91,25 @@ public final class WorldEvents {
         return player.level().dimension() == Worlds.CELESTIAL;
     }
 
+    /** Any way into a mod world (ship, instant transmission, commands) builds its landmarks first. */
+    @SubscribeEvent
+    public static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) Worlds.ensureBuilt(player.serverLevel());
+    }
+
     /** The tiny planet's crushing gravity: you fall faster, jump less and move slower. */
     @SubscribeEvent
     public static void onTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player) || player.tickCount % 10 != 0) return;
+        // Falling off the clouds or the little planet: caught and set back, not killed
+        if (player.getY() < player.level().getMinBuildHeight() + 8 && (player.level().dimension() == Worlds.OTHERWORLD || onHeavyPlanet(player))) {
+            Worlds.send(player, player.level().dimension());
+            player.resetFallDistance();
+        }
+        if (Worlds.atRoadEnd(player)) {
+            Worlds.send(player, Worlds.CELESTIAL);
+            player.displayClientMessage(Component.literal("Al final del camino... un pequeño planeta y una gravedad aplastante.").withStyle(ChatFormatting.LIGHT_PURPLE), true);
+        }
         boolean heavy = onHeavyPlanet(player);
         modifier(player, Attributes.GRAVITY, heavy ? 1.5 : 0);
         modifier(player, Attributes.JUMP_STRENGTH, heavy ? -0.35 : 0);

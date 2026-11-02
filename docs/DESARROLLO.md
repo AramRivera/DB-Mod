@@ -139,8 +139,19 @@ Ojo: los `ModelPart` ya dividen sus medidas entre 16; la escala del `PoseStack` 
 ## Enemigos
 `DBEnemy` + `EnemyKind` (stats), `EnemyRenderer` (modelo humanoide, skins y equipo de `tools/gen_enemy_assets.py`). Los objetivos de IA se añaden al final del constructor: `Mob` llama a `registerGoals()` antes de que la subclase guarde su tipo. Apariciones: `data/dragonblock/forge/biome_modifier/bandits.json` y `spawners` del bioma de Namek.
 
+## Servidor grande: zonas, viaje y torneo
+- `common/world/SafeZones`: zonas sin PvP (todo el Otro Mundo y `NpcKind.getSafeRadius()` alrededor de cada personaje) y zonas sin construir (`getGuardRadius()`, que incluye el arena). Solo depende del mundo y de los personajes cargados, así que el cliente la calcula para `SafeZoneHud` sin red. `Dialogues.isTalking` protege a quien lee un diálogo (máx. 60 s, cerca del personaje, nunca en mitad de un combate del torneo).
+- `common/world/Landmarks` (SavedData del overworld): dónde vive cada personaje en cualquier dimensión. Lo fija `Worlds` al colocarlos y cada personaje lo recuerda cada 10 s.
+- `common/combat/InstantTransmission`: menú de ki (reutiliza `Dialogues.showSelf`), validación en el servidor al elegir, coste y espera.
+- `common/world/Tournament`: cola, combate, ring-out, K.O. sin muerte, ayuda externa bloqueada.
+- `Worlds` construye por **versiones** (`Built.version`): los mundos guardados antes de una ampliación solo reciben lo nuevo y no duplican personajes. Versión 2: arena, torre y palacio, salón y camino del Otro Mundo, planeta celeste ampliado y aldea de Namek (su plaza es el `anchor` donde aterrizan las naves).
+- Optimización: `ModMessages.syncToTracking` no reenvía datos idénticos a los que ya tienen los observadores, y los datos del jugador se guardan en su NBT una vez por segundo (y al morir, salir o cambiar de cuerpo), no cada tick.
+
+## Enemigos nuevos
+`EnemyKind`: SPROUT (salta y explota con mecha), DINO (modelo propio), RAIDER (Ozaru con luna llena), MAJIN (regenera, aplasta, se divide) y MAJIN_SPAWN. La lógica está en `DBEnemy.aiStep`/`hurt`; `TRANSFORMING` cuenta la transformación o la mecha. Equipo por forma en `enemy_extras.json`: los grupos `_p0` solo se ven en la primera forma y `_p1` tras transformarse. El dinosaurio es `tools/gen_dino_json.py` → `dino.json` (árbol de articulaciones con pivote y pose de reposo) y `DinoRenderer` (zancada, cola en onda, cabeza que sigue, mordisco y rugido).
+
 ## Pruebas automáticas
-`DevAutotest` con `-Ddragonblock.autotest=<modo>`: `dragon` (ritual), `world` (maestro, muerte, juez, planeta celeste, volver a la vida), `ship` (viaje a otro planeta), `enemies` (arena en el cielo, combate y transformación del emperador). Guarda capturas en `run/screenshots/autotest_*.png`.
+`DevAutotest` con `-Ddragonblock.autotest=<modo>`: `dragon` (ritual), `world` (maestro, muerte, juez, planeta celeste, volver a la vida), `ship` (viaje a otro planeta), `enemies` (arena en el cielo, combate y transformación del emperador), `expand` (vista de cada lugar nuevo, escudo del diálogo, insignia de zona segura y teletransportación a Namek), `bestiary` (enemigos nuevos, división del Majin, Ozaru con luna llena, mecha del Germinado). Guarda capturas en `run/screenshots/autotest_*.png`.
 
 ## Probar
 ```
