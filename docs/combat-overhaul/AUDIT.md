@@ -55,9 +55,9 @@ DBPlayerModel ◄── S2CSyncDBCDataPacket ◄─────┘ (PlayerDBCDat
 
 ## 5. Progresión de transformaciones (del código)
 
-La regla es una sola para todas las razas: `getLockReason`. Una forma se desbloquea si la raza puede usarla, si el nivel (la suma de atributos) llega al `minLevel` y si la **maestría de su forma padre es al menos `UNLOCK_MASTERY` = 25 %**.
+La regla es una sola para todas las razas: `getLockReason`. Una forma se desbloquea si la raza puede usarla, si el nivel (la suma de atributos) llega al `minLevel` y si la **maestría de su forma padre es al menos `UNLOCK_MASTERY` = 100 %**.
 
-> **Diferencia con el prompt:** el prompt dice que SSJ2 pide el 100 % de SSJ1, pero el código pide el **25 %** desde el principio. No lo cambié. Subirlo bloquearía de golpe las formas que algunos jugadores ya usan. Es una decisión de diseño que tenéis que tomar vosotros. Si decidís el 100 %, se cambia esa constante y se comprueba con `>=` sobre el valor guardado (que ya se limita a 100).
+> **Cambio del 2026-11-03:** antes era el 25 %. Se subió al 100 % a petición del equipo. La comprobación se hace en el servidor con el valor guardado, que `addMastery` y `setMastery` limitan a exactamente 100f, así que no hay problemas de redondeo. Con la ganancia pasiva (+0,05 %/s), dominar una forma lleva unos 33 minutos dentro de ella, menos si se pelea (+0,15 % por golpe). Quien ya está transformado sigue en su forma hasta que revierta. Para volver a entrar en una forma hija necesita el padre al 100 %.
 
 | Raza | Cadenas (padre → hija) |
 |---|---|
@@ -114,6 +114,6 @@ El entrenamiento con maestros (fase 9) se montará sobre estos cuatro.
 | 2. Lock-on y cámara | Pendiente (va después porque no la necesita el combate básico) |
 | 6. Movimiento aéreo y persecución | Pendiente (el LAUNCHER ya lanza hacia arriba; falta la persecución) |
 | 7. Ki en el motor | Pendiente |
-| 8. Razas y transformaciones | Ya integrado por diseño, porque se usan los atributos efectivos y `meleeMultiplier`. Pendiente la decisión del 25 % o el 100 % |
+| 8. Razas y transformaciones | Ya integrado por diseño, porque se usan los atributos efectivos y `meleeMultiplier`. Requisito del 100 % de la forma padre aplicado |
 | 9. Entrenamiento con maestros | Pendiente |
 | 10. Pulido | Pendiente |

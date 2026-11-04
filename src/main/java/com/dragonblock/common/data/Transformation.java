@@ -48,8 +48,8 @@ public enum Transformation {
     MAJIN_SUPER("Majin Superior", BASE, of(Race.MAJIN), 60, 2.4f, 1.2f, 0xFF7AC0, HairStyle.NONE, 0, AuraStyle.FLAME, 0),
     MAJIN_PURE("Majin Puro", MAJIN_SUPER, of(Race.MAJIN), 260, 5.0f, 3.5f, 0xFF4AA0, HairStyle.NONE, 0, AuraStyle.STORM, 0);
 
-    /** Parent mastery (%) needed before a child form unlocks. */
-    public static final float UNLOCK_MASTERY = 25.0f;
+    /** Parent mastery (%) needed before a child form unlocks: the previous form fully mastered. Compared to the stored value, which is capped at exactly 100. */
+    public static final float UNLOCK_MASTERY = 100.0f;
 
     /** Command id, e.g. "ssj2". */
     public String id() { return name().toLowerCase(); }

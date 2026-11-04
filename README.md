@@ -61,7 +61,7 @@ Cada raza tiene **su propio cuerpo**; la skin de Minecraft no se usa. Las textur
 ### 4. Transformaciones (mantener `G`, volver con `H`)
 Elige una forma en la pestaña **Formas** de la ficha (`V`) y mantén `G` para transformarte. **Estando transformado la `G` no hace nada**: primero vuelve a la forma base con `H`.
 
-* **Requisitos**: nivel (suma de atributos) y, para formas avanzadas, **25% de maestría** en la forma anterior.
+* **Requisitos**: nivel (suma de atributos) y, para formas avanzadas, **100% de maestría** en la forma anterior (hay que dominarla del todo antes de pasar a la siguiente).
 * **Maestría (0-100%)**: sube estando transformado y combatiendo. Reduce hasta un 60% el consumo de Ki.
 * **Agotamiento**: sin Ki vuelves a la forma base.
 * **Ozaru**: si eres Saiyajin con la cola suelta y **miras la luna llena** de noche, te transformas solo. También puedes elegirlo y mantener `G` cualquier noche a cielo abierto. Al salir el sol (o al enrollar la cola) vuelves a la normalidad. `/dev form oozaru` lo fuerza de día para pruebas.
