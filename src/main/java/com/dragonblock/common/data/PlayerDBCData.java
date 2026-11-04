@@ -85,6 +85,7 @@ public class PlayerDBCData {
     /** Ticks before a power-up abandoned halfway can start again (no endless invulnerable charging). */
     public int transformRetry = 0;
     public int dashIframes = 0;
+    public final com.dragonblock.common.combat.Melee.State melee = new com.dragonblock.common.combat.Melee.State();
 
     public PlayerDBCData() {
         this.currentKi = getMaxKi();

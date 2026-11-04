@@ -13,7 +13,7 @@ import net.minecraftforge.event.network.CustomPayloadEvent;
 
 /** One-shot actions. {@code arg}: form ordinal, technique ordinal or bar slot, depending on the action. */
 public class C2SActionPacket {
-    public enum Action { REVERT, DASH, SELECT_FORM, TOGGLE_TAIL, SELECT_TECHNIQUE, LEARN_TECHNIQUE, TOGGLE_EQUIP, OPEN_ACCESSORIES }
+    public enum Action { REVERT, DASH, SELECT_FORM, TOGGLE_TAIL, SELECT_TECHNIQUE, LEARN_TECHNIQUE, TOGGLE_EQUIP, OPEN_ACCESSORIES, LIGHT, HEAVY }
 
     private final Action action;
     private final int arg;
@@ -40,6 +40,10 @@ public class C2SActionPacket {
             PlayerDBCData data = PlayerDBCData.get(player);
 
             switch (action) {
+                case LIGHT, HEAVY -> {
+                    com.dragonblock.common.combat.Melee.request(player, data, action == Action.HEAVY);
+                    return; // the move syncs itself through the animation packet
+                }
                 case REVERT -> FormController.revert(player, data);
                 case DASH -> KiAttacks.dash(player, data);
                 case SELECT_FORM -> {

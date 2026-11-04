@@ -8,8 +8,8 @@ import net.minecraftforge.fml.DistExecutor;
 
 /** One-shot animation (technique release, dash, transformation) broadcast to everyone tracking the player. */
 public class S2CAnimPacket {
-    /** TECHNIQUE carries the technique ordinal in {@code arg}. */
-    public enum Anim { TECHNIQUE, DASH, TRANSFORM, SCOUTER_BREAK }
+    /** TECHNIQUE carries the technique ordinal in {@code arg}, MELEE the MeleeMove ordinal. */
+    public enum Anim { TECHNIQUE, DASH, TRANSFORM, SCOUTER_BREAK, MELEE }
 
     private final int entityId;
     private final Anim anim;

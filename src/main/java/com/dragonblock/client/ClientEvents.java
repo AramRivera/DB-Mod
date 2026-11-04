@@ -43,6 +43,25 @@ public class ClientEvents {
         if (ModKeyBindings.DASH_KEY.consumeClick()) ModMessages.sendToServer(new C2SActionPacket(C2SActionPacket.Action.DASH, 0));
     }
 
+    /**
+     * Bare hands fight with the mod's moveset: attack is a light blow, use a heavy one. Blocks are still
+     * mined and used as normal, and use on a creature that isn't a monster or a player (a character, an
+     * animal) still talks to it or rides it. With anything in the hand, vanilla attacks as before.
+     */
+    @SubscribeEvent
+    public static void onInteraction(InputEvent.InteractionKeyMappingTriggered event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || event.getHand() != net.minecraft.world.InteractionHand.MAIN_HAND || !mc.player.getMainHandItem().isEmpty()) return;
+        if (!event.isAttack() && !event.isUseItem()) return;
+        var hit = mc.hitResult;
+        if (hit != null && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) return;
+        if (event.isUseItem() && hit instanceof net.minecraft.world.phys.EntityHitResult eh
+                && !(eh.getEntity() instanceof net.minecraft.world.entity.monster.Enemy || eh.getEntity() instanceof net.minecraft.world.entity.player.Player)) return;
+        event.setCanceled(true);
+        event.setSwingHand(false); // the move has its own animation
+        ModMessages.sendToServer(new C2SActionPacket(event.isAttack() ? C2SActionPacket.Action.LIGHT : C2SActionPacket.Action.HEAVY, 0));
+    }
+
     /** Ctrl + mouse wheel scrolls the technique bar instead of the hotbar. */
     @SubscribeEvent
     public static void onScroll(InputEvent.MouseScrollingEvent event) {

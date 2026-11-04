@@ -1,5 +1,6 @@
 package com.dragonblock.client.anim;
 
+import com.dragonblock.common.combat.MeleeMove;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Technique;
 import com.dragonblock.common.data.Technique.Stance;
@@ -69,7 +70,8 @@ public class DBPlayerModel extends PlayerModel<AbstractClientPlayer> {
         });
         float dt = Mth.clamp(ageInTicks - state[PARTS * 3 + 1], 0f, 5f);
         state[PARTS * 3 + 1] = ageInTicks;
-        float speed = pose == AnimState.Pose.TECH_FIRE ? 0.9f : 0.4f;
+        // Punches are a few ticks long: follow them almost directly or the strike gets smoothed away
+        float speed = pose == AnimState.Pose.MELEE ? 2.2f : pose == AnimState.Pose.TECH_FIRE ? 0.9f : 0.4f;
         float alpha = 1f - (float) Math.exp(-dt * speed);
         float weight = state[PARTS * 3];
         if (pose != AnimState.Pose.NONE) {
@@ -136,6 +138,7 @@ public class DBPlayerModel extends PlayerModel<AbstractClientPlayer> {
                     wideStance(0.1f);
                 }
             }
+            case MELEE -> melee(AnimState.meleeMove(player), AnimState.meleeProgress(player, partial), pitch, yaw);
             case TECH_CHARGE -> {
                 Technique tech = data.getSelectedTechnique();
                 float c = data.getTechCharge();
@@ -328,6 +331,73 @@ public class DBPlayerModel extends PlayerModel<AbstractClientPlayer> {
                     body.yRot = 0f;
                     rightLeg.xRot = 0.35f; leftLeg.xRot = -0.35f;
                     rightLeg.zRot = leftLeg.zRot = 0f;
+                }
+            }
+        }
+    }
+
+    // Keyframe state of the move being posed: phase 0 wind-up, 1 strike, 2 recovery, and progress in it
+    private int keyPhase;
+    private float keyT;
+
+    /** Value between the three keyframes of a hand-to-hand move: at rest, wound up, at the moment of impact. */
+    private float key(float rest, float wound, float hit) {
+        float s = keyT * keyT * (3f - 2f * keyT);
+        return switch (keyPhase) {
+            case 0 -> Mth.lerp(s, rest, wound);
+            case 1 -> Mth.lerp(s, wound, hit);
+            default -> Mth.lerp(s, hit, rest);
+        };
+    }
+
+    /** Hand-to-hand move, t = 0..1 over its ticks: the strike lands exactly in the server's active window. */
+    private void melee(MeleeMove m, float t, float pitch, float yaw) {
+        float total = m.total(), a = m.startup / total, b = (m.startup + m.active) / total;
+        keyPhase = t < a ? 0 : t < b ? 1 : 2;
+        keyT = Mth.clamp(keyPhase == 0 ? t / a : keyPhase == 1 ? (t - a) / (b - a) : (t - b) / (1f - b), 0f, 1f);
+        float guard = firstPerson ? -1.3f : -1.1f;
+        float reach = firstPerson ? -1.62f : -Mth.HALF_PI + pitch;
+        float aimR = firstPerson ? -0.1f : yaw - 0.05f, aimL = firstPerson ? 0.1f : yaw + 0.05f;
+        // Fists up by default; each move overrides the limbs it uses
+        arms(guard, -0.35f, 0f, guard, 0.35f, 0f);
+        if (!firstPerson) wideStance(0.1f);
+        switch (m) {
+            case JAB -> {
+                rightArm.xRot = key(guard, guard + 0.35f, reach);
+                rightArm.yRot = key(-0.35f, -0.45f, aimR);
+                if (!firstPerson) body.yRot = key(0f, -0.15f, 0.3f);
+            }
+            case CROSS -> {
+                leftArm.xRot = key(guard, guard + 0.35f, reach);
+                leftArm.yRot = key(0.35f, 0.45f, aimL);
+                if (!firstPerson) body.yRot = key(0f, 0.15f, -0.35f);
+            }
+            case HAMMER -> {
+                // Drawn far back, the whole body turns into the blow
+                rightArm.xRot = key(guard, guard + 1.0f, reach - 0.1f);
+                rightArm.yRot = key(-0.35f, 0.4f, aimR);
+                if (!firstPerson) {
+                    body.yRot = key(0f, -0.6f, 0.55f);
+                    rightLeg.xRot = key(0f, 0.3f, 0.45f);
+                    leftLeg.xRot = key(0f, -0.2f, -0.5f);
+                }
+            }
+            case KICK -> {
+                if (!firstPerson) {
+                    rightLeg.zRot = 0f;
+                    rightLeg.xRot = key(0f, 0.45f, -1.55f);
+                    leftLeg.xRot = key(0f, 0f, 0.15f);
+                    body.xRot = key(0f, 0.05f, -0.2f);
+                }
+            }
+            case LAUNCHER -> {
+                // Crouch with the fist low, then drive it straight up
+                rightArm.xRot = key(guard, 0.3f, -2.8f);
+                rightArm.yRot = key(-0.35f, -0.2f, -0.15f);
+                if (!firstPerson) {
+                    body.xRot = key(0f, 0.25f, -0.25f);
+                    rightLeg.xRot = key(0f, 0.35f, -0.1f);
+                    leftLeg.xRot = key(0f, -0.35f, 0.1f);
                 }
             }
         }

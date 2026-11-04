@@ -3,6 +3,7 @@ package com.dragonblock.client.anim;
 import com.dragonblock.client.fx.Debris;
 import com.dragonblock.client.fx.LightningStrikes;
 import com.dragonblock.client.overlay.DBCKiOverlay;
+import com.dragonblock.common.combat.MeleeMove;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Technique;
 import com.dragonblock.common.network.packet.S2CAnimPacket.Anim;
@@ -30,9 +31,10 @@ public final class AnimState {
     private static final class Shots {
         final long[] times = new long[Anim.values().length];
         Technique technique = Technique.KI_BLAST;
+        MeleeMove melee = MeleeMove.JAB;
     }
 
-    public enum Pose { NONE, GUARD, TECH_FIRE, TECH_CHARGE, POWER_UP, CHARGE, FLY, HOVER }
+    public enum Pose { NONE, GUARD, MELEE, TECH_FIRE, TECH_CHARGE, POWER_UP, CHARGE, FLY, HOVER }
 
     private AnimState() {}
 
@@ -44,7 +46,9 @@ public final class AnimState {
         shots.times[anim.ordinal()] = now;
         if (!(mc.level.getEntity(entityId) instanceof Player p)) return;
 
-        if (anim == Anim.TRANSFORM) {
+        if (anim == Anim.MELEE && arg >= 0 && arg < MeleeMove.values().length) {
+            shots.melee = MeleeMove.values()[arg];
+        } else if (anim == Anim.TRANSFORM) {
             var form = PlayerDBCData.get(p).getTransformation();
             Debris.blast(p, Mth.clamp(form.getStatMultiplier() / 3f, 0.5f, 2.5f));
             LightningStrikes.burst(p, form);
@@ -115,6 +119,17 @@ public final class AnimState {
         return shots == null ? Technique.KI_BLAST : shots.technique;
     }
 
+    /** The hand-to-hand move this player is in (or last made). */
+    public static MeleeMove meleeMove(Player player) {
+        Shots shots = ONE_SHOTS.get(player.getId());
+        return shots == null ? MeleeMove.JAB : shots.melee;
+    }
+
+    /** 0..1 through the current hand-to-hand move, over the same ticks the server uses, or -1. */
+    public static float meleeProgress(Player player, float partialTick) {
+        return progress(player, Anim.MELEE, meleeMove(player).total(), partialTick);
+    }
+
     /** 0..1 of the release pose of the last fired technique, or -1. */
     public static float fireProgress(Player player, float partialTick) {
         return progress(player, Anim.TECHNIQUE, firedTechnique(player).getSustain(), partialTick);
@@ -132,6 +147,7 @@ public final class AnimState {
     public static Pose pose(Player player, float partialTick) {
         PlayerDBCData data = PlayerDBCData.get(player);
         if (data.isGuarding()) return Pose.GUARD;
+        if (meleeProgress(player, partialTick) >= 0) return Pose.MELEE;
         if (fireProgress(player, partialTick) >= 0) return Pose.TECH_FIRE;
         if (data.isTechHeld() && data.getSelectedTechnique() != null && !data.getSelectedTechnique().isInstant()) return Pose.TECH_CHARGE;
         if (data.isTransformHeld()) return Pose.POWER_UP;

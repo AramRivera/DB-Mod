@@ -110,7 +110,7 @@ public class ClientRenderEvents {
     public static void onRenderHand(RenderHandEvent event) {
         Minecraft mc = Minecraft.getInstance();
         AbstractClientPlayer player = mc.player;
-        if (player == null) return;
+        if (player == null || mc.getCameraEntity() != player) return; // spectating someone: not our arms
         float partial = event.getPartialTick();
         AnimState.Pose pose = AnimState.pose(player, partial);
         if (pose == AnimState.Pose.NONE || pose == AnimState.Pose.FLY || pose == AnimState.Pose.HOVER) return;

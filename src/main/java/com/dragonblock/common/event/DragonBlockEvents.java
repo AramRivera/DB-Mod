@@ -134,7 +134,7 @@ public class DragonBlockEvents {
         // Attacker
         if (event.getSource().getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            if (event.getSource().getDirectEntity() == player) {
+            if (event.getSource().getDirectEntity() == player && !com.dragonblock.common.combat.Melee.isResolving()) { // Melee already scaled it
                 event.setAmount((event.getAmount() + data.getEffectiveStr() * 0.4f) * FormEffects.meleeMultiplier(player, data));
             }
 
@@ -169,7 +169,7 @@ public class DragonBlockEvents {
             amount *= FormEffects.incomingMultiplier(data);
 
             // Guard: 65% blocked, paid with Ki
-            if (data.isGuarding() && data.consumeKi(amount * 1.5f)) {
+            if (data.isGuarding() && data.melee.stun == 0 && data.consumeKi(amount * 1.5f)) { // stunned: the guard is down
                 amount *= 0.35f;
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                         SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.8f, 0.8f);
@@ -196,7 +196,11 @@ public class DragonBlockEvents {
     @SubscribeEvent
     public static void onMeleeLanded(LivingDamageEvent event) {
         if (!(event.getSource().getEntity() instanceof ServerPlayer attacker) || event.getSource().getDirectEntity() != attacker) return;
-        LivingEntity target = event.getEntity();
+        if (com.dragonblock.common.combat.Melee.isResolving()) return; // Melee sets its own knockback, then calls powerGap
+        powerGap(attacker, event.getEntity());
+    }
+
+    public static void powerGap(ServerPlayer attacker, LivingEntity target) {
         PlayerDBCData data = PlayerDBCData.get(attacker);
         float mine = data.getBattlePower();
         float theirs = target instanceof Player p ? PlayerDBCData.get(p).getBattlePower() : target.getMaxHealth() * 10f;
@@ -290,6 +294,7 @@ public class DragonBlockEvents {
         if (player.tickCount % 10 == 0) com.dragonblock.common.item.ScouterItem.tickWorn(sp, data);
         FormEffects.tick(sp, data);
         KiAttacks.tick(sp, data);
+        com.dragonblock.common.combat.Melee.tick(sp, data);
         tickFlight(sp, data);
 
         if (data.getRace() == Race.NAMEKIAN && player.tickCount % 40 == 0) {

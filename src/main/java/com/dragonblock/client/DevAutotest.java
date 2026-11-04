@@ -82,6 +82,11 @@ public final class DevAutotest {
             else bestiary(mc);
             return;
         }
+        if (MODE.equals("melee")) {
+            if (ticks <= 60) enemyLineup(mc); // same sky arena
+            else meleeChain(mc);
+            return;
+        }
         if (MODE.equals("expand")) {
             expansionTour(mc);
             return;
@@ -571,6 +576,78 @@ public final class DevAutotest {
                 log.accept("after fuse (sprout should be gone)");
                 mc.stop();
             }
+            default -> {}
+        }
+    }
+
+    private static float lastDummyHealth = -1f;
+
+    /** Bare-handed chain against a sturdy husk: jab, cross, kick, launcher, then a lone hammer after the combo resets. */
+    private static void meleeChain(Minecraft mc) {
+        var server = mc.getSingleplayerServer();
+        var uuid = mc.player.getUUID();
+        java.util.function.Consumer<java.util.function.Consumer<ServerPlayer>> onServer = task -> server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
+            if (sp != null) task.accept(sp);
+        });
+        java.util.function.Consumer<Boolean> press = heavy -> onServer.accept(sp ->
+                com.dragonblock.common.combat.Melee.request(sp, PlayerDBCData.get(sp), heavy));
+        if (ticks == 62) {
+            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+            onServer.accept(sp -> {
+                sp.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.Husk.class, sp.getBoundingBox().inflate(40)).forEach(net.minecraft.world.entity.Entity::discard);
+                sp.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.decoration.ArmorStand.class, sp.getBoundingBox().inflate(40)).forEach(net.minecraft.world.entity.Entity::discard);
+                var husk = net.minecraft.world.entity.EntityType.HUSK.create(sp.serverLevel());
+                husk.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(300);
+                husk.setHealth(300);
+                husk.moveTo(sp.getX() + 0.6, 201, sp.getZ() + 2.0, 180f, 0f);
+                sp.serverLevel().addFreshEntity(husk);
+                // A side-on camera: an invisible stand off to the right, looking across the fight
+                var stand = net.minecraft.world.entity.EntityType.ARMOR_STAND.create(sp.serverLevel());
+                stand.moveTo(sp.getX() + 4.2, 200.6, sp.getZ() + 1.0, 90f, 8f);
+                stand.setInvisible(true);
+                stand.setNoGravity(true);
+                sp.serverLevel().addFreshEntity(stand);
+            });
+        }
+        // Pose gallery after the fight: the fighter stands still beside a side camera and plays each move
+        // client-side, shot at its moment of impact (the camera can't stay on during the fight: while it's
+        // on, the client stops sending the fighter's position and the lunges never reach the server)
+        if (ticks == 170) onServer.accept(sp -> {
+            for (var st : sp.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.decoration.ArmorStand.class, sp.getBoundingBox().inflate(40))) {
+                sp.teleportTo(sp.serverLevel(), st.getX() - 3.2, 201, st.getZ(), 0f, 5f);
+            }
+            sp.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.Husk.class, sp.getBoundingBox().inflate(40)).forEach(net.minecraft.world.entity.Entity::discard);
+        });
+        if (ticks >= 176 && mc.getCameraEntity() == mc.player) {
+            for (var st : mc.level.getEntitiesOfClass(net.minecraft.world.entity.decoration.ArmorStand.class, mc.player.getBoundingBox().inflate(12))) mc.setCameraEntity(st);
+        }
+        if (mc.getCameraEntity() != mc.player) {
+            var cam = (net.minecraft.world.entity.LivingEntity) mc.getCameraEntity();
+            double dx = mc.player.getX() - cam.getX(), dz = mc.player.getZ() - cam.getZ();
+            float yaw = (float) (Math.atan2(-dx, dz) * 180 / Math.PI);
+            cam.setYRot(yaw); cam.yRotO = yaw; cam.setYHeadRot(yaw); cam.yHeadRotO = yaw; cam.yBodyRot = yaw; cam.yBodyRotO = yaw;
+            cam.setXRot(4f); cam.xRotO = 4f;
+        }
+        int g = ticks - 180;
+        if (g >= 0 && g < 5 * 30) {
+            var move = com.dragonblock.common.combat.MeleeMove.values()[g / 30];
+            if (g % 30 == 0) com.dragonblock.client.anim.AnimState.play(mc.player.getId(), com.dragonblock.common.network.packet.S2CAnimPacket.Anim.MELEE, move.ordinal());
+            if (g % 30 == move.startup + move.active) shot(mc, "melee_pose_" + move.name().toLowerCase());
+        }
+        if (ticks > 63) onServer.accept(sp -> {
+            for (var h : sp.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.Husk.class, sp.getBoundingBox().inflate(12))) {
+                if (h.getHealth() != lastDummyHealth) {
+                    DragonBlockMod.LOGGER.info("[autotest] melee tick {}: husk hp {} -> {} (dy {}) husk at {} fighter at {}", ticks, lastDummyHealth, h.getHealth(), String.format("%.2f", h.getDeltaMovement().y), h.position(), sp.position());
+                    lastDummyHealth = h.getHealth();
+                }
+                h.setYRot(180f); // keep facing the fighter
+            }
+        });
+        switch (ticks) {
+            case 80, 86, 93 -> press.accept(false);
+            case 103, 150 -> press.accept(true);
+            case 340 -> mc.stop();
             default -> {}
         }
     }

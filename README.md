@@ -170,6 +170,7 @@ Las técnicas se aprenden con TP en la pestaña **Técnicas** de la ficha y se e
 | Taiyoken | 0,5 s | Destello que ciega a quien te mire (pantalla blanca para jugadores, ceguera para mobs, que pierden tu rastro). |
 | Teletransportación | 0,75 s | Dos dedos en la frente; apareces detrás de quien miras o donde apuntes (hasta 64 bloques). |
 
+* **Combate cuerpo a cuerpo (mano vacía)**: clic izquierdo = golpe ligero, clic derecho = golpe fuerte. Ligero, ligero, ligero encadena **jab → directo → patada**; un fuerte al final es un **uppercut** que lanza al rival hacia arriba, y un fuerte suelto es un **golpe pesado** que **rompe la guardia** (cuesta 6 de Ki). Cada golpe aturde un instante, el daño baja un poco a lo largo del combo y a partir del 8.º golpe ya no aturde, así que siempre hay salida. Los golpes fuertes cortan la carga de una técnica. Con un objeto en la mano se pega como siempre; picar bloques y hablar con personajes no cambia. Detalles: `docs/combat-overhaul/`.
 * **Impulso (`R`)**: dash con 6 ticks de invulnerabilidad.
 * **Guardia (mantener `B`)**: bloquea el 65% del daño pagando Ki.
 * **Vuelo (`F`)**: corre en el aire para ir más rápido a cambio de más Ki.
@@ -287,6 +288,8 @@ Inscríbete con el Presentador. Cuando hay dos guerreros en la lista, se anuncia
 
 | Tecla | Acción |
 | :---: | :--- |
+| Clic izquierdo *(mano vacía)* | Golpe ligero (combo) |
+| Clic derecho *(mano vacía)* | Golpe fuerte (uppercut al final del combo, rompe guardias) |
 | `C` *(mantener)* | Cargar Ki |
 | `G` *(mantener)* | Transformarse en la forma seleccionada (solo desde la forma base) |
 | `H` | Volver a la forma base |
