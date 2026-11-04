@@ -25,6 +25,10 @@ public class C2SFlyPacket {
             PlayerDBCData data = PlayerDBCData.get(player);
             boolean newFlight = !data.isFlying();
 
+            if (newFlight && !data.getTransformation().canFly()) {
+                player.displayClientMessage(Component.literal("Tu cuerpo es demasiado grande para volar."), true);
+                return;
+            }
             if (newFlight && data.getCurrentKi() < 5.0f) {
                 player.displayClientMessage(
                         Component.literal("§c¡No tienes suficiente Ki para volar (Bukujutsu)!"),

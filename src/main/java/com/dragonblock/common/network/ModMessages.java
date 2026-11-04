@@ -13,7 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 
 public class ModMessages {
-    private static final int PROTOCOL_VERSION = 1;
+    private static final int PROTOCOL_VERSION = 9;
     public static final SimpleChannel INSTANCE = ChannelBuilder.named(
             ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "messages"))
             .networkProtocolVersion(PROTOCOL_VERSION)
@@ -24,28 +24,22 @@ public class ModMessages {
     public static void register() {
         int id = 0;
 
-        INSTANCE.messageBuilder(C2SChargeKiPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(C2SChargeKiPacket::toBytes)
-                .decoder(C2SChargeKiPacket::new)
-                .consumerMainThread(C2SChargeKiPacket::handle)
+        INSTANCE.messageBuilder(C2SInputStatePacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2SInputStatePacket::toBytes)
+                .decoder(C2SInputStatePacket::new)
+                .consumerMainThread(C2SInputStatePacket::handle)
                 .add();
 
-        INSTANCE.messageBuilder(C2STransformPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(C2STransformPacket::toBytes)
-                .decoder(C2STransformPacket::new)
-                .consumerMainThread(C2STransformPacket::handle)
+        INSTANCE.messageBuilder(C2SActionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2SActionPacket::toBytes)
+                .decoder(C2SActionPacket::new)
+                .consumerMainThread(C2SActionPacket::handle)
                 .add();
 
         INSTANCE.messageBuilder(C2SFlyPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(C2SFlyPacket::toBytes)
                 .decoder(C2SFlyPacket::new)
                 .consumerMainThread(C2SFlyPacket::handle)
-                .add();
-
-        INSTANCE.messageBuilder(C2SKiBlastPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(C2SKiBlastPacket::toBytes)
-                .decoder(C2SKiBlastPacket::new)
-                .consumerMainThread(C2SKiBlastPacket::handle)
                 .add();
 
         INSTANCE.messageBuilder(C2SUpgradeStatPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
@@ -58,6 +52,48 @@ public class ModMessages {
                 .encoder(C2SSelectRacePacket::toBytes)
                 .decoder(C2SSelectRacePacket::new)
                 .consumerMainThread(C2SSelectRacePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(S2CAnimPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(S2CAnimPacket::toBytes)
+                .decoder(S2CAnimPacket::new)
+                .consumerMainThread(S2CAnimPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(S2COpenWishPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(S2COpenWishPacket::toBytes)
+                .decoder(S2COpenWishPacket::new)
+                .consumerMainThread(S2COpenWishPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(C2SWishPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2SWishPacket::toBytes)
+                .decoder(C2SWishPacket::new)
+                .consumerMainThread(C2SWishPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(S2CDialoguePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(S2CDialoguePacket::toBytes)
+                .decoder(S2CDialoguePacket::new)
+                .consumerMainThread(S2CDialoguePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(C2SDialogueChoicePacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2SDialogueChoicePacket::toBytes)
+                .decoder(C2SDialogueChoicePacket::new)
+                .consumerMainThread(C2SDialogueChoicePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(S2COpenTravelPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(S2COpenTravelPacket::toBytes)
+                .decoder(S2COpenTravelPacket::new)
+                .consumerMainThread(S2COpenTravelPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(C2STravelPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(C2STravelPacket::toBytes)
+                .decoder(C2STravelPacket::new)
+                .consumerMainThread(C2STravelPacket::handle)
                 .add();
 
         INSTANCE.messageBuilder(S2CSyncDBCDataPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
@@ -76,9 +112,35 @@ public class ModMessages {
     }
 
     public static void syncToPlayer(ServerPlayer player) {
-        PlayerDBCData data = PlayerDBCData.get(player);
+        sendToPlayer(createSync(player), player);
+    }
+
+    /** What each player's watchers last received; identical data is not sent again. */
+    private static final java.util.Map<java.util.UUID, CompoundTag> LAST_BROADCAST = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Sync to the player and everyone tracking them, so auras, hair and tails render for others. Skipped
+     * when nothing changed since the last broadcast: with a full server most players are idle most of the
+     * time, and this runs every second for each of them. New watchers get a copy in onStartTracking.
+     */
+    public static void syncToTracking(ServerPlayer player) {
         CompoundTag tag = new CompoundTag();
-        data.saveToNBT(tag);
-        sendToPlayer(new S2CSyncDBCDataPacket(player.getUUID(), tag), player);
+        PlayerDBCData.get(player).saveToNBT(tag);
+        if (tag.equals(LAST_BROADCAST.put(player.getUUID(), tag))) return;
+        INSTANCE.send(new S2CSyncDBCDataPacket(player.getUUID(), tag), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+    }
+
+    public static void forget(java.util.UUID player) {
+        LAST_BROADCAST.remove(player);
+    }
+
+    public static void broadcastAnim(ServerPlayer player, S2CAnimPacket.Anim anim, int arg) {
+        INSTANCE.send(new S2CAnimPacket(player.getId(), anim, arg), PacketDistributor.TRACKING_ENTITY_AND_SELF.with(player));
+    }
+
+    public static S2CSyncDBCDataPacket createSync(ServerPlayer player) {
+        CompoundTag tag = new CompoundTag();
+        PlayerDBCData.get(player).saveToNBT(tag);
+        return new S2CSyncDBCDataPacket(player.getUUID(), tag);
     }
 }

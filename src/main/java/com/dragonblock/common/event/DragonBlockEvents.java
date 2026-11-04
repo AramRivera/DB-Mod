@@ -1,38 +1,50 @@
 package com.dragonblock.common.event;
 
 import com.dragonblock.DragonBlockMod;
+import com.dragonblock.common.combat.FormController;
+import com.dragonblock.common.combat.FormEffects;
+import com.dragonblock.common.combat.KiAttacks;
 import com.dragonblock.common.command.DevCommand;
 import com.dragonblock.common.data.PlayerDBCData;
 import com.dragonblock.common.data.Race;
 import com.dragonblock.common.data.Transformation;
-import com.dragonblock.common.item.TrainingWeightsItem;
 import com.dragonblock.common.network.ModMessages;
 import com.dragonblock.common.registry.ModSounds;
-import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = DragonBlockMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class DragonBlockEvents {
-    private static final ResourceLocation CON_HEALTH_MODIFIER =
-            ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "con_health_bonus");
-    private static final ResourceLocation DEX_SPEED_MODIFIER =
-            ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "dex_speed_bonus");
+    private static final ResourceLocation CON_HEALTH_MODIFIER = id("con_health_bonus");
+    private static final ResourceLocation DEX_SPEED_MODIFIER = id("dex_speed_bonus");
+    private static final ResourceLocation FORM_SCALE_MODIFIER = id("form_scale");
+    private static final ResourceLocation GUARD_SLOW_MODIFIER = id("guard_slow");
+    private static final long ZENKAI_COOLDOWN_TICKS = 20L * 60 * 10;
+
+    private static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, path);
+    }
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -43,17 +55,26 @@ public class DragonBlockEvents {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
+            data.clearInput();
             data.saveToPlayer(player);
-            ModMessages.syncToPlayer(player);
+            ModMessages.syncToTracking(player);
         }
     }
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            PlayerDBCData data = PlayerDBCData.get(player);
-            data.saveToPlayer(player);
+            PlayerDBCData.get(player).saveToPlayer(player);
             PlayerDBCData.removePlayer(player.getUUID());
+            ModMessages.forget(player.getUUID());
+        }
+    }
+
+    /** A player coming into view needs the other player's data to render their aura, hair and tail. */
+    @SubscribeEvent
+    public static void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getTarget() instanceof ServerPlayer target && event.getEntity() instanceof ServerPlayer viewer) {
+            ModMessages.sendToPlayer(ModMessages.createSync(target), viewer);
         }
     }
 
@@ -63,10 +84,13 @@ public class DragonBlockEvents {
             PlayerDBCData data = PlayerDBCData.get(player);
             data.setCurrentKi(data.getMaxKi());
             data.setTransformation(Transformation.BASE);
+            data.setBody(data.getMaxBody());
+            data.lastMirroredHealth = -1f;
+            data.forcedForm = false;
             data.setFlying(false);
             data.setChargingKi(false);
             data.saveToPlayer(player);
-            ModMessages.syncToPlayer(player);
+            ModMessages.syncToTracking(player);
         }
     }
 
@@ -74,6 +98,7 @@ public class DragonBlockEvents {
     public static void onPlayerClone(PlayerEvent.Clone event) {
         Player original = event.getOriginal();
         Player newPlayer = event.getEntity();
+        if (!original.level().isClientSide) PlayerDBCData.get(original).saveToPlayer(original); // the tick only saves once a second
         if (original.getPersistentData().contains("DragonBlockData")) {
             newPlayer.getPersistentData().put("DragonBlockData", original.getPersistentData().getCompound("DragonBlockData"));
         }
@@ -81,61 +106,164 @@ public class DragonBlockEvents {
         if (newPlayer instanceof ServerPlayer serverPlayer) {
             PlayerDBCData data = PlayerDBCData.get(serverPlayer);
             data.saveToPlayer(serverPlayer);
-            ModMessages.syncToPlayer(serverPlayer);
+            ModMessages.syncToTracking(serverPlayer);
+        }
+    }
+
+    /**
+     * Nobody can interrupt a transformation: while a player is actually powering up into another form,
+     * hits from players, mobs and their techniques don't land (no damage, no knockback).
+     */
+    private static final String WEIGHTS = "dragonblock:training_weights";
+    private static final String WRIST_WEIGHTS = "dragonblock:wrist_weights";
+    private static final String BELT = "dragonblock:combat_belt";
+
+    @SubscribeEvent
+    public static void onAttacked(net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || event.getSource().getEntity() == null) return;
+        PlayerDBCData data = PlayerDBCData.get(player);
+        if (data.isTransformHeld() && data.getSelectedForm() != data.getTransformation() && data.getTransformCharge() > 0f) {
+            event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
-        // Player attacking
-        if (event.getSource().getEntity() instanceof Player player) {
+        if (event.getEntity().level().isClientSide) return;
+
+        // Attacker
+        if (event.getSource().getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            float bonusDamage = data.getEffectiveStr() * 0.4f;
-            event.setAmount(event.getAmount() + bonusDamage);
-
-            // Award TP for combat
-            if (!player.level().isClientSide) {
-                int baseTp = (int) Math.max(1, (event.getAmount() * 0.4f) + (data.getMnd() / 5.0f));
-                if (data.getRace() == Race.HALF_SAIYAN) {
-                    baseTp = (int) (baseTp * 1.25f);
-                }
-
-                // Check for training weights in inventory
-                boolean hasWeights = player.getInventory().items.stream()
-                        .anyMatch(stack -> stack.getItem() instanceof TrainingWeightsItem);
-                if (hasWeights) {
-                    baseTp = (int) (baseTp * 1.5f);
-                }
-
-                data.addTrainingPoints(baseTp);
-                data.saveToPlayer(player);
-                if (player instanceof ServerPlayer serverPlayer) {
-                    ModMessages.syncToPlayer(serverPlayer);
-                }
+            if (event.getSource().getDirectEntity() == player && !com.dragonblock.common.combat.Melee.isResolving()) { // Melee already scaled it
+                event.setAmount((event.getAmount() + data.getEffectiveStr() * 0.4f) * FormEffects.meleeMultiplier(player, data));
             }
+
+            float tp = Math.max(1f, event.getAmount() * 0.4f + data.getMnd() / 5.0f);
+            if (data.getRace() == Race.HALF_SAIYAN) tp *= 1.25f;
+            if (data.wears(WEIGHTS)) tp *= 1.5f;
+            if (data.wears(WRIST_WEIGHTS)) tp *= 1.2f;
+            if (WorldEvents.onHeavyPlanet(player)) tp *= 2f;
+            data.addTrainingPoints((int) tp);
+            data.addMastery(data.getTransformation(), 0.15f);
+            data.saveToPlayer(player);
+            ModMessages.syncToPlayer(player);
         }
 
-        // Player taking damage
-        if (event.getEntity() instanceof Player player) {
+        // Defender
+        if (event.getEntity() instanceof ServerPlayer player) {
             PlayerDBCData data = PlayerDBCData.get(player);
-            float reduction = Math.min(0.6f, data.getEffectiveDex() * 0.012f);
-            if (reduction > 0) {
-                event.setAmount(event.getAmount() * (1.0f - reduction));
+
+            if (data.dashIframes > 0) {
+                event.setCanceled(true);
+                return;
+            }
+            var attacker = event.getSource().getEntity();
+            if (FormEffects.tryDodge(player, data, attacker == null ? null : attacker.position())) {
+                event.setCanceled(true);
+                return;
             }
 
-            // Saiyan Zenkai boost when low HP
-            if (data.getRace() == Race.SAIYAN && player.getHealth() - event.getAmount() <= 5.0f) {
-                if (!player.level().isClientSide) {
-                    data.addTrainingPoints(50);
-                    data.saveToPlayer(player);
-                    player.displayClientMessage(
-                            Component.literal("§c¡¡Zenkai activado!! Tu sangre Saiyajin se fortalece ante el peligro mortal! (+50 TP)")
-                                    .withStyle(ChatFormatting.RED, ChatFormatting.BOLD),
-                            true
-                    );
-                }
+            float amount = event.getAmount();
+            amount *= 1f - Math.min(0.6f, data.getEffectiveDex() * 0.012f);
+            if (data.getRace() == Race.MAJIN) amount *= 0.85f;
+            amount *= FormEffects.incomingMultiplier(data);
+
+            // Guard: 65% blocked, paid with Ki
+            if (data.isGuarding() && data.melee.stun == 0 && data.consumeKi(amount * 1.5f)) { // stunned: the guard is down
+                amount *= 0.35f;
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 0.8f, 0.8f);
             }
+            event.setAmount(amount);
+
+            long now = player.level().getGameTime();
+            boolean nearDeath = data.getBody() - amount <= data.getMaxBody() * 0.15f;
+            if (data.getRace().hasSaiyanTail() && nearDeath && now - data.getLastZenkaiTime() > ZENKAI_COOLDOWN_TICKS) {
+                data.setLastZenkaiTime(now);
+                int bonus = 50 + data.getLevel() * 2;
+                data.addTrainingPoints(bonus);
+                data.setBody(data.getBody() + data.getMaxBody() * 0.3f);
+                player.displayClientMessage(Component.literal("Zenkai: tu cuerpo se sobrepone al límite (+" + bonus + " TP)"), true);
+            }
+            data.saveToPlayer(player);
         }
+    }
+
+    /**
+     * Power gap: a punch from someone far stronger sends the target flying, like in the series. Runs on the
+     * damage that actually landed (dodged, blocked or cancelled hits never get here).
+     */
+    @SubscribeEvent
+    public static void onMeleeLanded(LivingDamageEvent event) {
+        if (!(event.getSource().getEntity() instanceof ServerPlayer attacker) || event.getSource().getDirectEntity() != attacker) return;
+        if (com.dragonblock.common.combat.Melee.isResolving()) return; // Melee sets its own knockback, then calls powerGap
+        powerGap(attacker, event.getEntity());
+    }
+
+    public static void powerGap(ServerPlayer attacker, LivingEntity target) {
+        PlayerDBCData data = PlayerDBCData.get(attacker);
+        float mine = data.getBattlePower();
+        float theirs = target instanceof Player p ? PlayerDBCData.get(p).getBattlePower() : target.getMaxHealth() * 10f;
+        float ratio = mine / Math.max(1f, theirs);
+        float launch = Math.min(3f, (float) Math.max(0, Math.log(ratio) / Math.log(2)) * 0.6f
+                + 0.08f * (data.getTransformation().getStatMultiplier() - 1f));
+        if (launch < 0.15f) return;
+
+        Vec3 dir = target.position().subtract(attacker.position()).multiply(1, 0, 1).normalize();
+        target.push(dir.x * launch, 0.15 + launch * 0.18, dir.z * launch);
+        target.hurtMarked = true;
+        if (launch > 0.9f && attacker.level() instanceof ServerLevel level) {
+            Vec3 at = target.position().add(0, target.getBbHeight() * 0.6, 0);
+            level.sendParticles(ParticleTypes.SONIC_BOOM, at.x, at.y, at.z, 1, 0, 0, 0, 0);
+            level.sendParticles(ParticleTypes.CLOUD, at.x, at.y, at.z, 8, 0.2, 0.2, 0.2, 0.15);
+            level.playSound(null, at.x, at.y, at.z, SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.PLAYERS, 1.2f, 0.6f);
+            if (launch > 2f) level.playSound(null, at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 0.5f, 1.6f);
+        }
+    }
+
+    /**
+     * After armor, convert vanilla damage into the body pool, then set the vanilla damage so the
+     * hearts keep showing body / maxBody. Lowest priority so other mods' changes are already in.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onLivingDamage(LivingDamageEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        PlayerDBCData data = PlayerDBCData.get(player);
+        syncBodyWithVanilla(player, data);
+
+        float before = player.getHealth();
+        FormEffects.onDamaged(data, event.getAmount() / data.getMaxBody());
+        data.setBody(data.getBody() - event.getAmount());
+        float target = data.getBody() <= 0 ? 0f : mirroredHealth(player, data);
+        float amount = data.getBody() <= 0 ? before + 1000f : Math.max(0f, before - target);
+        event.setAmount(amount);
+        data.lastMirroredHealth = Math.max(0f, before - amount);
+        data.saveToPlayer(player);
+        ModMessages.syncToPlayer(player);
+    }
+
+    private static float mirroredHealth(Player player, PlayerDBCData data) {
+        // Never show 0 hearts while the body pool is still alive
+        return Math.max(0.5f, player.getMaxHealth() * data.getBody() / data.getMaxBody());
+    }
+
+    /** Folds vanilla health changes (food regen, potions, /kill) into the pool, then rewrites vanilla health. */
+    private static void syncBodyWithVanilla(Player player, PlayerDBCData data) {
+        float maxBody = data.getMaxBody();
+        // Transforming changes maxBody: keep the same fill ratio instead of the same absolute value
+        if (data.lastMaxBody > 0 && Math.abs(maxBody - data.lastMaxBody) > 0.01f) {
+            data.setBody(data.getBody() * maxBody / data.lastMaxBody);
+        }
+        data.lastMaxBody = maxBody;
+
+        if (data.lastMirroredHealth >= 0) {
+            float delta = player.getHealth() - data.lastMirroredHealth;
+            if (Math.abs(delta) > 0.001f) data.setBody(data.getBody() + delta / player.getMaxHealth() * maxBody);
+        }
+        if (player.isDeadOrDying()) return;
+        float mirrored = mirroredHealth(player, data);
+        if (Math.abs(player.getHealth() - mirrored) > 0.001f) player.setHealth(mirrored);
+        data.lastMirroredHealth = player.getHealth();
     }
 
     @SubscribeEvent
@@ -144,125 +272,142 @@ public class DragonBlockEvents {
         Player player = event.player;
         PlayerDBCData data = PlayerDBCData.get(player);
 
-        // Ki Charging logic
+        if (player.level().isClientSide) {
+            clientParticles(player, data);
+            return;
+        }
+        ServerPlayer sp = (ServerPlayer) player;
+
         if (data.isChargingKi()) {
-            float chargeRate = 1.2f + (data.getEffectiveWil() * 0.1f);
-            data.setCurrentKi(data.getCurrentKi() + chargeRate);
-
-            if (player.level().isClientSide) {
-                // Client particles around player
-                for (int i = 0; i < 4; i++) {
-                    double px = player.getX() + (player.getRandom().nextDouble() - 0.5) * 1.2;
-                    double py = player.getY() + player.getRandom().nextDouble() * 1.8;
-                    double pz = player.getZ() + (player.getRandom().nextDouble() - 0.5) * 1.2;
-                    player.level().addParticle(ParticleTypes.ELECTRIC_SPARK, px, py, pz, 0, 0.15, 0);
-                }
-            } else {
-                if (player.tickCount % 20 == 0) {
-                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                            ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
-                }
-                // Sync rapidly while charging so the HUD is completely smooth
-                if (player.tickCount % 4 == 0 && player instanceof ServerPlayer sp) {
-                    ModMessages.syncToPlayer(sp);
-                }
+            data.setCurrentKi(data.getCurrentKi() + 1.2f + data.getEffectiveWil() * 0.1f);
+            if (player.tickCount % 20 == 0) {
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        ModSounds.KI_CHARGE.get(), SoundSource.PLAYERS, 0.4f, 1.0f);
             }
-        } else {
-            // Passive Ki regeneration (replenishes fully over time)
-            float passiveRegen = 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f);
-            data.setCurrentKi(data.getCurrentKi() + passiveRegen);
+        } else if (!data.isTechHeld()) {
+            float regen = 0.15f + (data.getRace() == Race.HUMAN ? 0.15f : 0.05f);
+            if (data.wears(BELT)) regen *= 1.25f;
+            data.setCurrentKi(data.getCurrentKi() + regen);
         }
 
-        // Transformation Ki drain
-        Transformation form = data.getTransformation();
-        if (form != Transformation.BASE) {
-            float drain = form.getKiDrainPerSecond() / 20.0f;
-            if (data.getCurrentKi() > drain) {
-                data.setCurrentKi(data.getCurrentKi() - drain);
+        FormController.tick(sp, data);
+        if (player.tickCount % 10 == 0) com.dragonblock.common.item.ScouterItem.tickWorn(sp, data);
+        FormEffects.tick(sp, data);
+        KiAttacks.tick(sp, data);
+        com.dragonblock.common.combat.Melee.tick(sp, data);
+        tickFlight(sp, data);
 
-                if (player.level().isClientSide && player.tickCount % 3 == 0) {
-                    double px = player.getX() + (player.getRandom().nextDouble() - 0.5) * 1.0;
-                    double py = player.getY() + player.getRandom().nextDouble() * 1.8;
-                    double pz = player.getZ() + (player.getRandom().nextDouble() - 0.5) * 1.0;
-                    player.level().addParticle(
-                            form == Transformation.SUPER_SAIYAN ? ParticleTypes.WAX_OFF : ParticleTypes.FLAME,
-                            px, py, pz, 0, 0.1, 0
-                    );
-                }
-            } else {
-                data.setCurrentKi(0);
-                data.setTransformation(Transformation.BASE);
-                if (!player.level().isClientSide) {
-                    data.saveToPlayer(player);
-                    if (player instanceof ServerPlayer sp) ModMessages.syncToPlayer(sp);
-                    player.displayClientMessage(
-                            Component.literal("§c¡Te has quedado sin Ki! Tu transformación se ha desactivado por agotamiento."),
-                            true
-                    );
-                }
+        if (data.getRace() == Race.NAMEKIAN && player.tickCount % 40 == 0) {
+            data.setBody(data.getBody() + data.getMaxBody() * 0.02f);
+        }
+        syncBodyWithVanilla(player, data);
+
+        if (player.tickCount % 20 == 0) data.saveToPlayer(player); // also saved on logout, death and dimension clone
+
+        if (player.tickCount % 20 == 0) updatePlayerAttributes(player, data);
+        if (data.isGuarding() != data.guardApplied || data.isTransformHeld() != data.rootApplied) applyStanceSlow(player, data);
+        tickScale(player, data);
+
+        boolean active = data.isChargingKi() || data.isTransformHeld() || data.isTechHeld();
+        if (player.tickCount % (active ? 4 : 20) == 0) ModMessages.syncToTracking(sp);
+    }
+
+    private static void tickFlight(ServerPlayer player, PlayerDBCData data) {
+        if (!data.isFlying()) return;
+        if (!data.getTransformation().canFly()) {
+            stopFlying(player, data, "Tu cuerpo es demasiado grande para volar.");
+            return;
+        }
+        if (!player.getAbilities().flying) return; // hovering off: walking or falling costs nothing
+        float cost = data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f;
+        if (player.isSprinting()) cost *= 2.5f;
+
+        if (data.consumeKi(cost)) {
+            // Faster flight with DEX, much faster while sprinting
+            // Vanilla creative flight is 0.05; stay close to it so flying feels normal
+            float speed = 0.05f + Math.min(0.03f, data.getEffectiveDex() * 0.00015f);
+            if (player.isSprinting()) speed *= 1.6f;
+            if (Math.abs(player.getAbilities().getFlyingSpeed() - speed) > 0.001f) {
+                player.getAbilities().setFlyingSpeed(speed);
+                player.onUpdateAbilities();
             }
+            return;
         }
 
-        // Flight (Bukujutsu) Ki drain
-        if (data.isFlying()) {
-            float flightCost = (data.getRace() == Race.ARCOSIAN ? 0.06f : 0.12f);
-            if (data.getCurrentKi() > flightCost) {
-                data.setCurrentKi(data.getCurrentKi() - flightCost);
-                if (player.level().isClientSide && player.tickCount % 4 == 0) {
-                    player.level().addParticle(ParticleTypes.CLOUD,
-                            player.getX(), player.getY() - 0.2, player.getZ(),
-                            0, -0.05, 0);
-                }
-            } else {
-                data.setFlying(false);
-                if (!player.isCreative() && !player.isSpectator()) {
-                    player.getAbilities().mayfly = false;
-                    player.getAbilities().flying = false;
-                    player.onUpdateAbilities();
-                }
-                if (!player.level().isClientSide) {
-                    data.saveToPlayer(player);
-                    if (player instanceof ServerPlayer sp) ModMessages.syncToPlayer(sp);
-                    player.displayClientMessage(
-                            Component.literal("§c¡Ki insuficiente para mantener el vuelo!"),
-                            true
-                    );
-                }
-            }
-        }
+        stopFlying(player, data, "Ki insuficiente para mantener el vuelo.");
+    }
 
-        // Namekian passive HP regen
-        if (data.getRace() == Race.NAMEKIAN && player.getHealth() < player.getMaxHealth() && player.tickCount % 40 == 0) {
-            player.heal(1.0f);
+    private static void stopFlying(ServerPlayer player, PlayerDBCData data, String reason) {
+        data.setFlying(false);
+        if (!player.isCreative() && !player.isSpectator()) {
+            player.getAbilities().mayfly = false;
+            player.getAbilities().flying = false;
         }
+        player.getAbilities().setFlyingSpeed(0.05f);
+        player.onUpdateAbilities();
+        ModMessages.syncToTracking(player);
+        player.displayClientMessage(Component.literal(reason), true);
+    }
 
-        // Update attribute modifiers every 20 ticks (1s) on server
-        if (!player.level().isClientSide && player.tickCount % 20 == 0) {
-            updatePlayerAttributes(player, data);
-            data.saveToPlayer(player);
-            if (player instanceof ServerPlayer sp) {
-                ModMessages.syncToPlayer(sp);
-            }
+    private static void clientParticles(Player player, PlayerDBCData data) {
+        if (data.isFlying() && player.tickCount % 4 == 0 && player.getAbilities().flying) {
+            player.level().addParticle(ParticleTypes.CLOUD, player.getX(), player.getY() - 0.2, player.getZ(), 0, -0.05, 0);
+        }
+        if ((data.isChargingKi() || data.isTransformHeld()) && player.onGround() && player.tickCount % 3 == 0) {
+            // Debris kicked up by the aura
+            double a = player.getRandom().nextDouble() * Math.PI * 2;
+            player.level().addParticle(ParticleTypes.POOF, player.getX() + Math.cos(a) * 1.2, player.getY() + 0.05,
+                    player.getZ() + Math.sin(a) * 1.2, Math.cos(a) * 0.1, 0.02, Math.sin(a) * 0.1);
         }
     }
 
     private static void updatePlayerAttributes(Player player, PlayerDBCData data) {
-        AttributeInstance maxHp = player.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHp != null) {
-            double bonusHealth = Math.max(0, (data.getEffectiveCon() - 5) * 2.0);
-            AttributeModifier mod = new AttributeModifier(
-                    CON_HEALTH_MODIFIER, bonusHealth, AttributeModifier.Operation.ADD_VALUE
-            );
-            maxHp.addOrUpdateTransientModifier(mod);
-        }
+        // Old saves had a CON health bonus; health now lives in the body pool
+        setModifier(player, Attributes.MAX_HEALTH, CON_HEALTH_MODIFIER, 0, AttributeModifier.Operation.ADD_VALUE);
+        setModifier(player, Attributes.MOVEMENT_SPEED, DEX_SPEED_MODIFIER,
+                dexSpeedBonus(data), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 
-        AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (speed != null) {
-            double bonusSpeed = Math.max(0, (data.getEffectiveDex() - 5) * 0.003);
-            AttributeModifier mod = new AttributeModifier(
-                    DEX_SPEED_MODIFIER, bonusSpeed, AttributeModifier.Operation.ADD_VALUE
-            );
-            speed.addOrUpdateTransientModifier(mod);
+        applyStanceSlow(player, data);
+    }
+
+    /** Guarding halves speed; powering up roots you in place (you plant your feet to transform). */
+    private static void applyStanceSlow(Player player, PlayerDBCData data) {
+        data.guardApplied = data.isGuarding();
+        data.rootApplied = data.isTransformHeld();
+        setModifier(player, Attributes.MOVEMENT_SPEED, GUARD_SLOW_MODIFIER, stanceSlow(data),
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+    }
+
+    public static double stanceSlow(PlayerDBCData data) {
+        return data.isTransformHeld() ? -0.85 : data.isGuarding() ? -0.5 : 0;
+    }
+
+    /** Up to +35% walk speed, less with training weights on. The FOV effect is cancelled client-side. */
+    public static double dexSpeedBonus(PlayerDBCData data) {
+        double dex = Math.min(0.35, Math.max(0, (data.getEffectiveDex() - 5) * 0.002));
+        double weights = (data.wears(WEIGHTS) ? 0.92 : 1) * (data.wears(WRIST_WEIGHTS) ? 0.97 : 1);
+        return (1 + dex) * FormEffects.speedMultiplier(data) * weights - 1;
+    }
+
+    /** Eases body scale toward the form's scale over ~2 seconds, so giant forms grow (and shrink) visibly. */
+    private static void tickScale(Player player, PlayerDBCData data) {
+        float target = data.getTransformation().getScale();
+        if (Math.abs(data.appliedScale - target) < 0.005f && player.tickCount % 20 != 0) return;
+        float step = Math.max(0.02f, Math.abs(target - data.appliedScale) * 0.08f);
+        data.appliedScale = data.appliedScale < target
+                ? Math.min(target, data.appliedScale + step) : Math.max(target, data.appliedScale - step);
+        setModifier(player, Attributes.SCALE, FORM_SCALE_MODIFIER, data.appliedScale - 1.0,
+                AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+    }
+
+    private static void setModifier(Player player, Holder<Attribute> attribute, ResourceLocation id, double value,
+                                    AttributeModifier.Operation op) {
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance == null) return;
+        if (value == 0) {
+            instance.removeModifier(id);
+        } else {
+            instance.addOrUpdateTransientModifier(new AttributeModifier(id, value, op));
         }
     }
 }

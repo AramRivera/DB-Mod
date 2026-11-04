@@ -30,35 +30,42 @@ public class DragonRadarItem extends Item {
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 1.0f, 2.0f);
 
-            // Search for Dragon Ball items in world
-            AABB searchBox = player.getBoundingBox().inflate(128.0D);
-            List<ItemEntity> items = level.getEntitiesOfClass(ItemEntity.class, searchBox,
-                    entity -> entity.getItem().getItem() instanceof DragonBallItem);
-
-            if (!items.isEmpty()) {
-                ItemEntity nearest = items.get(0);
-                double minDist = player.distanceToSqr(nearest);
-                for (ItemEntity item : items) {
-                    double dist = player.distanceToSqr(item);
+            // Placed balls anywhere in this dimension, plus dropped ones within 128 blocks
+            BlockPos nearest = null;
+            String name = null;
+            double minDist = Double.MAX_VALUE;
+            if (level instanceof net.minecraft.server.level.ServerLevel server) {
+                for (var ball : com.dragonblock.common.block.DragonBallTracker.get(server).all()) {
+                    double dist = player.blockPosition().distSqr(ball.getValue());
                     if (dist < minDist) {
                         minDist = dist;
-                        nearest = item;
+                        nearest = ball.getValue();
+                        name = "Esfera de " + ball.getKey() + " estrella" + (ball.getKey() > 1 ? "s" : "");
                     }
                 }
+            }
+            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(128.0D),
+                    entity -> entity.getItem().getItem() instanceof DragonBallItem)) {
+                double dist = player.distanceToSqr(item);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = item.blockPosition();
+                    name = item.getItem().getHoverName().getString();
+                }
+            }
 
+            if (nearest != null) {
                 int distanceBlocks = (int) Math.sqrt(minDist);
-                BlockPos targetPos = nearest.blockPosition();
-                String direction = getDirectionString(player.blockPosition(), targetPos);
-
+                String direction = getDirectionString(player.blockPosition(), nearest);
                 player.displayClientMessage(
                         Component.literal("§6[RADAR DRAGÓN] §e¡Señal detectada! ")
-                                .append(Component.literal(nearest.getItem().getHoverName().getString()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                                .append(Component.literal(name).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
                                 .append(Component.literal(" a §a" + distanceBlocks + " bloques §ehacia el §b" + direction + "§e.")),
                         false
                 );
             } else {
                 player.displayClientMessage(
-                        Component.literal("§6[RADAR DRAGÓN] §7No se detectan Esferas del Dragón cercanas en un radio de 128 bloques."),
+                        Component.literal("§6[RADAR DRAGÓN] §7No se detecta ninguna Esfera del Dragón."),
                         true
                 );
             }

@@ -11,6 +11,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -71,13 +72,22 @@ public class DevCommand {
                 // /dev form <formName>
                 .then(Commands.literal("form")
                         .then(Commands.argument("form", StringArgumentType.word())
+                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(
+                                        java.util.Arrays.stream(Transformation.values()).map(Transformation::id), b))
                                 .executes(ctx -> setForm(ctx.getSource(), StringArgumentType.getString(ctx, "form")))))
+
+                // /dev mastery <0-100> (all forms)
+                .then(Commands.literal("mastery")
+                        .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
+                                .executes(ctx -> setAllMastery(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "value")))))
 
                 // /dev max (sets 100 stats, 50,000 TP, full Ki)
                 .then(Commands.literal("max").executes(ctx -> setMax(ctx.getSource())))
 
                 // /dev reset (resets stats to base 5, 100 TP, base form)
-                .then(Commands.literal("reset").executes(ctx -> resetStats(ctx.getSource())));
+                .then(Commands.literal("reset").executes(ctx -> resetStats(ctx.getSource())))
+                // Sets the seven balls in a ring around you and starts the ritual
+                .then(Commands.literal("dragon").executes(ctx -> summonDragon(ctx.getSource())));
     }
 
     private static int sendHelp(CommandSourceStack source) {
@@ -88,7 +98,8 @@ public class DevCommand {
         source.sendSuccess(() -> Component.literal("§a/dev ki <cantidad> §7- Establece tu Ki actual"), false);
         source.sendSuccess(() -> Component.literal("§a/dev stat <str|dex|con|wil|mnd|all> <valor> §7- Fija un atributo"), false);
         source.sendSuccess(() -> Component.literal("§a/dev race <human|saiyan|half_saiyan|namekian|arcosian|majin>"), false);
-        source.sendSuccess(() -> Component.literal("§a/dev form <base|kaioken|ssj> §7- Cambia de transformación"), false);
+        source.sendSuccess(() -> Component.literal("§a/dev form <forma> §7- Cambia de transformación (autocompleta)"), false);
+        source.sendSuccess(() -> Component.literal("§a/dev mastery <0-100> §7- Fija la maestría de todas las formas"), false);
         source.sendSuccess(() -> Component.literal("§a/dev max §7- Estadísticas a 100, 50k TP y Ki al máximo"), false);
         source.sendSuccess(() -> Component.literal("§a/dev reset §7- Restaura estadísticas al valor inicial"), false);
         return 1;
@@ -101,7 +112,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.addTrainingPoints(amount);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aSe añadieron §e" + String.format("%,d", amount) + " TP§a. Total: §e" + String.format("%,d", data.getTrainingPoints()) + " TP"), false);
         return 1;
@@ -114,7 +125,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setTrainingPoints(amount);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aTP establecidos a: §e" + String.format("%,d", amount) + " TP"), false);
         return 1;
@@ -127,7 +138,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setCurrentKi(data.getMaxKi());
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §b¡Ki restaurado al máximo! (" + String.format("%.0f", data.getMaxKi()) + " Ki)"), false);
         return 1;
@@ -140,7 +151,7 @@ public class DevCommand {
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setCurrentKi(amount);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §bKi establecido a: " + amount), false);
         return 1;
@@ -174,7 +185,7 @@ public class DevCommand {
 
         data.setCurrentKi(Math.min(data.getCurrentKi(), data.getMaxKi()));
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aAtributo §e" + name + " §aestablecido a §e" + value), false);
         return 1;
@@ -188,8 +199,11 @@ public class DevCommand {
             Race race = Race.valueOf(raceStr.toUpperCase());
             PlayerDBCData data = PlayerDBCData.get(player);
             data.setRace(race);
+            data.setRaceChosen(true);
+            data.setTransformation(Transformation.BASE);
+            data.setSelectedForm(Transformation.BASE);
             data.saveToPlayer(player);
-            ModMessages.syncToPlayer(player);
+            ModMessages.syncToTracking(player);
 
             source.sendSuccess(() -> Component.literal("§6[DEV] §aRaza cambiada a: §e" + race.getDisplayName()), false);
             return 1;
@@ -204,24 +218,34 @@ public class DevCommand {
         if (player == null) return 0;
 
         Transformation target;
-        String upper = formStr.toUpperCase();
-        if (upper.equals("SSJ") || upper.equals("SUPER_SAIYAN")) {
-            target = Transformation.SUPER_SAIYAN;
-        } else if (upper.equals("KAIOKEN") || upper.equals("KAIO_KEN")) {
-            target = Transformation.KAIOKEN;
-        } else if (upper.equals("BASE")) {
-            target = Transformation.BASE;
-        } else {
-            source.sendFailure(Component.literal("§cForma no válida. Opciones: BASE, KAIOKEN, SSJ"));
+        try {
+            String key = formStr.toUpperCase();
+            Transformation legacy = Transformation.fromLegacy(key);
+            target = legacy != null ? legacy : key.equals("SSJ") ? Transformation.SSJ1 : Transformation.valueOf(key);
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal("Forma no válida. Usa Tab para ver las opciones: ssj1, ssj2, ssj3, ssj4, ssj_god, ssj_blue..."));
             return 0;
         }
 
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setTransformation(target);
+        data.setSelectedForm(target);
+        data.forcedForm = true;
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §aTransformación cambiada a: §e" + target.getDisplayName()), false);
+        return 1;
+    }
+
+    private static int setAllMastery(CommandSourceStack source, int value) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) return 0;
+        PlayerDBCData data = PlayerDBCData.get(player);
+        for (Transformation form : Transformation.values()) data.setMastery(form, value);
+        data.saveToPlayer(player);
+        ModMessages.syncToTracking(player);
+        source.sendSuccess(() -> Component.literal("[DEV] Maestría de todas las formas: " + value + "%"), false);
         return 1;
     }
 
@@ -238,7 +262,7 @@ public class DevCommand {
         data.setTrainingPoints(50000);
         data.setCurrentKi(data.getMaxKi());
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §e¡Modo Dios activado! Stats a 100, 50,000 TP y Ki al máximo."), false);
         return 1;
@@ -250,7 +274,10 @@ public class DevCommand {
 
         PlayerDBCData data = PlayerDBCData.get(player);
         data.setRace(Race.HUMAN);
+        data.setRaceChosen(false);
         data.setTransformation(Transformation.BASE);
+        data.setSelectedForm(Transformation.BASE);
+        for (Transformation form : Transformation.values()) data.setMastery(form, 0);
         data.setStr(5);
         data.setDex(5);
         data.setCon(5);
@@ -261,9 +288,22 @@ public class DevCommand {
         data.setFlying(false);
         data.setChargingKi(false);
         data.saveToPlayer(player);
-        ModMessages.syncToPlayer(player);
+        ModMessages.syncToTracking(player);
 
         source.sendSuccess(() -> Component.literal("§6[DEV] §eEstadísticas y datos restablecidos a valores iniciales."), false);
+        return 1;
+    }
+
+    private static int summonDragon(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = source.getPlayerOrException();
+        net.minecraft.server.level.ServerLevel level = player.serverLevel();
+        net.minecraft.core.BlockPos center = player.blockPosition();
+        for (int i = 0; i < 7; i++) {
+            double a = Math.PI * 2 * i / 7;
+            net.minecraft.core.BlockPos pos = center.offset((int) Math.round(Math.cos(a) * 3), 0, (int) Math.round(Math.sin(a) * 3));
+            level.setBlockAndUpdate(pos, com.dragonblock.common.registry.ModBlocks.DRAGON_BALLS.get(i).get().defaultBlockState());
+        }
+        com.dragonblock.common.entity.ShenlongEntity.trySummon(level, center, player);
         return 1;
     }
 }

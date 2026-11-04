@@ -19,7 +19,13 @@ public class ModCreativeTabs {
                         output.accept(ModItems.SENZU_BEAN.get());
                         output.accept(ModItems.SCOUTER.get());
                         output.accept(ModItems.DRAGON_RADAR.get());
+                        output.accept(ModItems.BALL_CAPSULE.get());
+                        output.accept(ModItems.SHIP_CAPSULE.get());
+                        output.accept(ModItems.IMPERIAL_BEACON.get());
+                        output.accept(ModItems.MAJIN_COCOON.get());
                         output.accept(ModItems.TRAINING_WEIGHTS.get());
+                        output.accept(ModItems.WRIST_WEIGHTS.get());
+                        output.accept(ModItems.COMBAT_BELT.get());
                         output.accept(ModItems.KI_BLAST_ITEM.get());
 
                         output.accept(ModItems.DRAGON_BALL_1.get());

@@ -1,0 +1,72 @@
+{
+ "has_precipitation": false,
+ "temperature": 0.9,
+ "downfall": 0.2,
+ "effects": {
+  "sky_color": 9429941,
+  "fog_color": 12579540,
+  "water_color": 4180366,
+  "water_fog_color": 2060368,
+  "grass_color": 5228960,
+  "foliage_color": 7332008
+ },
+ "spawners": {
+  "monster": [
+   {
+    "type": "dragonblock:soldier",
+    "weight": 60,
+    "minCount": 1,
+    "maxCount": 3
+   },
+   {
+    "type": "dragonblock:android",
+    "weight": 5,
+    "minCount": 1,
+    "maxCount": 1
+   },
+   {
+    "type": "dragonblock:sprout",
+    "weight": 25,
+    "minCount": 2,
+    "maxCount": 5
+   }
+  ]
+ },
+ "spawn_costs": {},
+ "carvers": {
+  "air": [
+   "minecraft:cave",
+   "minecraft:cave_extra_underground",
+   "minecraft:canyon"
+  ]
+ },
+ "features": [
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+   "minecraft:ore_dirt",
+   "minecraft:ore_gravel",
+   "minecraft:ore_coal_upper",
+   "minecraft:ore_coal_lower",
+   "minecraft:ore_iron_upper",
+   "minecraft:ore_iron_middle",
+   "minecraft:ore_gold",
+   "minecraft:ore_redstone",
+   "minecraft:ore_diamond",
+   "minecraft:ore_lapis",
+   "minecraft:ore_copper"
+  ],
+  [],
+  [],
+  [
+   "dragonblock:namek_tree",
+   "minecraft:patch_grass_plain",
+   "minecraft:flower_default"
+  ],
+  []
+ ]
+}

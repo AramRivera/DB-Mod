@@ -1,6 +1,6 @@
-﻿{
+{
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "dragonblock:item/dragon_ball_$_"
+    "layer0": "dragonblock:item/dragon_ball_3"
   }
 }

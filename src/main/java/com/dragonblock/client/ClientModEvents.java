@@ -3,7 +3,16 @@ package com.dragonblock.client;
 import com.dragonblock.DragonBlockMod;
 import com.dragonblock.client.keybind.ModKeyBindings;
 import com.dragonblock.client.overlay.DBCKiOverlay;
+import com.dragonblock.client.anim.DBPlayerModel;
+import com.dragonblock.client.model.DBModels;
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import java.lang.reflect.Field;
+import com.dragonblock.client.renderer.DBPlayerLayer;
 import com.dragonblock.client.renderer.KiBlastRenderer;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.resources.PlayerSkin;
 import com.dragonblock.common.registry.ModEntities;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -19,15 +28,60 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.KI_BLAST.get(), KiBlastRenderer::new);
+        event.registerEntityRenderer(ModEntities.SHENLONG.get(), com.dragonblock.client.renderer.ShenlongRenderer::new);
+        event.registerEntityRenderer(ModEntities.NPC.get(), com.dragonblock.client.renderer.NpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.SPACESHIP.get(), com.dragonblock.client.renderer.ShipRenderer::new);
+        event.registerEntityRenderer(ModEntities.DINO.get(), com.dragonblock.client.renderer.DinoRenderer::new);
+        for (var enemy : java.util.List.of(ModEntities.BANDIT, ModEntities.SOLDIER, ModEntities.ANDROID, ModEntities.EMPEROR,
+                ModEntities.SPROUT, ModEntities.RAIDER, ModEntities.MAJIN, ModEntities.MAJIN_SPAWN)) {
+            event.registerEntityRenderer(enemy.get(), com.dragonblock.client.renderer.EnemyRenderer::new);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        DBModels.register(event);
+    }
+
+    @SubscribeEvent
+    public static void onAddLayers(EntityRenderersEvent.AddLayers event) {
+        for (PlayerSkin.Model skin : event.getSkins()) {
+            if (event.getPlayerSkin(skin) instanceof PlayerRenderer renderer) {
+                boolean slim = skin == PlayerSkin.Model.SLIM;
+                swapModel(renderer, new DBPlayerModel(
+                        event.getContext().bakeLayer(slim ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER), slim));
+                renderer.addLayer(new DBPlayerLayer(renderer, event.getEntityModels()));
+            }
+        }
+    }
+
+    /**
+     * Replaces LivingEntityRenderer.model so our setupAnim poses every player. Looked up by type
+     * instead of name so it works in dev and in obfuscated production builds alike.
+     */
+    private static void swapModel(PlayerRenderer renderer, DBPlayerModel model) {
+        for (Field field : LivingEntityRenderer.class.getDeclaredFields()) {
+            if (EntityModel.class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    field.set(renderer, model);
+                    return;
+                } catch (ReflectiveOperationException e) {
+                    DragonBlockMod.LOGGER.error("Could not install Dragon Block player model, poses disabled", e);
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
+        event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(
+                com.dragonblock.common.registry.ModMenus.ACCESSORIES.get(), com.dragonblock.client.gui.AccessoryScreen::new));
     }
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(ModKeyBindings.CHARGE_KI_KEY);
-        event.register(ModKeyBindings.TRANSFORM_KEY);
-        event.register(ModKeyBindings.CHARACTER_SHEET_KEY);
-        event.register(ModKeyBindings.FLY_KEY);
-        event.register(ModKeyBindings.KI_BLAST_KEY);
+        for (var key : ModKeyBindings.ALL) event.register(key);
     }
 
     @SubscribeEvent
@@ -35,6 +89,22 @@ public class ClientModEvents {
         event.getLayeredDraw().add(
                 ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "ki_overlay"),
                 DBCKiOverlay.INSTANCE
+        );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "technique_bar"),
+                com.dragonblock.client.overlay.TechniqueBar.INSTANCE
+        );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "scouter"),
+                com.dragonblock.client.overlay.ScouterHud.INSTANCE
+        );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "warp"),
+                com.dragonblock.client.overlay.WarpOverlay.INSTANCE
+        );
+        event.getLayeredDraw().add(
+                ResourceLocation.fromNamespaceAndPath(DragonBlockMod.MODID, "safe_zone"),
+                com.dragonblock.client.overlay.SafeZoneHud.INSTANCE
         );
     }
 }

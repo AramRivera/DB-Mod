@@ -1,6 +1,9 @@
 package com.dragonblock.common.item;
 
+import com.dragonblock.common.combat.KiAttacks;
 import com.dragonblock.common.data.PlayerDBCData;
+import com.dragonblock.common.network.ModMessages;
+import net.minecraft.server.level.ServerPlayer;
 import com.dragonblock.common.entity.KiBlastEntity;
 import com.dragonblock.common.registry.ModSounds;
 import net.minecraft.ChatFormatting;
@@ -17,7 +20,7 @@ import net.minecraft.world.level.Level;
 import java.util.List;
 
 public class KiAttackItem extends Item {
-    public static final float KI_COST = 15.0f;
+    public static final float KI_COST = com.dragonblock.common.data.Technique.KI_BLAST.getKiCost();
 
     public KiAttackItem() {
         super(new Item.Properties().stacksTo(1));
@@ -27,30 +30,11 @@ public class KiAttackItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        if (!level.isClientSide) {
-            PlayerDBCData data = PlayerDBCData.get(player);
-            if (data.getCurrentKi() >= KI_COST) {
-                data.setCurrentKi(data.getCurrentKi() - KI_COST);
-                data.saveToPlayer(player);
-
-                // Calculate damage based on Willpower and current form
-                float damage = 8.0f + (data.getEffectiveWil() * 0.75f);
-                float explosionPower = 1.2f + Math.min(2.5f, data.getEffectiveWil() * 0.05f);
-
-                KiBlastEntity blast = new KiBlastEntity(level, player, damage, explosionPower);
-                blast.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, 1.8F, 0.5F);
-                level.addFreshEntity(blast);
-
-                level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                        ModSounds.KI_BLAST.get(), SoundSource.PLAYERS, 1.2f, 1.0f);
-
-                player.getCooldowns().addCooldown(this, 10);
-            } else {
-                player.displayClientMessage(
-                        Component.literal("§c¡No tienes suficiente Ki para disparar una ráfaga! (Necesitas 15 Ki)"),
-                        true
-                );
-            }
+        if (player instanceof ServerPlayer serverPlayer) {
+            PlayerDBCData data = PlayerDBCData.get(serverPlayer);
+            KiAttacks.fireBlast(serverPlayer, data);
+            data.saveToPlayer(serverPlayer);
+            ModMessages.syncToPlayer(serverPlayer);
         }
 
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
